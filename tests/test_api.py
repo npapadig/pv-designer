@@ -76,3 +76,13 @@ def test_index_links_assets_with_version():
 def test_frontend_assets_have_browser_types():
     assert client.get("/style.css").headers["content-type"].startswith("text/css")
     assert client.get("/ui.js").headers["content-type"].startswith("text/javascript")
+
+
+def test_settings_roundtrip(tmp_path, monkeypatch):
+    from backend import settings
+    monkeypatch.setattr(settings, "SETTINGS_FILE", tmp_path / "settings.json")
+    assert client.get("/api/settings").json() == {"google_maps_key": ""}
+    r = client.put("/api/settings", json={"google_maps_key": "  AIzaTEST  ", "other": "x"})
+    assert r.json() == {"google_maps_key": "AIzaTEST"}
+    assert client.get("/api/settings").json()["google_maps_key"] == "AIzaTEST"
+    assert not (tmp_path / "other").exists()

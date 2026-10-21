@@ -43,7 +43,7 @@ const ktimatologio = L.tileLayer.wms("http://gis.ktimanet.gr/wms/wmsopen/wmsserv
   layers: "KTBASEMAP", format: "image/jpeg", version: "1.1.1", crs: L.CRS.EPSG4326,
   maxNativeZoom: 20, maxZoom: MAX_ZOOM, attribution: "Ορθοφωτογραφίες © Ελληνικό Κτηματολόγιο",
 });
-L.control.layers({
+const layersControl = L.control.layers({
   "Δορυφόρος (Esri)": satellite,
   "Δορυφόρος (Esri Clarity, συχνά πιο καθαρός)": clarity,
   "Ορθοφωτογραφίες Κτηματολογίου (Ελλάδα, 2007-09)": ktimatologio,
@@ -685,4 +685,98 @@ refreshProjectList().catch(() => toast("Δεν βρέθηκε ο server. Ξεκ�
 api("/api/version").then((v) => {
   $("appVersion").textContent = `v${v.version}`;
   document.title = `PV Designer v${v.version}`;
+}).catch(() => {});
+
+// ---------- Google satellite (Map Tiles API, needs the owner's own key) ----------
+const GOOGLE_TILES = "https://tile.googleapis.com/v1";
+const google = { layer: null, key: "", session: "", attribution: "" };
+
+async function startGoogle(key) {
+  const r = await fetch(`${GOOGLE_TILES}/createSession?key=${encodeURIComponent(key)}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ mapType: "satellite", language: "el-GR", region: "GR" }),
+  });
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok || !d.session) {
+    throw new Error((d.error && d.error.message) || `Η Google απάντησε με σφάλμα ${r.status}.`);
+  }
+  google.key = key;
+  google.session = d.session;
+  const url = `${GOOGLE_TILES}/2dtiles/{z}/{x}/{y}?session=${d.session}&key=${encodeURIComponent(key)}`;
+  if (google.layer) {
+    google.layer.setUrl(url);
+  } else {
+    google.layer = L.tileLayer(url, { maxNativeZoom: 20, maxZoom: MAX_ZOOM, attribution: "Google" });
+    layersControl.addBaseLayer(google.layer, "Δορυφόρος Google");
+  }
+  // Make Google the visible base map.
+  [satellite, clarity, ktimatologio, streets].forEach((l) => map.removeLayer(l));
+  google.layer.addTo(map);
+  refreshGoogleViewport();
+}
+
+// Google requires showing its copyright text, and tells us the sharpest zoom per area.
+let googleTimer = null;
+function refreshGoogleViewport() {
+  clearTimeout(googleTimer);
+  googleTimer = setTimeout(async () => {
+    if (!google.layer || !map.hasLayer(google.layer)) return;
+    const b = map.getBounds();
+    const q = new URLSearchParams({
+      session: google.session, key: google.key, zoom: Math.min(map.getZoom(), 22),
+      north: b.getNorth(), south: b.getSouth(), east: b.getEast(), west: b.getWest(),
+    });
+    try {
+      const d = await (await fetch(`${GOOGLE_TILES}/viewport?${q}`)).json();
+      const text = `Google${d.copyright ? " · " + d.copyright : ""}`;
+      if (text !== google.attribution) {
+        map.attributionControl.removeAttribution(google.attribution || "Google");
+        map.attributionControl.addAttribution(text);
+        google.attribution = text;
+      }
+      const c = map.getCenter();
+      const zooms = (d.maxZoomRects || [])
+        .filter((z) => c.lat <= z.north && c.lat >= z.south && c.lng <= z.east && c.lng >= z.west)
+        .map((z) => z.maxZoom);
+      const best = zooms.length ? Math.max(...zooms) : null;
+      if (best && best !== google.layer.options.maxNativeZoom) {
+        google.layer.options.maxNativeZoom = best;
+        google.layer.redraw();
+      }
+    } catch {
+      // Viewport info is optional; tiles still work without it.
+    }
+  }, 400);
+}
+map.on("moveend baselayerchange", refreshGoogleViewport);
+
+function setGoogleStatus(msg) { $("googleStatus").textContent = msg; }
+
+$("btnGoogleKey").onclick = () => withBusy($("btnGoogleKey"), async () => {
+  const key = $("googleKey").value.trim();
+  await api("/api/settings", "PUT", { google_maps_key: key });
+  if (!key) {
+    setGoogleStatus("Το κλειδί αφαιρέθηκε.");
+    if (google.layer) { map.removeLayer(google.layer); satellite.addTo(map); }
+    return;
+  }
+  try {
+    await startGoogle(key);
+    setGoogleStatus("✓ Ο χάρτης Google είναι ενεργός.");
+    toast("Ο χάρτης Google ενεργοποιήθηκε.");
+  } catch (e) {
+    setGoogleStatus(`Δεν δούλεψε το κλειδί: ${e.message}`);
+  }
+});
+
+api("/api/settings").then(async (s) => {
+  if (!s.google_maps_key) return;
+  $("googleKey").value = s.google_maps_key;
+  try {
+    await startGoogle(s.google_maps_key);
+    setGoogleStatus("✓ Ο χάρτης Google είναι ενεργός.");
+  } catch (e) {
+    setGoogleStatus(`Δεν δούλεψε το κλειδί: ${e.message}`);
+  }
 }).catch(() => {});

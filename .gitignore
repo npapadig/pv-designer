@@ -6,3 +6,4 @@ data/projects/*.json
 .version
 .updated
 data/weather/
+data/settings.json

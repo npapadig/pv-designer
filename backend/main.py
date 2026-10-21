@@ -12,7 +12,7 @@ from fastapi.responses import Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from . import electrical, energy, finance, report, shading, simulation, storage
+from . import electrical, energy, finance, report, settings, shading, simulation, storage
 from .equipment import INVERTERS, Inverter
 from .layout import LayoutParams, compute_layout
 
@@ -133,6 +133,21 @@ def health():
 @app.get("/api/version")
 def version():
     return {"version": VERSION}
+
+
+class SettingsUpdate(BaseModel):
+    google_maps_key: str | None = Field(None, max_length=200)
+
+
+@app.get("/api/settings")
+def settings_get():
+    return settings.load()
+
+
+@app.put("/api/settings")
+def settings_put(req: SettingsUpdate):
+    changes = {k: v.strip() for k, v in req.model_dump().items() if v is not None}
+    return settings.save(changes)
 
 
 @app.post("/api/layout")
