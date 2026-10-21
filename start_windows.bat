@@ -4,6 +4,12 @@ cd /d "%~dp0"
 echo === PV Designer ===
 echo.
 
+rem Fetch the latest version from GitHub. If files were replaced (this script
+rem included), restart from the new copy; the whole line is parsed before it runs.
+if exist .updated del .updated
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0update.ps1" & if exist "%~dp0.updated" (del "%~dp0.updated" & "%~f0" & exit /b)
+echo.
+
 rem The app needs Python 3.12: newer versions (3.13+) lack ready-made packages
 rem for some libraries, and pip then tries to compile them and fails.
 set "PY="
