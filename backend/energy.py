@@ -41,13 +41,21 @@ def pvgis_estimate(lat, lon, kwp, tilt, azimuth, loss_pct, timeout=30.0) -> dict
     raise RuntimeError(f"PVGIS δεν απάντησε: {last_err}")
 
 
+def _num(v) -> float:
+    try:
+        return float(v)
+    except (TypeError, ValueError):
+        return 0.0
+
+
 def parse_pvgis(data: dict, kwp: float, loss_pct: float | None = None) -> dict:
     out = data["outputs"]
     monthly = [
-        {"month": m["month"], "kwh": round(m["E_m"], 1), "irradiation": round(m["H(i)_m"], 1)}
+        {"month": int(m["month"]), "kwh": round(float(m["E_m"]), 1), "irradiation": round(float(m["H(i)_m"]), 1)}
         for m in out["monthly"]["fixed"]
     ]
-    totals = out["totals"]["fixed"]
+    # PVGIS sometimes sends numbers as text (e.g. l_spec "0.46"), so read every total as a float.
+    totals = {k: _num(v) for k, v in out["totals"]["fixed"].items()}
     annual = totals["E_y"]
     return {
         "source": "PVGIS",
