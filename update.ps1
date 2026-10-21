@@ -4,6 +4,22 @@ $ErrorActionPreference = 'Stop'
 $repo = 'npapadig/pv-designer'
 $root = $PSScriptRoot
 $verFile = Join-Path $root '.version'
+$versionFile = Join-Path $root 'VERSION'
+function Get-AppVersion { if (Test-Path $versionFile) { 'v' + (Get-Content $versionFile -Raw).Trim() } else { 'v0.1.0' } }
+$oldVersion = Get-AppVersion
+
+# A copy of the app that is still running locks files in .venv and holds port 8000.
+# (The venv python.exe is a launcher, so match the server by its command line.)
+Get-CimInstance Win32_Process -Filter "Name like 'python%'" -ErrorAction SilentlyContinue |
+  Where-Object { $_.CommandLine -like '*uvicorn*backend.main:app*' } |
+  ForEach-Object { Write-Host 'Kleinei h efarmogh poy etrexe hdh...'; Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
+
+if ($root -match 'OneDrive') {
+  Write-Host ''
+  Write-Host 'PROSOXH: o fakelos ths efarmoghs einai mesa sto OneDrive. O sygxronismos mporei na'
+  Write-Host 'kleidwnei arxeia kai na xalaei thn egkatastash. Kalytera metefere ton sto C:\pv-designer'
+  Write-Host ''
+}
 
 try {
   $sha = (Invoke-RestMethod "https://api.github.com/repos/$repo/commits/main" -Headers @{ 'User-Agent' = 'pv-designer' } -TimeoutSec 15).sha
@@ -12,7 +28,7 @@ try {
   exit 0
 }
 $current = if (Test-Path $verFile) { (Get-Content $verFile -Raw).Trim() } else { '' }
-if ($sha -eq $current) { Write-Host 'H efarmogh einai enhmerwmenh.'; exit 0 }
+if ($sha -eq $current) { Write-Host "H efarmogh einai enhmerwmenh ($oldVersion)."; exit 0 }
 
 try {
   Write-Host 'Brethhke nea ekdosh, katebainei...'
@@ -34,7 +50,8 @@ try {
   Set-Content $verFile $sha
   New-Item (Join-Path $root '.updated') -ItemType File -Force | Out-Null
   Remove-Item $tmp -Recurse -Force -ErrorAction SilentlyContinue
-  Write-Host 'H enhmerwsh oloklhrwthhke.'
+  Write-Host "Enhmerwsh apo $oldVersion se $(Get-AppVersion)."
+  Start-Sleep -Seconds 2
 } catch {
   Write-Host "Apetyxe h enhmerwsh ($_). Synexeia me thn yparxousa ekdosh."
 }

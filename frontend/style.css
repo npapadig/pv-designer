@@ -76,3 +76,5 @@ table.losses td.num { text-align: right; white-space: nowrap; }
 table.losses td.bar { width: 22%; }
 table.losses td.bar span { display: block; height: 8px; background: #f87171; border-radius: 4px; }
 table.losses tr.total td { font-weight: 700; }
+
+.version { font-size: 0.7rem; font-weight: 600; color: var(--muted); background: var(--bg); border: 1px solid var(--border); border-radius: 999px; padding: 1px 8px; vertical-align: middle; }

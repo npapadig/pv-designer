@@ -15,9 +15,11 @@ from . import electrical, energy, finance, report, shading, simulation, storage
 from .equipment import INVERTERS, Inverter
 from .layout import LayoutParams, compute_layout
 
-FRONTEND_DIR = Path(__file__).resolve().parent.parent / "frontend"
+ROOT_DIR = Path(__file__).resolve().parent.parent
+FRONTEND_DIR = ROOT_DIR / "frontend"
+VERSION = (ROOT_DIR / "VERSION").read_text(encoding="utf-8").strip()
 
-app = FastAPI(title="PV Designer")
+app = FastAPI(title="PV Designer", version=VERSION)
 
 
 class LayoutRequest(BaseModel):
@@ -119,6 +121,11 @@ class SimulationRequest(BaseModel):
 @app.get("/api/health")
 def health():
     return {"ok": True}
+
+
+@app.get("/api/version")
+def version():
+    return {"version": VERSION}
 
 
 @app.post("/api/layout")

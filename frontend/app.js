@@ -674,3 +674,8 @@ $("btnDelete").onclick = () => withBusy($("btnDelete"), async () => {
 });
 
 refreshProjectList().catch(() => toast("Δεν βρέθηκε ο server. Ξεκίνα την εφαρμογή με το αρχείο εκκίνησης."));
+
+api("/api/version").then((v) => {
+  $("appVersion").textContent = `v${v.version}`;
+  document.title = `PV Designer v${v.version}`;
+}).catch(() => {});

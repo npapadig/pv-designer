@@ -1,13 +1,16 @@
 @echo off
 setlocal
 cd /d "%~dp0"
-echo === PV Designer ===
-echo.
 
 rem Fetch the latest version from GitHub. If files were replaced (this script
 rem included), restart from the new copy; the whole line is parsed before it runs.
 if exist .updated del .updated
 powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0update.ps1" & if exist "%~dp0.updated" (del "%~dp0.updated" & "%~f0" & exit /b)
+echo.
+set "APPVER=?"
+if exist VERSION set /p APPVER=<VERSION
+title PV Designer v%APPVER%
+echo === PV Designer v%APPVER% ===
 echo.
 
 rem The app needs Python 3.12: newer versions (3.13+) lack ready-made packages
@@ -37,15 +40,24 @@ exit /b 1
 :have_python
 echo Xrhsimopoieitai: %PY%
 
-rem Remove an environment left half-finished or made with another Python version.
 if exist .venv\ready-312.txt goto run
+
+rem Keep an existing 3.12 environment and just (re)install libraries into it:
+rem deleting it fails when files are locked (OneDrive sync, antivirus).
+set "VENV_OK="
+if exist .venv\Scripts\python.exe for /f "delims=" %%v in ('.venv\Scripts\python.exe -c "import sys; print(*sys.version_info[:2], sep=chr(46))" 2^>nul') do if "%%v"=="3.12" set "VENV_OK=1"
+if defined VENV_OK goto install_libs
+
 if exist .venv (
   echo Katharismos palioy periballontos...
   rmdir /s /q .venv
 )
+if exist .venv goto venv_locked
 echo Prwth fora: dhmiourgia periballontos Python...
 %PY% -m venv .venv
 if not exist .venv\Scripts\python.exe goto install_failed
+
+:install_libs
 echo Egkatastash bibliothikwn (thn prwth fora pairnei 1-3 lepta)...
 .venv\Scripts\python -m pip install --quiet --upgrade pip
 .venv\Scripts\python -m pip install --prefer-binary -r requirements.txt
@@ -65,7 +77,15 @@ exit /b 0
 echo.
 echo Apetyxe h egkatastash bibliothikwn. Kane screenshot ayto to parathyro
 echo kai steile to sto Claude.
-if exist .venv rmdir /s /q .venv
+pause
+exit /b 1
+
+:venv_locked
+echo.
+echo Den htan dynato na sbhstei o fakelos .venv (kapoio arxeio einai kleidwmeno).
+echo 1. Kleise ola ta parathyra ths efarmoghs kai ksanatrexe ayto to arxeio.
+echo 2. An synexizei, kane epanekkinhsh ston ypologisth.
+echo 3. An o fakelos einai mesa sto OneDrive, metefere ton sto C:\pv-designer
 pause
 exit /b 1
 
