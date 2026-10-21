@@ -8,8 +8,6 @@ cloudiness factor. The fallback is rough and is labelled as such.
 from __future__ import annotations
 
 import httpx
-import pandas as pd
-import pvlib
 
 PVGIS_URLS = [
     "https://re.jrc.ec.europa.eu/api/v5_3/PVcalc",
@@ -62,6 +60,10 @@ def parse_pvgis(data: dict, kwp: float) -> dict:
 
 
 def offline_estimate(lat, lon, kwp, tilt, azimuth, loss_pct, year=2023) -> dict:
+    # Imported here so the app still starts if pvlib is missing; only this fallback needs it.
+    import pandas as pd
+    import pvlib
+
     times = pd.date_range(f"{year}-01-01", f"{year + 1}-01-01", freq="1h", tz="UTC", inclusive="left")
     loc = pvlib.location.Location(lat, lon)
     solpos = loc.get_solarposition(times)

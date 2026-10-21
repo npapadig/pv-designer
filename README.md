@@ -17,8 +17,12 @@
 ## Πώς το τρέχω
 
 ### Μία φορά: εγκατάσταση Python
-1. Κατέβασε το Python από το https://www.python.org/downloads/ και εγκατάστησέ το.
-2. **Windows:** στην πρώτη οθόνη της εγκατάστασης τσέκαρε το **«Add python.exe to PATH»**.
+Η εφαρμογή θέλει **Python 3.12** (οι νεότερες εκδόσεις 3.13+ δεν έχουν ακόμα έτοιμα πακέτα για όλες τις βιβλιοθήκες).
+
+- **Windows:** δεν χρειάζεται να κάνεις κάτι. Αν έχεις τον «Python Install Manager» (εντολή `py`), το
+  `start_windows.bat` εγκαθιστά μόνο του την 3.12. Αλλιώς κατέβασε το «Windows installer (64-bit)» από το
+  https://www.python.org/downloads/release/python-31210/ και τσέκαρε το **«Add python.exe to PATH»**.
+- **Mac / Linux:** εγκατάστησε την 3.12 από το https://www.python.org/downloads/release/python-31210/.
 
 ### Κατέβασμα της εφαρμογής
 1. Στη σελίδα του repository πάτα το πράσινο κουμπί **Code** και μετά **Download ZIP**.
