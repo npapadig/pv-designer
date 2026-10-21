@@ -14,7 +14,7 @@ from pydantic import BaseModel, Field
 
 from . import electrical, energy, finance, report, settings, shading, simulation, storage
 from .equipment import INVERTERS, Inverter
-from .layout import LayoutParams, compute_faces_layout, compute_layout
+from .layout import LayoutParams, compute_faces_layout, compute_layout, split_area
 
 # Windows may not know these types; set them so the browser gets the right header.
 mimetypes.add_type("font/woff2", ".woff2")
@@ -54,6 +54,11 @@ class FaceArea(BaseModel):
 class FacesLayoutRequest(LayoutRequest):
     area: list[list[float]] = []  # unused; the faces carry the outlines
     faces: list[FaceArea] = Field(..., min_length=1)
+
+
+class SplitRequest(BaseModel):
+    area: list[list[float]] = Field(..., description="[[lat, lng], ...]")
+    line: list[list[float]] = Field(..., description="[[lat, lng], ...], the cut (e.g. the ridge)")
 
 
 class Face(BaseModel):
@@ -190,6 +195,14 @@ def layout_faces(req: FacesLayoutRequest):
     params = LayoutParams(**req.model_dump(exclude={"area", "faces"}))
     try:
         return compute_faces_layout([f.model_dump() for f in req.faces], params)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.post("/api/split")
+def split_roof(req: SplitRequest):
+    try:
+        return {"pieces": split_area(req.area, req.line)}
     except ValueError as e:
         raise HTTPException(400, str(e))
 

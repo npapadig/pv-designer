@@ -206,6 +206,13 @@ $("btnAutoAz").onclick = (e) => {
   e.preventDefault();
   const layer = areas.getLayers()[0];
   if (!layer) return toast("Σχεδίασε πρώτα μια περιοχή.");
+  const az = longEdgeAzimuth(layer);
+  $("azimuth").value = az;
+  toast(`Αζιμούθιο: ${az}°`);
+};
+const angDiff = (a, b) => Math.abs(((a - b + 540) % 360) - 180);
+
+function longEdgeAzimuth(layer) {
   const pts = layer.getLatLngs()[0];
   let best = null, bestLen = -1;
   for (let i = 0; i < pts.length; i++) {
@@ -218,10 +225,8 @@ $("btnAutoAz").onclick = (e) => {
   const bearing = ((Math.atan2(dx, dy) * 180) / Math.PI + 360) % 360;
   const options = [(bearing + 90) % 360, (bearing + 270) % 360];
   const az = options.reduce((x, y) => (angDiff(x, 180) <= angDiff(y, 180) ? x : y));
-  $("azimuth").value = Math.round(az);
-  toast(`Αζιμούθιο: ${Math.round(az)}°`);
-};
-const angDiff = (a, b) => Math.abs(((a - b + 540) % 360) - 180);
+  return Math.round(az) % 360;
+}
 
 // ---------- API helpers ----------
 async function api(path, method = "GET", body) {
@@ -285,6 +290,17 @@ async function runLayout() {
   const ko = keepouts.getLayers().map(latlngsOf);
   panelsLayer.clearLayers();
 
+  // Roof faces with their own tilt/azimuth: one request for all, with the face of every panel.
+  if (window.faces?.active()) {
+    const { panels, ...res } = await api("/api/layout/faces", "POST", { ...s, keepouts: ko, faces: faces.list() });
+    panels.forEach((p) => addPanel(p));
+    state.layout = res;
+    clearShading();
+    window.elec?.reset();
+    if (!res.count) toast("Δεν χωράει κανένα πάνελ. Δοκίμασε μικρότερη απόσταση από τα άκρα ή οριζόντια πάνελ.", 6000);
+    return;
+  }
+
   const total = { count: 0, kwp: 0, area_m2: 0, module_area_m2: 0, row_gap_m: null, center: null };
   for (const layer of areaLayers) {
     const res = await api("/api/layout", "POST", { ...s, area: latlngsOf(layer), keepouts: ko });
@@ -313,6 +329,7 @@ function shadingInput() {
     panels: panelsLayer.getLayers().map(latlngsOf),
     obstacles: keepouts.getLayers().map((l) => ({ polygon: latlngsOf(l), height_m: l.pvHeight || 0 })),
     tilt_deg: s.tilt_deg, azimuth_deg: s.azimuth_deg, mounting: s.mounting,
+    ...(window.faces?.shadingFaces() || {}),
   };
 }
 
@@ -416,6 +433,7 @@ async function runEnergy() {
   state.energy = await api("/api/energy", "POST", {
     lat, lon, kwp: state.layout.kwp, tilt_deg: s.tilt_deg, azimuth_deg: s.azimuth_deg, loss_pct: +$("loss").value,
     shading_monthly_pct: state.shading ? state.shading.monthly_loss_pct : null,
+    faces: window.faces?.energyFaces() || null,
   });
   state.finance = null;
   renderResults();
@@ -584,6 +602,7 @@ function collectProject() {
     },
     report_info: { client: $("clientName").value, address: $("projectAddress").value, author: $("reportAuthor").value },
     areas: areas.getLayers().map(latlngsOf),
+    area_faces: window.faces?.collect() || null,
     keepouts: keepouts.getLayers().map(latlngsOf),
     keepout_heights: keepouts.getLayers().map((l) => l.pvHeight || 0),
     shading: state.shading,
@@ -622,6 +641,7 @@ function loadProject(p) {
   $("projectAddress").value = info.address || "";
   if (info.author) $("reportAuthor").value = info.author;
   (p.areas || []).forEach((a) => addShape(L.polygon(a), "area"));
+  window.faces?.load(p.area_faces);
   // Projects saved before shading analysis have no heights: their obstacles cast no shadow.
   (p.keepouts || []).forEach((k, i) => addShape(L.polygon(k), "keepout", (p.keepout_heights || [])[i] || 0));
   if (p.layout) {

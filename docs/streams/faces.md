@@ -33,7 +33,7 @@ frontend: δοκιμή στον browser με server από `.venv` σε θύρα
 | Βήμα | Κατάσταση |
 |---|---|
 | 1 | έτοιμο (branch `claude/stream-faces-564e07`, 72 τεστ, baseline ακριβώς ίδιο) |
-| 2 | εκκρεμεί |
+| 2 | έτοιμο (75 τεστ, baseline ακριβώς ίδιο, δοκιμή στον browser σε θύρα 8020) |
 | 3 | εκκρεμεί |
 | 4 | εκκρεμεί |
 
@@ -43,4 +43,15 @@ frontend: δοκιμή στον browser με server από `.venv` σε θύρα
 - `/api/shading`, `/api/shadows`: + `faces: [{tilt_deg, azimuth_deg}]`, `panel_face` → και `faces[k].monthly_loss_pct`.
 - `/api/energy`: + `faces: [{kwp, tilt_deg, azimuth_deg, shading_monthly_pct?}]` → άθροισμα + `faces` ανά πλευρά.
 - `/api/simulate`: + `faces` (ίδια μορφή)· οι kwp δίνουν το μερίδιο κάθε πλευράς και κλιμακώνονται στο `dc_kwp`
-  του inverter· ένας κοινός inverter (clipping στο άθροισμα).
+  του inverter· ένας κοινός inverter (clipping στο άθροισμα). Στο αποτέλεσμα κάθε πλευρά έχει `kwp`.
+
+**Frontend (Βήμα 2):** `frontend/faces.js`. Κάθε πλευρά είναι κανονικό layer μέσα στο `areas` (άρα το nudge,
+η επεξεργασία και η διαγραφή δουλεύουν), με `pvFace = {tilt_deg, azimuth_deg}` (null = κοινές ρυθμίσεις).
+- «Χωρισμός σε πλευρές» → γραμμή (Leaflet.draw polyline, χωρίς το συμβάν "created") → `POST /api/split`
+  (`layout.split_area`, shapely· οι άκρες της γραμμής μακραίνουν 1,5 m). Κάθε κομμάτι παίρνει αζιμούθιο που
+  κοιτάζει μακριά από τη γραμμή (όπως μια πλευρά από τον κορφιά) και την κοινή κλίση.
+- Κλικ σε περιοχή → popup κλίσης/αζιμουθίου, «Πρόταση αζιμουθίου», «Κοινές ρυθμίσεις».
+- Αν έστω μία περιοχή έχει `pvFace`: διάταξη με `/api/layout/faces`, σκιές/παραγωγή/προσομοίωση με `faces`.
+  Αλλιώς όλα ακριβώς όπως πριν (`/api/layout` ανά περιοχή).
+- Έργο: νέο πεδίο `area_faces` (παράλληλο με `areas`, null αν δεν υπάρχουν πλευρές).
+- Για τον συντονιστή: το `docs/ARCHITECTURE.md` χρειάζεται μια γραμμή για το `faces.js` στο merge.
