@@ -16,8 +16,11 @@ from . import electrical, energy, finance, report, shading, simulation, storage
 from .equipment import INVERTERS, Inverter
 from .layout import LayoutParams, compute_layout
 
-# Windows may not know this font type; set it so the browser gets the right header.
+# Windows may not know these types; set them so the browser gets the right header.
 mimetypes.add_type("font/woff2", ".woff2")
+# The Windows registry can map .css/.js to text/plain, and browsers then ignore the file.
+mimetypes.add_type("text/css", ".css")
+mimetypes.add_type("text/javascript", ".js")
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
 FRONTEND_DIR = ROOT_DIR / "frontend"

@@ -71,3 +71,8 @@ def test_index_links_assets_with_version():
     assert "__VERSION__" not in r.text
     assert r.headers["cache-control"] == "no-cache"
     assert client.get("/style.css").headers["cache-control"] == "no-cache"
+
+
+def test_frontend_assets_have_browser_types():
+    assert client.get("/style.css").headers["content-type"].startswith("text/css")
+    assert client.get("/ui.js").headers["content-type"].startswith("text/javascript")
