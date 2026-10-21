@@ -1,0 +1,24 @@
+[
+  {
+    "name": "Σπίτι Αθήνα, κεκλιμένη στέγη (flush, νότος, 30°)",
+    "lat": 37.98, "lon": 23.72,
+    "area": [[37.97997, 23.71993], [37.97997, 23.72007], [37.98003, 23.72007], [37.98003, 23.71993]],
+    "keepouts": [],
+    "obstacles": [{"polygon": [[37.979955, 23.719995], [37.979955, 23.720005], [37.979962, 23.720005], [37.979962, 23.719995]], "height_m": 3}],
+    "layout": {"tilt_deg": 30, "azimuth_deg": 180, "mounting": "flush", "setback_m": 0.5},
+    "module": {"power_w": 410, "voc": 37.3, "isc": 13.9, "vmp": 31.0, "imp": 13.2},
+    "loss_pct": 14,
+    "finance": {"capex_per_kwp": 1100, "scheme": "net_billing", "self_consumption_pct": 40}
+  },
+  {
+    "name": "Ταράτσα Θεσσαλονίκη, βάσεις (rack, 15°, νοτιοδυτικά)",
+    "lat": 40.64, "lon": 22.94,
+    "area": [[40.63985, 22.93978], [40.63985, 22.94022], [40.64015, 22.94022], [40.64015, 22.93978]],
+    "keepouts": [[[40.63998, 22.93998], [40.63998, 22.94002], [40.64002, 22.94002], [40.64002, 22.93998]]],
+    "obstacles": [],
+    "layout": {"tilt_deg": 15, "azimuth_deg": 200, "mounting": "rack", "setback_m": 1.0, "orientation": "landscape"},
+    "module": {"power_w": 410, "voc": 37.3, "isc": 13.9, "vmp": 31.0, "imp": 13.2},
+    "loss_pct": 14,
+    "finance": {"capex_per_kwp": 900, "scheme": "self", "self_consumption_pct": 70}
+  }
+]

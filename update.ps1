@@ -21,6 +21,13 @@ if ($root -match 'OneDrive') {
   Write-Host ''
 }
 
+# A git checkout (e.g. used by Claude Code on this PC) is updated with git, not by
+# copying files over it, which would overwrite work that is not pushed yet.
+if (Test-Path (Join-Path $root '.git')) {
+  Write-Host "Fakelos git ($oldVersion): oi enhmerwseis ginontai me git pull, oxi automata."
+  exit 0
+}
+
 try {
   $sha = (Invoke-RestMethod "https://api.github.com/repos/$repo/commits/main" -Headers @{ 'User-Agent' = 'pv-designer' } -TimeoutSec 15).sha
 } catch {
