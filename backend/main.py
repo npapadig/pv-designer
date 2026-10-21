@@ -11,7 +11,8 @@ from fastapi.responses import Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from . import energy, finance, report, shading, storage
+from . import electrical, energy, finance, report, shading, simulation, storage
+from .equipment import INVERTERS, Inverter
 from .layout import LayoutParams, compute_layout
 
 FRONTEND_DIR = Path(__file__).resolve().parent.parent / "frontend"
@@ -83,6 +84,38 @@ class FinanceRequest(BaseModel):
     lifetime_years: int = Field(25, ge=1, le=40)
 
 
+class ElectricalRequest(BaseModel):
+    module: electrical.Module
+    n_modules: int = Field(..., ge=1, le=100000)
+    inverter: Inverter | None = None
+    n_inverters: int | None = Field(None, ge=1, le=1000)
+    modules_per_string: int | None = Field(None, ge=1, le=100)
+    t_min: float = Field(-10, ge=-50, le=30)
+    t_max: float = Field(40, ge=0, le=60)
+    mounting: Literal["flush", "rack"] = "rack"
+    dc_ac_target: float = Field(1.2, ge=0.5, le=2)
+    phases: Literal["auto", "1", "3"] = "auto"
+
+
+class SimulationRequest(BaseModel):
+    lat: float = Field(..., ge=-90, le=90)
+    lon: float = Field(..., ge=-180, le=180)
+    tilt_deg: float = Field(30, ge=0, le=90)
+    azimuth_deg: float = Field(180, ge=0, le=360)
+    dc_kwp: float = Field(..., gt=0)
+    ac_kw: float = Field(..., gt=0)
+    inverter_eff_pct: float = Field(98, gt=50, le=100)
+    temp_coeff_pmax_pct: float = Field(-0.35, ge=-1, le=0)
+    mounting: Literal["flush", "rack"] = "rack"
+    soiling_pct: float = Field(2, ge=0, le=30)
+    mismatch_pct: float = Field(2, ge=0, le=20)
+    module_quality_pct: float = Field(1, ge=-5, le=20)
+    dc_wiring_pct: float = Field(1.5, ge=0, le=20)
+    ac_wiring_pct: float = Field(0.5, ge=0, le=20)
+    availability_pct: float = Field(0, ge=0, le=50)
+    shading_monthly_pct: list[float] | None = Field(None, min_length=12, max_length=12)
+
+
 @app.get("/api/health")
 def health():
     return {"ok": True}
@@ -132,6 +165,31 @@ def finance_analysis(req: FinanceRequest):
         return finance.analyse(finance.FinanceParams(**req.model_dump()))
     except ValueError as e:
         raise HTTPException(400, str(e))
+
+
+@app.get("/api/inverters")
+def inverters():
+    return [i.model_dump() for i in INVERTERS]
+
+
+@app.post("/api/electrical")
+def electrical_design(req: ElectricalRequest):
+    try:
+        return electrical.design(**req.model_dump(exclude={"module", "inverter"}), module=req.module, inverter=req.inverter)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.post("/api/simulate")
+def simulate(req: SimulationRequest):
+    args = req.model_dump()
+    args["tilt"], args["azimuth"] = args.pop("tilt_deg"), args.pop("azimuth_deg")
+    try:
+        return simulation.simulate(**args)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    except Exception as e:
+        raise HTTPException(502, str(e))
 
 
 @app.get("/api/projects")

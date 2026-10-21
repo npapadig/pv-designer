@@ -29,3 +29,35 @@ def test_projects_crud(tmp_path, monkeypatch):
     assert client.delete(f"/api/projects/{pid}").status_code == 200
     assert client.get(f"/api/projects/{pid}").status_code == 404
     assert client.get("/api/projects/../../etc").status_code == 404
+
+
+MODULE = {"power_w": 410, "voc": 37.3, "isc": 13.9, "vmp": 31.0, "imp": 13.2}
+
+
+def test_inverters_endpoint():
+    r = client.get("/api/inverters")
+    assert r.status_code == 200
+    assert len(r.json()) >= 10
+
+
+def test_electrical_endpoint():
+    r = client.post("/api/electrical", json={"module": MODULE, "n_modules": 24})
+    assert r.status_code == 200
+    assert r.json()["ok"]
+    inv = client.get("/api/inverters").json()[0]
+    r = client.post("/api/electrical", json={"module": MODULE, "n_modules": 1, "inverter": inv, "modules_per_string": 1})
+    assert r.status_code == 200
+
+
+def test_simulate_endpoint_offline(monkeypatch, tmp_path):
+    from backend import simulation
+
+    def boom(*a, **k):
+        raise RuntimeError("offline")
+    monkeypatch.setattr(simulation, "fetch_pvgis_tmy", boom)
+    monkeypatch.setattr(simulation, "WEATHER_DIR", tmp_path)
+    r = client.post("/api/simulate", json={"lat": 37.98, "lon": 23.72, "dc_kwp": 5, "ac_kw": 4})
+    assert r.status_code == 200
+    body = r.json()
+    assert body["source"] == "offline" and body["warning"]
+    assert body["loss_steps"]

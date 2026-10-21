@@ -5,3 +5,4 @@ __pycache__/
 data/projects/*.json
 .version
 .updated
+data/weather/

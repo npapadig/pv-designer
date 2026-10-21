@@ -231,6 +231,8 @@ class ReportContext:
 
     def performance_ratio(self) -> float | None:
         e = self.energy
+        if e.get("performance_ratio"):  # the detailed simulation computes its own
+            return e["performance_ratio"]
         h = e.get("annual_irradiation") or 0
         if not (h and self.kwp() and e.get("annual_kwh")):
             return None
@@ -410,6 +412,11 @@ def signed_pct(loss_pct: float) -> str:
 
 def loss_steps(ctx: ReportContext) -> tuple[float, list[tuple[str, float, float]], float] | None:
     """(nominal kWh, [(label, % lost, kWh lost)], final kWh); the last step is whatever remains."""
+    e = ctx.energy
+    if e.get("loss_steps") and e.get("nominal_kwh") and e.get("annual_kwh"):
+        # Detailed simulation: every step is already computed hour by hour.
+        steps = [(l["label"], l["pct"], l["kwh"]) for l in e["loss_steps"]]
+        return e["nominal_kwh"], steps, e["annual_kwh"]
     e = ctx.energy
     h, kwp, final = e.get("annual_irradiation"), ctx.kwp(), e.get("annual_kwh")
     if not (h and kwp and final):

@@ -110,9 +110,82 @@
       <p id="sunInfo" class="muted small"></p>
     </section>
 
+    <section id="electrical">
+      <h2>5. Inverters και strings</h2>
+      <label>Inverter
+        <select id="invPreset"></select>
+      </label>
+      <p class="muted small" id="invInfo"></p>
+      <div class="grid3">
+        <label>Πλήθος inverters <input id="invCount" type="number" min="1" step="1" placeholder="αυτόματο"></label>
+        <label>Πάνελ ανά string <input id="modsPerString" type="number" min="1" step="1" placeholder="αυτόματο"></label>
+        <label>Στόχος DC/AC <input id="dcAcTarget" type="number" value="1.2" min="0.8" max="1.6" step="0.05"></label>
+        <label>Ελάχ. θερμοκρασία (°C) <input id="tMin" type="number" value="-10" step="1"></label>
+        <label>Μέγ. θερμοκρασία (°C) <input id="tMax" type="number" value="40" step="1"></label>
+        <label>Σύνδεση
+          <select id="phases">
+            <option value="auto">Αυτόματα</option>
+            <option value="1">Μονοφασική</option>
+            <option value="3">Τριφασική</option>
+          </select>
+        </label>
+      </div>
+      <p class="muted small">Θερμοκρασίες: η χαμηλότερη και η υψηλότερη του αέρα που συμβαίνουν στην περιοχή.
+        Η χαμηλή κρίνει τη μέγιστη τάση, η υψηλή την ελάχιστη.</p>
+      <details>
+        <summary>Ηλεκτρικά στοιχεία πάνελ (από το datasheet)</summary>
+        <div class="grid3">
+          <label>Voc (V) <input id="modVoc" type="number" step="0.1"></label>
+          <label>Isc (A) <input id="modIsc" type="number" step="0.01"></label>
+          <label>Vmp (V) <input id="modVmp" type="number" step="0.1"></label>
+          <label>Imp (A) <input id="modImp" type="number" step="0.01"></label>
+          <label>Συντ. Voc (%/°C) <input id="modBetaVoc" type="number" value="-0.27" step="0.01"></label>
+          <label>Συντ. Pmax (%/°C) <input id="modGammaP" type="number" value="-0.35" step="0.01"></label>
+        </div>
+      </details>
+      <details id="invDetails">
+        <summary>Στοιχεία inverter (από το datasheet)</summary>
+        <div class="grid3">
+          <label>Ισχύς AC (kW) <input id="invPac" type="number" step="0.1"></label>
+          <label>Μέγ. DC (kWp) <input id="invPdc" type="number" step="0.1"></label>
+          <label>Φάσεις <input id="invPhases" type="number" min="1" max="3" step="2"></label>
+          <label>Μέγ. τάση DC (V) <input id="invVdc" type="number" step="10"></label>
+          <label>MPPT από (V) <input id="invVmin" type="number" step="10"></label>
+          <label>MPPT έως (V) <input id="invVmax" type="number" step="10"></label>
+          <label>Τάση εκκίνησης (V) <input id="invVstart" type="number" step="10"></label>
+          <label>Πλήθος MPPT <input id="invMppt" type="number" min="1" step="1"></label>
+          <label>Strings ανά MPPT <input id="invSpm" type="number" min="1" step="1"></label>
+          <label>Μέγ. ρεύμα/MPPT (A) <input id="invImax" type="number" step="0.5"></label>
+          <label>Μέγ. Isc/MPPT (A) <input id="invIsc" type="number" step="0.5"></label>
+          <label>Απόδοση (%) <input id="invEff" type="number" step="0.1"></label>
+        </div>
+        <p class="muted small">Αν αλλάξεις κάποια τιμή, ο inverter γίνεται «Δικός μου».</p>
+      </details>
+      <button id="btnStrings" class="primary">🔌 Σχεδιασμός strings</button>
+      <div id="elecResult"></div>
+    </section>
+
     <section>
-      <h2>5. Παραγωγή ενέργειας</h2>
-      <label>Συνολικές απώλειες συστήματος (%) <input id="loss" type="number" value="14" min="0" max="60"></label>
+      <h2>6. Παραγωγή ενέργειας</h2>
+      <label>Μέθοδος υπολογισμού
+        <select id="energyMethod">
+          <option value="detailed">Αναλυτική: ωριαία προσομοίωση με inverter και απώλειες</option>
+          <option value="pvgis">Γρήγορη: εκτίμηση PVGIS</option>
+        </select>
+      </label>
+      <label id="lossSimple">Συνολικές απώλειες συστήματος (%) <input id="loss" type="number" value="14" min="0" max="60"></label>
+      <details id="lossDetailed">
+        <summary>Απώλειες (μπορείς να τις αλλάξεις)</summary>
+        <div class="grid3">
+          <label>Σκόνη (%) <input id="lSoiling" type="number" value="2" min="0" step="0.5"></label>
+          <label>Mismatch (%) <input id="lMismatch" type="number" value="2" min="0" step="0.5"></label>
+          <label>Ποιότητα / LID (%) <input id="lQuality" type="number" value="1" step="0.5"></label>
+          <label>Καλώδια DC (%) <input id="lDc" type="number" value="1.5" min="0" step="0.1"></label>
+          <label>Καλώδια AC (%) <input id="lAc" type="number" value="0.5" min="0" step="0.1"></label>
+          <label>Διακοπές (%) <input id="lAvail" type="number" value="0" min="0" step="0.5"></label>
+        </div>
+        <p class="muted small">Τα καλώδια δίνονται στη μέγιστη ισχύ: σε χαμηλή παραγωγή χάνεται αναλογικά λιγότερο.</p>
+      </details>
       <button id="btnEnergy" class="primary">⚡ Υπολογισμός παραγωγής</button>
     </section>
 
@@ -126,11 +199,13 @@
       </div>
       <p id="statExtra" class="muted small"></p>
       <p id="energyWarning" class="warning small" hidden></p>
+      <div id="elecSummary"></div>
       <canvas id="chart" height="180"></canvas>
+      <div id="lossTable"></div>
       <button id="btnReport" class="primary">📄 Αναφορά PDF για τον πελάτη</button>
     </section>
     <section id="finance">
-      <h2>6. Οικονομική ανάλυση</h2>
+      <h2>7. Οικονομική ανάλυση</h2>
       <div class="finance-inputs">
         <div class="grid2">
           <label>Κόστος συστήματος (€/kWp, με ΦΠΑ) <input id="finCapex" type="number" value="1100" step="50" min="0"></label>
@@ -187,5 +262,6 @@
   <script src="vendor/leaflet-draw/leaflet.draw.js"></script>
   <script src="vendor/chartjs/chart.umd.js"></script>
   <script src="app.js"></script>
+  <script src="electrical.js"></script>
 </body>
 </html>
