@@ -1,4 +1,4 @@
-// PV Designer frontend: map drawing, panel layout and energy results.
+// PV Designer frontend: map drawing, panel layout, energy and financial results.
 
 const PANEL_PRESETS = [
   { name: "Γενικό 410 W (1722 × 1134 mm)", power: 410, width: 1.134, length: 1.722 },
@@ -11,8 +11,9 @@ const PANEL_PRESETS = [
 const MONTHS = ["Ιαν", "Φεβ", "Μαρ", "Απρ", "Μάι", "Ιουν", "Ιουλ", "Αυγ", "Σεπ", "Οκτ", "Νοε", "Δεκ"];
 
 const $ = (id) => document.getElementById(id);
-const state = { projectId: null, layout: null, energy: null, shading: null };
+const state = { projectId: null, layout: null, energy: null, shading: null, finance: null };
 let chart = null;
+let financeChart = null;
 
 // ---------- Map ----------
 const MAX_ZOOM = 23;
@@ -308,6 +309,7 @@ function shadingInput() {
 function clearShading() {
   state.shading = null;
   state.energy = null;
+  state.finance = null;
   colorPanels();
   refreshShadows();
   renderResults();
@@ -337,6 +339,7 @@ async function runShading() {
   state.shading = await api("/api/shading", "POST", shadingInput());
   $("toast").hidden = true;
   state.energy = null;
+  state.finance = null;
   colorPanels();
   renderResults();
 }
@@ -400,6 +403,7 @@ async function runEnergy() {
     lat, lon, kwp: state.layout.kwp, tilt_deg: s.tilt_deg, azimuth_deg: s.azimuth_deg, loss_pct: +$("loss").value,
     shading_monthly_pct: state.shading ? state.shading.monthly_loss_pct : null,
   });
+  state.finance = null;
   renderResults();
 }
 $("btnEnergy").onclick = () => withBusy($("btnEnergy"), runEnergy);
@@ -444,6 +448,81 @@ function renderResults() {
       },
     });
   }
+  renderFinance();
+}
+
+// ---------- Financial analysis ----------
+// Input id -> API field. Defaults in index.html are typical for Greece.
+const FINANCE_FIELDS = {
+  finCapex: "capex_per_kwp", finSubsidy: "subsidy_eur", finScheme: "scheme", finSelf: "self_consumption_pct",
+  finConsumption: "annual_consumption_kwh", finRetail: "retail_price", finExport: "export_price",
+  finOffset: "offset_price", finEscalation: "price_escalation_pct", finDegradation: "degradation_pct",
+  finOm: "om_per_kwp", finOmEsc: "om_escalation_pct", finInvYear: "inverter_replacement_year",
+  finInvCost: "inverter_cost_per_kwp", finDiscount: "discount_rate_pct", finLife: "lifetime_years",
+};
+
+function financeSettings() {
+  const out = {};
+  for (const [id, key] of Object.entries(FINANCE_FIELDS)) {
+    const v = $(id).value;
+    out[key] = id === "finScheme" ? v : v === "" ? null : +v;
+  }
+  return out;
+}
+
+function updateSchemeFields() {
+  const scheme = $("finScheme").value;
+  $("finExportLabel").hidden = scheme !== "net_billing";
+  $("finOffsetLabel").hidden = scheme !== "net_metering";
+}
+$("finScheme").onchange = updateSchemeFields;
+updateSchemeFields();
+
+async function runFinance() {
+  if (!state.energy) await runEnergy();
+  if (!state.energy) return;
+  state.finance = await api("/api/finance", "POST", {
+    ...financeSettings(), kwp: state.layout.kwp, annual_kwh: state.energy.annual_kwh,
+  });
+  renderFinance();
+}
+$("btnFinance").onclick = () => withBusy($("btnFinance"), runFinance);
+
+const eur = (n) => (n == null ? "–" : `${fmt(n)} €`);
+
+function renderFinance() {
+  const f = state.finance;
+  $("financeResults").hidden = !f;
+  if (financeChart) { financeChart.destroy(); financeChart = null; }
+  if (!f) return;
+  $("finPayback").textContent = f.payback_years == null ? "δεν αποσβένεται" : fmt(f.payback_years, 1);
+  $("finIrr").textContent = f.irr_pct == null ? "–" : `${fmt(f.irr_pct, 1)}%`;
+  $("finNpv").textContent = eur(f.npv);
+  $("finLcoe").textContent = fmt(f.lcoe, 3);
+  const life = f.years.length;
+  $("finExtra").textContent =
+    `Κόστος συστήματος ${eur(f.capex)}` + (f.investment !== f.capex ? `, μετά την επιδότηση ${eur(f.investment)}` : "") +
+    `. Όφελος 1ου έτους ${eur(f.first_year_benefit)} (καθαρό ${eur(f.first_year_net)} μετά τη συντήρηση).` +
+    ` Συνολικό καθαρό κέρδος σε ${life} χρόνια ${eur(f.years[life - 1].cumulative)}` +
+    (f.roi_pct == null ? "." : ` (ROI ${fmt(f.roi_pct)}%).`) +
+    (f.discounted_payback_years == null ? "" : ` Απόσβεση με αναγωγή σε σημερινές τιμές: ${fmt(f.discounted_payback_years, 1)} έτη.`);
+  // Year 0 is the investment itself.
+  const years = [{ year: 0, net: -f.investment, cumulative: -f.investment }, ...f.years];
+  financeChart = new Chart($("financeChart"), {
+    data: {
+      labels: years.map((y) => y.year),
+      datasets: [
+        { type: "line", label: "Σωρευτικό (€)", data: years.map((y) => y.cumulative), borderColor: "#16a34a",
+          backgroundColor: "#16a34a", pointRadius: 0, tension: 0.2 },
+        { type: "bar", label: "Καθαρό ανά έτος (€)", data: years.map((y) => y.net),
+          backgroundColor: years.map((y) => (y.net < 0 ? "#ef4444" : "#f59e0b")) },
+      ],
+    },
+    options: {
+      plugins: { legend: { labels: { boxWidth: 12 } }, tooltip: { callbacks: { label: (c) => `${c.dataset.label}: ${eur(c.raw)}` } } },
+      scales: { x: { title: { display: true, text: "Έτος" } }, y: { title: { display: true, text: "€" } } },
+    },
+  });
 }
 
 // ---------- PDF report ----------
@@ -495,6 +574,8 @@ function collectProject() {
     shading: state.shading,
     layout: state.layout ? { ...state.layout, panels: panelsLayer.getLayers().map(latlngsOf) } : null,
     energy: state.energy,
+    finance_settings: financeSettings(),
+    finance: state.finance,
     view: { center: map.getCenter(), zoom: map.getZoom() },
   };
 }
@@ -534,8 +615,14 @@ function loadProject(p) {
     const { panels, ...rest } = p.layout;
     state.layout = rest;
   }
+  for (const [id, key] of Object.entries(FINANCE_FIELDS)) {
+    const v = (p.finance_settings || {})[key];
+    if (v !== undefined) $(id).value = v ?? "";
+  }
+  updateSchemeFields();
   state.shading = p.shading || null;
   state.energy = p.energy || null;
+  state.finance = p.finance || null;
   colorPanels();
   renderResults();
   if (p.view) map.setView(p.view.center, p.view.zoom);
