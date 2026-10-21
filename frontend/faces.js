@@ -29,6 +29,7 @@
   function refresh() {
     areas.getLayers().forEach(label);
     const n = areas.getLayers().filter((l) => l.pvFace).length;
+    $("facesElec").hidden = !n;
     $("facesInfo").textContent = n
       ? `${n} πλευρά(ές) με δική τους κλίση και αζιμούθιο. Οι υπόλοιπες περιοχές παίρνουν τις κοινές ρυθμίσεις του βήματος «Πάνελ».`
       : "";

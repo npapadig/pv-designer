@@ -2,6 +2,8 @@
 from fastapi.testclient import TestClient
 
 from backend import energy, shading, simulation
+from backend.electrical import Module, design
+from backend.equipment import INVERTERS
 from backend.layout import LayoutParams, compute_faces_layout, compute_layout, split_area
 from backend.main import app
 from tests.test_layout import LAT0, LON0
@@ -188,3 +190,61 @@ def test_split_api():
     r = client.post("/api/split", json={"area": rect(-5, -4, 5, 4), "line": rect(-6, 0, 6, 0)[:2]})
     assert r.status_code == 200 and len(r.json()["pieces"]) == 2
     assert client.post("/api/split", json={"area": rect(-5, -4, 5, 4), "line": [[LAT0, LON0]]}).status_code == 400
+
+
+MODULE = Module(power_w=410, voc=37.3, isc=13.9, vmp=31.0, imp=13.2)
+
+
+def test_strings_stay_on_their_face_with_own_mppt():
+    d = design(MODULE, 0, face_modules=[16, 16])
+    assert d["modules_used"] == 32 and not d["mppt_shared"]
+    assert [f["modules_used"] for f in d["faces"]] == [16, 16]
+    # Every MPPT carries strings of one face only, and both faces have their own MPPT.
+    mppts = [m for p in d["per_inverter"] for m in p["mppt_faces"] if m]
+    assert all(len(m) == 1 for m in mppts)
+    assert {m[0] for m in mppts} == {0, 1}
+    assert d["report"]["tables"][-1]["title"] == "Strings ανά πλευρά στέγης"
+
+
+def test_faces_strings_can_have_different_lengths():
+    d = design(MODULE, 0, face_modules=[20, 9], phases="3")
+    lengths = [f["modules_per_string"] for f in d["faces"]]
+    assert lengths[1] == 9 and lengths[0] in (10, 20)
+    assert d["modules_used"] == 29
+    # Cold voltage from the longest string, hot voltage from the shortest.
+    assert d["voltages"]["voc_cold"] > d["voltages"]["vmp_hot"] / 9 * max(lengths)
+
+
+def test_more_faces_than_mppts_warns():
+    inv = next(i for i in INVERTERS if i.n_mppt == 2 and i.phases == 3 and i.pac_w >= 10000)
+    d = design(MODULE, 0, inverter=inv, n_inverters=1, face_modules=[10, 10, 10])
+    # One string per MPPT fits (current limit): the third face finds no MPPT and is left out, with a warning.
+    assert d["mppt_shared"] and d["modules_used"] == 20
+    assert any("περισσότερα MPPT" in c["text"] and "ασύνδετα" in c["text"] for c in d["checks"])
+
+
+def test_face_too_small_for_a_string_warns():
+    d = design(MODULE, 0, face_modules=[14, 3], phases="3")
+    assert d["faces"][1]["strings"] == 0
+    assert any("Η πλευρά 2" in c["text"] for c in d["checks"])
+
+
+def test_mixing_faces_uses_all_panels_and_warns():
+    d = design(MODULE, 0, face_modules=[14, 7], phases="3", mix_faces=True)
+    assert d["modules_used"] == 21 and d["mix_faces"]
+    assert any("ανάμειξη" in c["text"] for c in d["checks"])
+
+
+def test_one_face_designs_like_before():
+    old = design(MODULE, 24)
+    new = design(MODULE, 0, face_modules=[24, 0])
+    new.pop("faces"), new.pop("mppt_shared")
+    for inv in new["per_inverter"]:
+        inv.pop("mppt_faces")
+    old["report"]["tables"], new["report"]["tables"] = old["report"]["tables"][:2], new["report"]["tables"][:2]
+    assert new == old
+
+
+def test_electrical_api_with_faces():
+    r = client.post("/api/electrical", json={"module": MODULE.model_dump(), "n_modules": 32, "face_modules": [16, 16]})
+    assert r.status_code == 200 and len(r.json()["faces"]) == 2

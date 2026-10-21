@@ -134,6 +134,8 @@ class ElectricalRequest(BaseModel):
     mounting: Literal["flush", "rack"] = "rack"
     dc_ac_target: float = Field(1.2, ge=0.5, le=2)
     phases: Literal["auto", "1", "3"] = "auto"
+    face_modules: list[int] | None = Field(None, max_length=200)  # panels on each roof face
+    mix_faces: bool = False  # allow strings across faces (not recommended)
 
 
 class SimulationRequest(BaseModel):
