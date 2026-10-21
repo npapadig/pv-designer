@@ -129,6 +129,55 @@
       <canvas id="chart" height="180"></canvas>
       <button id="btnReport" class="primary">📄 Αναφορά PDF για τον πελάτη</button>
     </section>
+    <section id="finance">
+      <h2>6. Οικονομική ανάλυση</h2>
+      <div class="finance-inputs">
+        <div class="grid2">
+          <label>Κόστος συστήματος (€/kWp, με ΦΠΑ) <input id="finCapex" type="number" value="1100" step="50" min="0"></label>
+          <label>Επιδότηση (€) <input id="finSubsidy" type="number" value="0" step="100" min="0"></label>
+        </div>
+        <label>Τρόπος σύνδεσης
+          <select id="finScheme">
+            <option value="net_billing">Net billing (η περίσσεια πουλιέται στο δίκτυο)</option>
+            <option value="net_metering">Net metering (ενεργειακός συμψηφισμός)</option>
+            <option value="self">Μόνο ιδιοκατανάλωση (η περίσσεια δεν πληρώνεται)</option>
+          </select>
+        </label>
+        <div class="grid2">
+          <label>Ιδιοκατανάλωση (% της παραγωγής) <input id="finSelf" type="number" value="40" min="0" max="100"></label>
+          <label>Ετήσια κατανάλωση (kWh, προαιρετικό) <input id="finConsumption" type="number" min="0" step="100" placeholder="π.χ. 5000"></label>
+          <label>Τιμή ρεύματος (€/kWh) <input id="finRetail" type="number" value="0.20" step="0.01" min="0"></label>
+          <label id="finExportLabel">Τιμή πώλησης περίσσειας (€/kWh) <input id="finExport" type="number" value="0.07" step="0.01" min="0"></label>
+          <label id="finOffsetLabel" hidden>Αξία συμψηφισμού (€/kWh) <input id="finOffset" type="number" value="0.16" step="0.01" min="0"></label>
+        </div>
+        <details>
+          <summary class="small">Περισσότερες ρυθμίσεις</summary>
+          <div class="grid2">
+            <label>Αύξηση τιμών ρεύματος (%/έτος) <input id="finEscalation" type="number" value="2" step="0.5"></label>
+            <label>Μείωση απόδοσης πάνελ (%/έτος) <input id="finDegradation" type="number" value="0.5" step="0.1" min="0"></label>
+            <label>Συντήρηση (€/kWp/έτος) <input id="finOm" type="number" value="12" step="1" min="0"></label>
+            <label>Αύξηση κόστους συντήρησης (%/έτος) <input id="finOmEsc" type="number" value="2" step="0.5"></label>
+            <label>Αλλαγή inverter (έτος, 0 = ποτέ) <input id="finInvYear" type="number" value="12" min="0" max="40"></label>
+            <label>Κόστος inverter (€/kWp) <input id="finInvCost" type="number" value="120" step="10" min="0"></label>
+            <label>Επιτόκιο αναγωγής (%) <input id="finDiscount" type="number" value="5" step="0.5" min="0"></label>
+            <label>Διάρκεια ζωής (έτη) <input id="finLife" type="number" value="25" min="1" max="40"></label>
+          </div>
+        </details>
+        <button id="btnFinance" class="primary">€ Υπολογισμός απόδοσης επένδυσης</button>
+      </div>
+      <div id="financeResults" hidden>
+        <div class="stats">
+          <div><span id="finPayback">–</span><small>έτη απόσβεση</small></div>
+          <div><span id="finIrr">–</span><small>IRR</small></div>
+          <div><span id="finNpv">–</span><small>NPV</small></div>
+          <div><span id="finLcoe">–</span><small>LCOE €/kWh</small></div>
+        </div>
+        <p id="finExtra" class="muted small"></p>
+        <canvas id="financeChart" height="200"></canvas>
+        <p class="muted small">Οι υπολογισμοί είναι εκτίμηση. Οι τιμές ρεύματος και οι όροι του κάθε προγράμματος
+          αλλάζουν, γι' αυτό έλεγξε τις τρέχουσες τιμές με τον πάροχο και τον ΔΕΔΔΗΕ.</p>
+      </div>
+    </section>
   </aside>
 
   <main id="map"></main>

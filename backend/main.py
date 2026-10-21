@@ -11,7 +11,7 @@ from fastapi.responses import Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from . import energy, report, shading, storage
+from . import energy, finance, report, shading, storage
 from .layout import LayoutParams, compute_layout
 
 FRONTEND_DIR = Path(__file__).resolve().parent.parent / "frontend"
@@ -62,6 +62,27 @@ class ShadowsRequest(ShadingRequest):
     when: str = Field(..., description="ISO date-time, e.g. 2025-12-21T10:00:00Z")
 
 
+class FinanceRequest(BaseModel):
+    kwp: float = Field(..., gt=0)
+    annual_kwh: float = Field(..., gt=0)
+    capex_per_kwp: float = Field(1100, ge=0, le=10000)
+    subsidy_eur: float = Field(0, ge=0)
+    scheme: Literal["self", "net_billing", "net_metering"] = "net_billing"
+    self_consumption_pct: float = Field(40, ge=0, le=100)
+    annual_consumption_kwh: float | None = Field(None, ge=0)
+    retail_price: float = Field(0.20, ge=0, le=2)
+    export_price: float = Field(0.07, ge=0, le=2)
+    offset_price: float = Field(0.16, ge=0, le=2)
+    price_escalation_pct: float = Field(2, ge=-10, le=20)
+    degradation_pct: float = Field(0.5, ge=0, le=5)
+    om_per_kwp: float = Field(12, ge=0, le=500)
+    om_escalation_pct: float = Field(2, ge=-10, le=20)
+    inverter_replacement_year: int = Field(12, ge=0, le=40)
+    inverter_cost_per_kwp: float = Field(120, ge=0, le=2000)
+    discount_rate_pct: float = Field(5, ge=0, le=30)
+    lifetime_years: int = Field(25, ge=1, le=40)
+
+
 @app.get("/api/health")
 def health():
     return {"ok": True}
@@ -101,6 +122,14 @@ def shadows(req: ShadowsRequest):
     try:
         return shading.shadows_at(req.panels, [o.model_dump() for o in req.obstacles],
                                   req.tilt_deg, req.azimuth_deg, req.mounting, req.when)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.post("/api/finance")
+def finance_analysis(req: FinanceRequest):
+    try:
+        return finance.analyse(finance.FinanceParams(**req.model_dump()))
     except ValueError as e:
         raise HTTPException(400, str(e))
 
