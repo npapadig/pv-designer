@@ -6,7 +6,8 @@ goal, files it owns, numbered items, checks to run, and a status table. Max 2 st
 
 | Stream | Task file | Owns (files) | Status |
 |---|---|---|---|
-| (none yet) | | | |
+| nudge | `nudge.md` | `frontend/nudge.js`, λίγες γραμμές σε `index.html`/`style.css`/`app.js` (χάρτης) | ξεκίνησε 2026-10-21 |
+| faces | `faces.md` | engine + `backend/main.py` + υπόλοιπο `frontend/app.js`, `electrical.js` | περιμένει αποφάσεις Νίκου |
 
 Suggested split by area (owned files), so streams do not collide:
 - **maps**: map layers and drawing in `frontend/app.js` (map section), `backend/settings.py`.
