@@ -60,10 +60,13 @@ def _unit(az_deg: float, elev_deg: float) -> np.ndarray:
 class Scene:
     """Panels and obstacles in the local metric frame."""
 
-    def __init__(self, panels, obstacles, tilt_deg, azimuth_deg, mounting, fwd):
+    def __init__(self, panels, obstacles, tilt_deg, azimuth_deg, mounting, fwd, faces=None, panel_face=None):
+        # Roof faces: (tilt, azimuth) each; panel_face gives the face of every panel. One face by default.
+        n = len(panels)
+        self.faces, self.face_idx = _faces(tilt_deg, azimuth_deg, n, faces, panel_face)
         self.tilt = tilt_deg
         self.azimuth = azimuth_deg
-        self.normal = _unit(azimuth_deg, 90.0 - tilt_deg)
+        self.normals = [_unit(az, 90.0 - t) for t, az in self.faces]
         self.obstacles = []
         for ob in obstacles:
             h = float(ob.get("height_m") or 0)
@@ -72,11 +75,10 @@ class Scene:
                 if not poly.is_empty:
                     self.obstacles.append((poly, h))
 
-        n = len(panels)
         quads = np.array([_xy(p[:4], fwd) for p in panels]).reshape(n, 4, 2)
         # Reorder each quad as F0, F1 (front, low edge), B1, B0 (back, high edge).
-        face = np.array([math.sin(math.radians(azimuth_deg)), math.cos(math.radians(azimuth_deg))])
-        dots = quads @ face
+        facing = np.array([[math.sin(math.radians(az)), math.cos(math.radians(az))] for _, az in self.faces])
+        dots = np.einsum("nij,nj->ni", quads, facing[self.face_idx])
         first = np.argmax(dots + np.roll(dots, -1, axis=1), axis=1)
         idx = (first[:, None] + np.arange(4)) % 4
         c = np.take_along_axis(quads, idx[:, :, None], axis=1)
@@ -84,10 +86,9 @@ class Scene:
         self.across = c[:, 1] - c[:, 0]
         self.slope = c[:, 3] - c[:, 0]
         depth = np.linalg.norm(self.slope, axis=1)
-        if mounting == "rack" and tilt_deg > 0:
-            self.height = depth * math.tan(math.radians(tilt_deg))  # back edge height per panel
-        else:
-            self.height = np.zeros(n)
+        # Back edge height per panel (racks only; flush panels lie on the roof).
+        rise = np.array([math.tan(math.radians(t)) if mounting == "rack" and t > 0 else 0.0 for t, _ in self.faces])
+        self.height = depth * rise[self.face_idx]
         self.n = n
         self.racked = bool(np.any(self.height > 0.01))
         # Sample points: level k (along slope) x column j (across).
@@ -157,7 +158,7 @@ class Scene:
 
     def sky_blocked_fraction(self) -> np.ndarray:
         """Share of the isotropic diffuse sky light each panel loses to obstacles and other rows."""
-        total = 0.0
+        total = np.zeros(len(self.faces))
         blocked = np.zeros(self.n)
         # Band centre elevation -> band width (degrees); weight = cos(incidence) x solid angle.
         # Fine steps near the horizon, where obstacles block the sky; coarse steps overhead.
@@ -165,13 +166,27 @@ class Scene:
         for elev, width in bands:
             for az in range(0, 360, 10):
                 u = _unit(az, elev)
-                w = float(self.normal @ u) * math.cos(math.radians(elev)) * width
-                if w <= 0:
+                w = np.array([float(nrm @ u) * math.cos(math.radians(elev)) * width for nrm in self.normals])
+                w = np.where(w > 0, w, 0.0)  # light from behind a face does not reach it
+                if not w.any():
                     continue
                 total += w
                 if self.obstacles or self.racked:
-                    blocked += w * self.shaded_fraction(az, elev)
-        return blocked / total if total else blocked
+                    blocked += w[self.face_idx] * self.shaded_fraction(az, elev)
+        total = total[self.face_idx]
+        return np.divide(blocked, total, out=blocked.copy(), where=total > 0)
+
+
+def _faces(tilt_deg, azimuth_deg, n, faces, panel_face):
+    """[(tilt, azimuth), ...] per roof face and the face index of each panel (one face if none given)."""
+    if not faces:
+        return [(tilt_deg, azimuth_deg)], np.zeros(n, dtype=int)
+    if panel_face is None or len(panel_face) != n:
+        raise ValueError("Χρειάζεται η πλευρά στέγης κάθε πάνελ.")
+    idx = np.asarray(panel_face, dtype=int)
+    if n and (idx.min() < 0 or idx.max() >= len(faces)):
+        raise ValueError("Άκυρη πλευρά στέγης για κάποιο πάνελ.")
+    return [(float(f["tilt_deg"]), float(f["azimuth_deg"])) for f in faces], idx
 
 
 def _sun_table(lat, lon, tilt, azimuth):
@@ -200,34 +215,46 @@ def _sun_table(lat, lon, tilt, azimuth):
     })
 
 
-def analyze(panels, obstacles, tilt_deg, azimuth_deg, mounting) -> dict:
-    """Annual and monthly shading loss (% of plane-of-array irradiation) and the loss of each panel."""
+def analyze(panels, obstacles, tilt_deg, azimuth_deg, mounting, faces=None, panel_face=None) -> dict:
+    """Annual and monthly shading loss (% of plane-of-array irradiation) and the loss of each panel.
+
+    faces / panel_face (optional): roof faces [{"tilt_deg", "azimuth_deg"}, ...] and the face index of each
+    panel; then the result also has a "faces" list with each face's own losses.
+    """
     if not panels:
         raise ValueError("Δεν υπάρχουν πάνελ. Κάνε πρώτα τοποθέτηση πάνελ.")
     pts = np.array([pt for p in panels for pt in p])
     lat0, lon0 = float(pts[:, 0].mean()), float(pts[:, 1].mean())
     fwd, _ = _transformers(lat0, lon0)
-    scene = Scene(panels, obstacles, tilt_deg, azimuth_deg, mounting, fwd)
-    sun = _sun_table(lat0, lon0, tilt_deg, azimuth_deg)
+    scene = Scene(panels, obstacles, tilt_deg, azimuth_deg, mounting, fwd, faces, panel_face)
+    fi = scene.face_idx
+    # Same sun positions for every face; only the irradiance on each face's plane differs.
+    suns = [_sun_table(lat0, lon0, t, az) for t, az in scene.faces]
+    sun = suns[0]
+    beam = np.column_stack([s.beam.to_numpy() for s in suns])  # (times, faces)
 
     n = scene.n
     beam_lost = np.zeros((12, n))
     has_shaders = bool(scene.obstacles) or scene.racked
     if has_shaders:
-        for row in sun[(sun.elev > MIN_SUN_ELEVATION) & (sun.beam > 0)].itertuples():
-            beam_lost[row.month - 1] += row.beam * scene.shaded_fraction(row.az, row.elev)
+        lit = (sun.elev > MIN_SUN_ELEVATION).to_numpy() & (beam > 0).any(axis=1)
+        for i in np.flatnonzero(lit):
+            beam_lost[sun.month.iat[i] - 1] += beam[i][fi] * scene.shaded_fraction(sun.az.iat[i], sun.elev.iat[i])
     sky_block = scene.sky_blocked_fraction()
 
-    by_month = sun.groupby("month")[["beam", "diffuse", "ground"]].sum()
-    total_m = (by_month.beam + by_month.diffuse + by_month.ground).to_numpy()  # per panel, kWh/m²
-    diffuse_m = by_month.diffuse.to_numpy()
-    lost_m = beam_lost + diffuse_m[:, None] * sky_block[None, :]      # (12, n)
+    by_month = [s.groupby("month")[["beam", "diffuse", "ground"]].sum() for s in suns]
+    total_f = np.column_stack([(b.beam + b.diffuse + b.ground).to_numpy() for b in by_month])  # (12, faces), kWh/m²
+    diffuse_f = np.column_stack([b.diffuse.to_numpy() for b in by_month])
+    lost_m = beam_lost + diffuse_f[:, fi] * sky_block[None, :]      # (12, n)
+    counts = np.bincount(fi, minlength=len(scene.faces))
+    total_all = sum(total_f[:, k] * counts[k] for k in range(len(scene.faces)))  # (12,), all panels
+    total_year = sum(total_f[:, k].sum() * counts[k] for k in range(len(scene.faces)))
 
-    monthly_pct = 100 * lost_m.sum(axis=1) / (total_m * n)
-    annual_pct = 100 * lost_m.sum() / (total_m.sum() * n)
-    panel_pct = 100 * lost_m.sum(axis=0) / total_m.sum()
-    beam_pct = 100 * beam_lost.sum() / (total_m.sum() * n)
-    return {
+    monthly_pct = 100 * lost_m.sum(axis=1) / total_all
+    annual_pct = 100 * lost_m.sum() / total_year
+    panel_pct = 100 * lost_m.sum(axis=0) / total_f.sum(axis=0)[fi]
+    beam_pct = 100 * beam_lost.sum() / total_year
+    result = {
         "report": _report_block(scene, annual_pct, beam_pct, monthly_pct, panel_pct),
         "annual_loss_pct": round(float(annual_pct), 2),
         "beam_loss_pct": round(float(beam_pct), 2),
@@ -239,6 +266,18 @@ def analyze(panels, obstacles, tilt_deg, azimuth_deg, mounting) -> dict:
         "obstacles_used": len(scene.obstacles),
         "row_shading": scene.racked,
     }
+    if faces:
+        result["faces"] = []
+        for k, (t, az) in enumerate(scene.faces):
+            lost_k = lost_m[:, fi == k].sum(axis=1)
+            tot_k = total_f[:, k] * counts[k]
+            month_k = np.divide(100 * lost_k, tot_k, out=np.zeros(12), where=tot_k > 0)
+            result["faces"].append({
+                "tilt_deg": t, "azimuth_deg": az, "panels": int(counts[k]),
+                "annual_loss_pct": round(float(100 * lost_k.sum() / tot_k.sum()), 2) if tot_k.sum() > 0 else 0.0,
+                "monthly_loss_pct": [round(float(v), 2) for v in month_k],
+            })
+    return result
 
 
 def _fmt(v, d=1) -> str:
@@ -278,7 +317,7 @@ def _report_block(scene, annual_pct, beam_pct, monthly_pct, panel_pct) -> dict:
     }
 
 
-def shadows_at(panels, obstacles, tilt_deg, azimuth_deg, mounting, when_utc) -> dict:
+def shadows_at(panels, obstacles, tilt_deg, azimuth_deg, mounting, when_utc, faces=None, panel_face=None) -> dict:
     """Shadow outlines on the panel surface (z = 0) at one moment, as [[lat, lng], ...] rings."""
     import pandas as pd
     import pvlib
@@ -296,7 +335,7 @@ def shadows_at(panels, obstacles, tilt_deg, azimuth_deg, mounting, when_utc) -> 
     if elev <= MIN_SUN_ELEVATION:
         return result
 
-    scene = Scene(panels, obstacles, tilt_deg, azimuth_deg, mounting, fwd)
+    scene = Scene(panels, obstacles, tilt_deg, azimuth_deg, mounting, fwd, faces, panel_face)
     cot = 1.0 / math.tan(math.radians(elev))
     d = -np.array([math.sin(math.radians(az)), math.cos(math.radians(az))]) * cot
     geoms = scene._obstacle_shadows(0.0, d)

@@ -32,7 +32,15 @@ frontend: δοκιμή στον browser με server από `.venv` σε θύρα
 **Κατάσταση:**
 | Βήμα | Κατάσταση |
 |---|---|
-| 1 | εκκρεμεί |
+| 1 | έτοιμο (branch `claude/stream-faces-564e07`, 72 τεστ, baseline ακριβώς ίδιο) |
 | 2 | εκκρεμεί |
 | 3 | εκκρεμεί |
 | 4 | εκκρεμεί |
+
+**Backend για τα επόμενα βήματα (Βήμα 1):** τα παλιά αιτήματα δουλεύουν όπως πριν· τα νέα πεδία είναι προαιρετικά.
+- `POST /api/layout/faces` `{faces: [{area, tilt_deg?, azimuth_deg?}], ...κοινές ρυθμίσεις}` → `panels`, `panel_face`
+  (πλευρά κάθε πάνελ), `faces` (ανά πλευρά: count, kwp, tilt, azimuth, εμβαδά) και τα σύνολα όπως το `/api/layout`.
+- `/api/shading`, `/api/shadows`: + `faces: [{tilt_deg, azimuth_deg}]`, `panel_face` → και `faces[k].monthly_loss_pct`.
+- `/api/energy`: + `faces: [{kwp, tilt_deg, azimuth_deg, shading_monthly_pct?}]` → άθροισμα + `faces` ανά πλευρά.
+- `/api/simulate`: + `faces` (ίδια μορφή)· οι kwp δίνουν το μερίδιο κάθε πλευράς και κλιμακώνονται στο `dc_kwp`
+  του inverter· ένας κοινός inverter (clipping στο άθροισμα).
