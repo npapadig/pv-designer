@@ -1,11 +1,12 @@
 // PV Designer frontend: map drawing, panel layout, energy and financial results.
 
 const PANEL_PRESETS = [
-  { name: "Γενικό 410 W (1722 × 1134 mm)", power: 410, width: 1.134, length: 1.722 },
-  { name: "Γενικό 450 W (1903 × 1134 mm)", power: 450, width: 1.134, length: 1.903 },
-  { name: "Γενικό 500 W (1961 × 1134 mm)", power: 500, width: 1.134, length: 1.961 },
-  { name: "Γενικό 550 W (2278 × 1134 mm)", power: 550, width: 1.134, length: 2.278 },
-  { name: "Γενικό 600 W (2384 × 1134 mm)", power: 600, width: 1.134, length: 2.384 },
+  // Electrical values (voc, isc, vmp, imp) are typical of current half-cell mono modules.
+  { name: "Γενικό 410 W (1722 × 1134 mm)", power: 410, width: 1.134, length: 1.722, voc: 37.3, isc: 13.9, vmp: 31.0, imp: 13.23 },
+  { name: "Γενικό 450 W (1903 × 1134 mm)", power: 450, width: 1.134, length: 1.903, voc: 41.3, isc: 13.9, vmp: 34.4, imp: 13.09 },
+  { name: "Γενικό 500 W (1961 × 1134 mm)", power: 500, width: 1.134, length: 1.961, voc: 45.0, isc: 14.0, vmp: 37.6, imp: 13.3 },
+  { name: "Γενικό 550 W (2278 × 1134 mm)", power: 550, width: 1.134, length: 2.278, voc: 49.9, isc: 14.0, vmp: 41.9, imp: 13.13 },
+  { name: "Γενικό 600 W (2384 × 1134 mm)", power: 600, width: 1.134, length: 2.384, voc: 53.1, isc: 14.3, vmp: 44.6, imp: 13.45 },
   { name: "Δικό μου (συμπληρώνω τα στοιχεία)", power: null },
 ];
 const MONTHS = ["Ιαν", "Φεβ", "Μαρ", "Απρ", "Μάι", "Ιουν", "Ιουλ", "Αυγ", "Σεπ", "Οκτ", "Νοε", "Δεκ"];
@@ -264,6 +265,7 @@ function clearLayout() {
   panelsLayer.clearLayers();
   state.layout = null;
   clearShading();
+  window.elec?.reset();
 }
 
 const PANEL_STYLE = { color: "#dbeafe", weight: 0.5, fillColor: "#2563eb", fillOpacity: 0.75 };
@@ -292,6 +294,7 @@ async function runLayout() {
   total.kwp = Math.round(total.kwp * 1000) / 1000;
   state.layout = total;
   clearShading();
+  window.elec?.reset();
   if (!total.count) toast("Δεν χωράει κανένα πάνελ. Δοκίμασε μικρότερη απόσταση από τα άκρα ή οριζόντια πάνελ.", 6000);
 }
 $("btnLayout").onclick = () => withBusy($("btnLayout"), runLayout);
@@ -397,6 +400,10 @@ async function runEnergy() {
   if (!state.layout || !state.layout.count) await runLayout();
   if (!state.layout.count) return;
   if (!state.shading) await runShading();
+  if (window.elec?.detailed()) {
+    state.energy = await elec.simulate();
+    return renderResults();
+  }
   const s = settings();
   const [lat, lon] = state.layout.center;
   state.energy = await api("/api/energy", "POST", {
@@ -421,7 +428,7 @@ function renderResults() {
     ? `Επιφάνεια περιοχής ${fmt(l.area_m2, 1)} m², επιφάνεια πάνελ ${fmt(l.module_area_m2, 1)} m², κενό σειρών ${fmt(l.row_gap_m, 2)} m.` +
       (state.shading ? ` Απώλειες σκίασης ${fmt(state.shading.annual_loss_pct, 1)}%.` : "") +
       (e && e.annual_kwh_unshaded ? ` Χωρίς σκιές θα ήταν ${fmt(e.annual_kwh_unshaded)} kWh.` : "") +
-      (e ? ` Ακτινοβολία στο επίπεδο πάνελ ${fmt(e.annual_irradiation)} kWh/m² ανά έτος. Πηγή: ${e.source === "PVGIS" ? "PVGIS (ΕΕ)" : "πρόχειρο μοντέλο χωρίς internet"}.` : "")
+      (e ? ` Ακτινοβολία στο επίπεδο πάνελ ${fmt(e.annual_irradiation)} kWh/m² ανά έτος. Πηγή: ${e.source.startsWith("PVGIS") ? "PVGIS (ΕΕ)" : "πρόχειρο μοντέλο χωρίς internet"}.` : "")
     : "";
   renderShadingInfo();
   $("energyWarning").hidden = !(e && e.warning);
@@ -448,6 +455,7 @@ function renderResults() {
       },
     });
   }
+  window.elec?.render();
   renderFinance();
 }
 
@@ -576,6 +584,7 @@ function collectProject() {
     energy: state.energy,
     finance_settings: financeSettings(),
     finance: state.finance,
+    electrical: window.elec?.collect(),
     view: { center: map.getCenter(), zoom: map.getZoom() },
   };
 }
@@ -624,6 +633,7 @@ function loadProject(p) {
   state.energy = p.energy || null;
   state.finance = p.finance || null;
   colorPanels();
+  window.elec?.load(p.electrical);
   renderResults();
   if (p.view) map.setView(p.view.center, p.view.zoom);
 }
