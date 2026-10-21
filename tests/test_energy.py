@@ -32,3 +32,10 @@ def test_auto_falls_back_when_pvgis_unreachable(monkeypatch):
     res = energy.estimate(37.98, 23.72, 5.0, 30, 180, 14, "auto")
     assert res["source"] == "offline"
     assert "warning" in res
+
+
+def test_parse_pvgis_losses():
+    data = {"outputs": {**SAMPLE_PVGIS["outputs"], "totals": {"fixed": {
+        **SAMPLE_PVGIS["outputs"]["totals"]["fixed"], "l_aoi": -2.5, "l_spec": 0.8, "l_tg": -7.9}}}}
+    res = energy.parse_pvgis(data, 4.0, 14)
+    assert res["losses"] == {"aoi": 2.5, "spectral": -0.8, "temperature": 7.9, "system": 14}

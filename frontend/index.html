@@ -19,6 +19,12 @@
     <section>
       <h2>1. Έργο</h2>
       <label>Όνομα έργου <input id="projectName" value="Νέο έργο"></label>
+      <details id="reportInfo">
+        <summary>Στοιχεία για την αναφορά PDF</summary>
+        <label>Πελάτης <input id="clientName" placeholder="Ονοματεπώνυμο ή εταιρεία"></label>
+        <label>Διεύθυνση έργου <input id="projectAddress" placeholder="Οδός, αριθμός, πόλη"></label>
+        <label>Συντάκτης / εταιρεία <input id="reportAuthor" placeholder="Το όνομά σας ή της εταιρείας σας"></label>
+      </details>
       <div class="row">
         <button id="btnSave">💾 Αποθήκευση</button>
         <select id="projectList"><option value="">Άνοιγμα έργου…</option></select>
@@ -96,7 +102,7 @@
       <p id="statExtra" class="muted small"></p>
       <p id="energyWarning" class="warning small" hidden></p>
       <canvas id="chart" height="180"></canvas>
-      <button id="btnReport" class="secondary">🖨️ Αναφορά / εκτύπωση</button>
+      <button id="btnReport" class="primary">📄 Αναφορά PDF για τον πελάτη</button>
     </section>
   </aside>
 

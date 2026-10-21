@@ -7,3 +7,5 @@ pvlib>=0.11
 pandas>=2.0
 numpy>=1.26
 pytest>=8.0
+reportlab>=4.0
+pillow>=10.0

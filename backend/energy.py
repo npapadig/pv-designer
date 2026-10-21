@@ -35,13 +35,13 @@ def pvgis_estimate(lat, lon, kwp, tilt, azimuth, loss_pct, timeout=30.0) -> dict
         try:
             r = httpx.get(url, params=params, timeout=timeout)
             r.raise_for_status()
-            return parse_pvgis(r.json(), kwp)
+            return parse_pvgis(r.json(), kwp, loss_pct)
         except Exception as e:  # try the next API version
             last_err = e
     raise RuntimeError(f"PVGIS δεν απάντησε: {last_err}")
 
 
-def parse_pvgis(data: dict, kwp: float) -> dict:
+def parse_pvgis(data: dict, kwp: float, loss_pct: float | None = None) -> dict:
     out = data["outputs"]
     monthly = [
         {"month": m["month"], "kwh": round(m["E_m"], 1), "irradiation": round(m["H(i)_m"], 1)}
@@ -56,6 +56,13 @@ def parse_pvgis(data: dict, kwp: float) -> dict:
         "monthly": monthly,
         "annual_irradiation": round(totals.get("H(i)_y", 0), 0),
         "total_losses_pct": round(totals.get("l_total", 0), 1),
+        # Loss steps in %, positive = energy lost (PVGIS reports them as negative changes).
+        "losses": {
+            "aoi": round(-totals.get("l_aoi", 0), 2),
+            "spectral": round(-totals.get("l_spec", 0), 2),
+            "temperature": round(-totals.get("l_tg", 0), 2),
+            "system": loss_pct,
+        },
     }
 
 
@@ -76,7 +83,9 @@ def offline_estimate(lat, lon, kwp, tilt, azimuth, loss_pct, year=2023) -> dict:
     # Simple cell temperature correction (-0.4 %/°C, ambient 20 °C).
     t_cell = 20.0 + poa * 0.03
     temp_factor = 1 - 0.004 * (t_cell - 25.0)
-    ac_kwh = kwp * poa / 1000.0 * temp_factor * (1 - loss_pct / 100.0)
+    dc_kwh = kwp * poa / 1000.0
+    ac_kwh = dc_kwh * temp_factor * (1 - loss_pct / 100.0)
+    temp_loss = 1 - float((dc_kwh * temp_factor).sum() / dc_kwh.sum())
 
     monthly_e = ac_kwh.groupby(ac_kwh.index.month).sum()
     monthly_h = (poa / 1000.0).groupby(poa.index.month).sum()
@@ -92,6 +101,7 @@ def offline_estimate(lat, lon, kwp, tilt, azimuth, loss_pct, year=2023) -> dict:
         "monthly": monthly,
         "annual_irradiation": round(float(poa.sum() / 1000.0), 0),
         "total_losses_pct": loss_pct,
+        "losses": {"temperature": round(temp_loss * 100, 2), "system": loss_pct},
     }
 
 

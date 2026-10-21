@@ -149,6 +149,7 @@ async function search() {
     const r = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(q)}`);
     const res = await r.json();
     if (!res.length) return toast("Δεν βρέθηκε η διεύθυνση.");
+    if (!$("projectAddress").value) $("projectAddress").value = q;
     map.setView([+res[0].lat, +res[0].lon], 19);
   } catch {
     toast("Η αναζήτηση απέτυχε. Έλεγξε τη σύνδεση στο internet.");
@@ -319,17 +320,49 @@ function renderResults() {
   }
 }
 
-$("btnReport").onclick = () => {
-  if (!state.layout) return toast("Κάνε πρώτα τοποθέτηση πάνελ.");
-  document.title = `${$("projectName").value} – PV Designer`;
-  window.print();
-};
+// ---------- PDF report ----------
+async function downloadReport() {
+  if (!state.layout || !state.layout.count) await runLayout();
+  if (!state.layout.count) return;
+  if (!state.energy) {
+    try { await runEnergy(); } catch (e) { toast(`Η αναφορά θα βγει χωρίς παραγωγή: ${e.message}`, 6000); }
+  }
+  toast("Ετοιμάζεται η αναφορά…", 15000);
+  const r = await fetch("/api/report", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(collectProject()),
+  });
+  if (!r.ok) {
+    const data = await r.json().catch(() => ({}));
+    throw new Error(typeof data.detail === "string" ? data.detail : "Η αναφορά δεν δημιουργήθηκε.");
+  }
+  const url = URL.createObjectURL(await r.blob());
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `Μελέτη ΦΒ - ${$("projectName").value || "έργο"}.pdf`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
+  toast("Η αναφορά κατέβηκε στα «Λήψεις» (Downloads).", 5000);
+}
+$("btnReport").onclick = () => withBusy($("btnReport"), downloadReport);
+
+// The author is usually the same for every project, so remember it on this computer.
+const AUTHOR_KEY = "pv-designer.author";
+try { $("reportAuthor").value = localStorage.getItem(AUTHOR_KEY) || ""; } catch {}
+$("reportAuthor").onchange = () => { try { localStorage.setItem(AUTHOR_KEY, $("reportAuthor").value); } catch {} };
 
 // ---------- Projects ----------
 function collectProject() {
   return {
     name: $("projectName").value || "Χωρίς όνομα",
-    settings: { ...settings(), loss_pct: +$("loss").value, preset: $("panelPreset").value },
+    settings: {
+      ...settings(), loss_pct: +$("loss").value, preset: $("panelPreset").value,
+      panel_name: PANEL_PRESETS[$("panelPreset").value].power ? PANEL_PRESETS[$("panelPreset").value].name : null,
+    },
+    report_info: { client: $("clientName").value, address: $("projectAddress").value, author: $("reportAuthor").value },
     areas: areas.getLayers().map(latlngsOf),
     keepouts: keepouts.getLayers().map(latlngsOf),
     layout: state.layout ? { ...state.layout, panels: panelsLayer.getLayers().map(latlngsOf) } : null,
@@ -342,6 +375,8 @@ function resetProject() {
   areas.clearLayers(); keepouts.clearLayers(); editGroup.clearLayers();
   state.projectId = null;
   $("projectName").value = "Νέο έργο";
+  $("clientName").value = "";
+  $("projectAddress").value = "";
   clearLayout();
   updateShapesInfo();
 }
@@ -357,6 +392,10 @@ function loadProject(p) {
   set("orientation", s.orientation); set("azimuth", s.azimuth_deg); set("tilt", s.tilt_deg);
   set("mounting", s.mounting); set("colGap", s.col_spacing_m); set("setback", s.setback_m); set("loss", s.loss_pct);
   $("rowGap").value = s.row_spacing_m == null ? "" : s.row_spacing_m;
+  const info = p.report_info || {};
+  $("clientName").value = info.client || "";
+  $("projectAddress").value = info.address || "";
+  if (info.author) $("reportAuthor").value = info.author;
   (p.areas || []).forEach((a) => addShape(L.polygon(a), "area"));
   (p.keepouts || []).forEach((k) => addShape(L.polygon(k), "keepout"));
   if (p.layout) {
