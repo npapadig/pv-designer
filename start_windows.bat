@@ -13,6 +13,7 @@ if defined PY goto have_python
 echo Den brethhke Python 3.12. Ginetai egkatastash tou twra...
 where py >nul 2>nul
 if errorlevel 1 goto no_python
+echo (an sas rwthsei kati, grapste Y kai patiste Enter)
 py install 3.12
 call :find_python
 if defined PY goto have_python
@@ -38,11 +39,11 @@ if exist .venv (
 )
 echo Prwth fora: dhmiourgia periballontos Python...
 %PY% -m venv .venv
-if errorlevel 1 goto install_failed
+if not exist .venv\Scripts\python.exe goto install_failed
 echo Egkatastash bibliothikwn (thn prwth fora pairnei 1-3 lepta)...
 .venv\Scripts\python -m pip install --quiet --upgrade pip
 .venv\Scripts\python -m pip install --prefer-binary -r requirements.txt
-if errorlevel 1 goto install_failed
+if not "%errorlevel%"=="0" goto install_failed
 echo ok> .venv\ready-312.txt
 
 :run
@@ -63,10 +64,17 @@ pause
 exit /b 1
 
 :find_python
-py -V:3.12 -c "import sys" >nul 2>nul
-if not errorlevel 1 (set "PY=py -V:3.12" & exit /b 0)
-py -3.12 -c "import sys" >nul 2>nul
-if not errorlevel 1 (set "PY=py -3.12" & exit /b 0)
-python -c "import sys; sys.exit(0 if sys.version_info[:2]==(3,12) else 1)" >nul 2>nul
-if not errorlevel 1 (set "PY=python" & exit /b 0)
+rem Only trust a candidate if it really runs and prints 3.12; error codes from
+rem the Python Install Manager can be negative and slip past "if errorlevel".
+call :try_python py -V:3.12
+if defined PY exit /b 0
+call :try_python py -3.12
+if defined PY exit /b 0
+call :try_python python
+exit /b 0
+
+:try_python
+set "VER="
+for /f "delims=" %%v in ('%* -c "import sys; print(*sys.version_info[:2], sep=chr(46))" 2^>nul') do set "VER=%%v"
+if "%VER%"=="3.12" set "PY=%*"
 exit /b 0
