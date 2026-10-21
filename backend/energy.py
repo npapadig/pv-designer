@@ -105,6 +105,25 @@ def offline_estimate(lat, lon, kwp, tilt, azimuth, loss_pct, year=2023) -> dict:
     }
 
 
+def apply_shading(result: dict, monthly_loss_pct: list, kwp: float) -> dict:
+    """Reduce each month's production by that month's shading loss."""
+    monthly = []
+    for m in result["monthly"]:
+        loss = monthly_loss_pct[m["month"] - 1] / 100.0
+        monthly.append({**m, "kwh": round(m["kwh"] * (1 - loss), 1), "kwh_unshaded": m["kwh"]})
+    annual = sum(m["kwh"] for m in monthly)
+    before = result["annual_kwh"]
+    return {
+        **result,
+        "monthly": monthly,
+        "annual_kwh": round(annual, 0),
+        "annual_kwh_unshaded": before,
+        "specific_yield": round(annual / kwp, 0) if kwp else 0,
+        "shading_loss_pct": round(100 * (1 - annual / before), 1) if before else 0.0,
+        "losses": {**result.get("losses", {}), "shading": round(100 * (1 - annual / before), 2) if before else 0.0},
+    }
+
+
 def estimate(lat, lon, kwp, tilt, azimuth, loss_pct=14.0, source="auto") -> dict:
     if kwp <= 0:
         raise ValueError("Η ισχύς πρέπει να είναι μεγαλύτερη από 0.")

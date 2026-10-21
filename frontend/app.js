@@ -11,7 +11,7 @@ const PANEL_PRESETS = [
 const MONTHS = ["Ιαν", "Φεβ", "Μαρ", "Απρ", "Μάι", "Ιουν", "Ιουλ", "Αυγ", "Σεπ", "Οκτ", "Νοε", "Δεκ"];
 
 const $ = (id) => document.getElementById(id);
-const state = { projectId: null, layout: null, energy: null };
+const state = { projectId: null, layout: null, energy: null, shading: null };
 let chart = null;
 
 // ---------- Map ----------
@@ -88,6 +88,7 @@ L.control.scale({ imperial: false }).addTo(map);
 const areas = new L.FeatureGroup().addTo(map);
 const keepouts = new L.FeatureGroup().addTo(map);
 const panelsLayer = new L.FeatureGroup().addTo(map);
+const shadowsLayer = new L.FeatureGroup().addTo(map);
 const AREA_STYLE = { color: "#f59e0b", weight: 2, fillOpacity: 0.08 };
 const KEEPOUT_STYLE = { color: "#ef4444", weight: 2, fillOpacity: 0.3 };
 
@@ -113,12 +114,27 @@ function drawMode() {
   return document.querySelector("input[name=drawMode]:checked").value;
 }
 
-function addShape(layer, kind) {
+function addShape(layer, kind, height) {
   layer.setStyle(kind === "keepout" ? KEEPOUT_STYLE : AREA_STYLE);
   layer.pvKind = kind;
+  if (kind === "keepout") setObstacleHeight(layer, height ?? +$("obstacleHeight").value);
   (kind === "keepout" ? keepouts : areas).addLayer(layer);
   editGroup.addLayer(layer);
   updateShapesInfo();
+}
+
+// Obstacles carry a height (m above the panel surface) used by the shading analysis.
+function setObstacleHeight(layer, h) {
+  layer.pvHeight = Math.max(0, +h || 0);
+  layer.bindTooltip(layer.pvHeight ? `Εμπόδιο ${fmt(layer.pvHeight, 1)} m` : "Εμπόδιο (χωρίς σκιά)");
+  layer.off("click").on("click", () => {
+    const box = L.DomUtil.create("div");
+    box.innerHTML = `<label>Ύψος εμποδίου (m) <input type="number" min="0" step="0.5" value="${layer.pvHeight}"></label>`;
+    const input = box.querySelector("input");
+    input.onchange = () => { setObstacleHeight(layer, input.value); clearShading(); };
+    L.popup().setLatLng(layer.getBounds().getCenter()).setContent(box).openOn(map);
+    setTimeout(() => input.focus(), 50);
+  });
 }
 
 map.on(L.Draw.Event.CREATED, (e) => {
@@ -246,9 +262,11 @@ function settings() {
 function clearLayout() {
   panelsLayer.clearLayers();
   state.layout = null;
-  state.energy = null;
-  renderResults();
+  clearShading();
 }
+
+const PANEL_STYLE = { color: "#dbeafe", weight: 0.5, fillColor: "#2563eb", fillOpacity: 0.75 };
+const addPanel = (latlngs) => L.polygon(latlngs, PANEL_STYLE).addTo(panelsLayer);
 
 async function runLayout() {
   const areaLayers = areas.getLayers();
@@ -261,7 +279,7 @@ async function runLayout() {
   for (const layer of areaLayers) {
     const res = await api("/api/layout", "POST", { ...s, area: latlngsOf(layer), keepouts: ko });
     res.panels.forEach((p) =>
-      L.polygon(p, { color: "#dbeafe", weight: 0.5, fillColor: "#2563eb", fillOpacity: 0.75 }).addTo(panelsLayer)
+      addPanel(p)
     );
     total.count += res.count;
     total.kwp += res.kwp;
@@ -272,20 +290,115 @@ async function runLayout() {
   }
   total.kwp = Math.round(total.kwp * 1000) / 1000;
   state.layout = total;
-  state.energy = null;
-  renderResults();
+  clearShading();
   if (!total.count) toast("Δεν χωράει κανένα πάνελ. Δοκίμασε μικρότερη απόσταση από τα άκρα ή οριζόντια πάνελ.", 6000);
 }
 $("btnLayout").onclick = () => withBusy($("btnLayout"), runLayout);
+
+// ---------- Shading ----------
+function shadingInput() {
+  const s = settings();
+  return {
+    panels: panelsLayer.getLayers().map(latlngsOf),
+    obstacles: keepouts.getLayers().map((l) => ({ polygon: latlngsOf(l), height_m: l.pvHeight || 0 })),
+    tilt_deg: s.tilt_deg, azimuth_deg: s.azimuth_deg, mounting: s.mounting,
+  };
+}
+
+function clearShading() {
+  state.shading = null;
+  state.energy = null;
+  colorPanels();
+  refreshShadows();
+  renderResults();
+}
+
+function lossColor(pct) {
+  if (pct < 1) return "#2563eb";
+  if (pct < 5) return "#facc15";
+  if (pct < 10) return "#f97316";
+  return "#dc2626";
+}
+
+function colorPanels() {
+  const losses = state.shading && state.shading.panel_loss_pct;
+  panelsLayer.getLayers().forEach((l, i) => {
+    const pct = losses ? losses[i] : null;
+    l.setStyle({ fillColor: pct == null ? "#2563eb" : lossColor(pct) });
+    if (pct == null) l.unbindTooltip(); else l.bindTooltip(`Σκίαση: ${fmt(pct, 1)}% τον χρόνο`);
+  });
+  $("shadingLegend").hidden = !losses;
+}
+
+async function runShading() {
+  if (!state.layout || !state.layout.count) await runLayout();
+  if (!state.layout.count) return;
+  toast("Υπολογισμός σκιάσεων… (σε μεγάλα έργα παίρνει λίγα δευτερόλεπτα)", 15000);
+  state.shading = await api("/api/shading", "POST", shadingInput());
+  $("toast").hidden = true;
+  state.energy = null;
+  colorPanels();
+  renderResults();
+}
+$("btnShading").onclick = () => withBusy($("btnShading"), runShading);
+
+function renderShadingInfo() {
+  const sh = state.shading;
+  if (!sh) { $("shadingInfo").textContent = ""; return; }
+  const why = [];
+  if (sh.obstacles_used) why.push(`${sh.obstacles_used} εμπόδιο(α) με ύψος`);
+  if (sh.row_shading) why.push("σκίαση μεταξύ σειρών");
+  $("shadingInfo").textContent = why.length
+    ? `Απώλεια από σκιάσεις: ${fmt(sh.annual_loss_pct, 1)}% τον χρόνο (από ${why.join(" και ")}). ` +
+      `Άμεσος ήλιος ${fmt(sh.beam_loss_pct, 1)}%, διάχυτο φως ουρανού ${fmt(sh.diffuse_loss_pct, 1)}%. ` +
+      `Το πιο σκιασμένο πάνελ χάνει ${fmt(sh.worst_panel_loss_pct, 1)}%.`
+    : "Δεν υπάρχει σκίαση: δεν έχεις εμπόδια με ύψος και τα πάνελ είναι παράλληλα με τη στέγη.";
+}
+
+// Shadows at a chosen moment (browser local time, on the 21st of the month).
+MONTHS.forEach((m, i) => $("shadowMonth").add(new Option(m, i)));
+$("shadowMonth").value = 11;
+let shadowTimer = null;
+function refreshShadows() {
+  const on = $("showShadows").checked;
+  $("shadowControls").hidden = !on;
+  const h = +$("shadowHour").value;
+  $("shadowHourLabel").textContent = `${Math.floor(h)}:${h % 1 ? "30" : "00"}`;
+  clearTimeout(shadowTimer);
+  if (!on) { shadowsLayer.clearLayers(); $("sunInfo").textContent = ""; return; }
+  shadowTimer = setTimeout(async () => {
+    const input = shadingInput();
+    if (!input.panels.length && !input.obstacles.length) {
+      shadowsLayer.clearLayers();
+      $("sunInfo").textContent = "Σχεδίασε εμπόδια ή τοποθέτησε πάνελ για να δεις σκιές.";
+      return;
+    }
+    const when = new Date(new Date().getFullYear(), +$("shadowMonth").value, 21, Math.floor(h), (h % 1) * 60);
+    try {
+      const r = await api("/api/shadows", "POST", { ...input, when: when.toISOString() });
+      shadowsLayer.clearLayers();
+      r.shadows.forEach((p) =>
+        L.polygon(p, { stroke: false, fillColor: "#111827", fillOpacity: 0.45, interactive: false }).addTo(shadowsLayer)
+      );
+      $("sunInfo").textContent = r.sun_elevation > 3
+        ? `Ήλιος: ύψος ${fmt(r.sun_elevation)}°, αζιμούθιο ${fmt(r.sun_azimuth)}°.`
+        : "Ο ήλιος είναι κάτω από τον ορίζοντα.";
+    } catch (e) { toast(e.message); }
+  }, 150);
+}
+["showShadows", "shadowMonth", "shadowHour"].forEach((id) => $(id).addEventListener("input", refreshShadows));
+refreshShadows();
 
 // ---------- Energy ----------
 async function runEnergy() {
   if (!state.layout || !state.layout.count) await runLayout();
   if (!state.layout.count) return;
+  if (!state.shading) await runShading();
   const s = settings();
   const [lat, lon] = state.layout.center;
   state.energy = await api("/api/energy", "POST", {
     lat, lon, kwp: state.layout.kwp, tilt_deg: s.tilt_deg, azimuth_deg: s.azimuth_deg, loss_pct: +$("loss").value,
+    shading_monthly_pct: state.shading ? state.shading.monthly_loss_pct : null,
   });
   renderResults();
 }
@@ -302,8 +415,11 @@ function renderResults() {
   $("statYield").textContent = e ? fmt(e.specific_yield) : "–";
   $("statExtra").textContent = l
     ? `Επιφάνεια περιοχής ${fmt(l.area_m2, 1)} m², επιφάνεια πάνελ ${fmt(l.module_area_m2, 1)} m², κενό σειρών ${fmt(l.row_gap_m, 2)} m.` +
+      (state.shading ? ` Απώλειες σκίασης ${fmt(state.shading.annual_loss_pct, 1)}%.` : "") +
+      (e && e.annual_kwh_unshaded ? ` Χωρίς σκιές θα ήταν ${fmt(e.annual_kwh_unshaded)} kWh.` : "") +
       (e ? ` Ακτινοβολία στο επίπεδο πάνελ ${fmt(e.annual_irradiation)} kWh/m² ανά έτος. Πηγή: ${e.source === "PVGIS" ? "PVGIS (ΕΕ)" : "πρόχειρο μοντέλο χωρίς internet"}.` : "")
     : "";
+  renderShadingInfo();
   $("energyWarning").hidden = !(e && e.warning);
   $("energyWarning").textContent = e && e.warning ? e.warning : "";
 
@@ -313,9 +429,19 @@ function renderResults() {
       type: "bar",
       data: {
         labels: e.monthly.map((m) => MONTHS[m.month - 1]),
-        datasets: [{ label: "Παραγωγή (kWh)", data: e.monthly.map((m) => m.kwh), backgroundColor: "#f59e0b" }],
+        datasets: [
+          { label: "Παραγωγή (kWh)", data: e.monthly.map((m) => m.kwh), backgroundColor: "#f59e0b" },
+          ...(e.annual_kwh_unshaded ? [{
+            label: "Χάνεται από σκιές (kWh)",
+            data: e.monthly.map((m) => Math.round((m.kwh_unshaded - m.kwh) * 10) / 10),
+            backgroundColor: "#9ca3af",
+          }] : []),
+        ],
       },
-      options: { plugins: { legend: { display: false } }, scales: { y: { title: { display: true, text: "kWh" } } } },
+      options: {
+        plugins: { legend: { display: !!e.annual_kwh_unshaded, labels: { boxWidth: 12 } } },
+        scales: { x: { stacked: true }, y: { stacked: true, title: { display: true, text: "kWh" } } },
+      },
     });
   }
 }
@@ -365,6 +491,8 @@ function collectProject() {
     report_info: { client: $("clientName").value, address: $("projectAddress").value, author: $("reportAuthor").value },
     areas: areas.getLayers().map(latlngsOf),
     keepouts: keepouts.getLayers().map(latlngsOf),
+    keepout_heights: keepouts.getLayers().map((l) => l.pvHeight || 0),
+    shading: state.shading,
     layout: state.layout ? { ...state.layout, panels: panelsLayer.getLayers().map(latlngsOf) } : null,
     energy: state.energy,
     view: { center: map.getCenter(), zoom: map.getZoom() },
@@ -397,15 +525,18 @@ function loadProject(p) {
   $("projectAddress").value = info.address || "";
   if (info.author) $("reportAuthor").value = info.author;
   (p.areas || []).forEach((a) => addShape(L.polygon(a), "area"));
-  (p.keepouts || []).forEach((k) => addShape(L.polygon(k), "keepout"));
+  // Projects saved before shading analysis have no heights: their obstacles cast no shadow.
+  (p.keepouts || []).forEach((k, i) => addShape(L.polygon(k), "keepout", (p.keepout_heights || [])[i] || 0));
   if (p.layout) {
     p.layout.panels.forEach((pp) =>
-      L.polygon(pp, { color: "#dbeafe", weight: 0.5, fillColor: "#2563eb", fillOpacity: 0.75 }).addTo(panelsLayer)
+      addPanel(pp)
     );
     const { panels, ...rest } = p.layout;
     state.layout = rest;
   }
+  state.shading = p.shading || null;
   state.energy = p.energy || null;
+  colorPanels();
   renderResults();
   if (p.view) map.setView(p.view.center, p.view.zoom);
 }

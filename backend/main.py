@@ -11,7 +11,7 @@ from fastapi.responses import Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from . import energy, report, storage
+from . import energy, report, shading, storage
 from .layout import LayoutParams, compute_layout
 
 FRONTEND_DIR = Path(__file__).resolve().parent.parent / "frontend"
@@ -42,6 +42,24 @@ class EnergyRequest(BaseModel):
     azimuth_deg: float = Field(180, ge=0, le=360)
     loss_pct: float = Field(14, ge=0, le=60)
     source: Literal["auto", "pvgis", "offline"] = "auto"
+    shading_monthly_pct: list[float] | None = Field(None, min_length=12, max_length=12)
+
+
+class Obstacle(BaseModel):
+    polygon: list[list[float]]
+    height_m: float = Field(0, ge=0, le=500)
+
+
+class ShadingRequest(BaseModel):
+    panels: list[list[list[float]]]
+    obstacles: list[Obstacle] = []
+    tilt_deg: float = Field(30, ge=0, le=90)
+    azimuth_deg: float = Field(180, ge=0, le=360)
+    mounting: Literal["flush", "rack"] = "flush"
+
+
+class ShadowsRequest(ShadingRequest):
+    when: str = Field(..., description="ISO date-time, e.g. 2025-12-21T10:00:00Z")
 
 
 @app.get("/api/health")
@@ -61,9 +79,30 @@ def layout(req: LayoutRequest):
 @app.post("/api/energy")
 def energy_estimate(req: EnergyRequest):
     try:
-        return energy.estimate(req.lat, req.lon, req.kwp, req.tilt_deg, req.azimuth_deg, req.loss_pct, req.source)
+        result = energy.estimate(req.lat, req.lon, req.kwp, req.tilt_deg, req.azimuth_deg, req.loss_pct, req.source)
     except Exception as e:
         raise HTTPException(502, str(e))
+    if req.shading_monthly_pct:
+        result = energy.apply_shading(result, req.shading_monthly_pct, req.kwp)
+    return result
+
+
+@app.post("/api/shading")
+def shading_analysis(req: ShadingRequest):
+    try:
+        return shading.analyze(req.panels, [o.model_dump() for o in req.obstacles],
+                               req.tilt_deg, req.azimuth_deg, req.mounting)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.post("/api/shadows")
+def shadows(req: ShadowsRequest):
+    try:
+        return shading.shadows_at(req.panels, [o.model_dump() for o in req.obstacles],
+                                  req.tilt_deg, req.azimuth_deg, req.mounting, req.when)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
 
 
 @app.get("/api/projects")
