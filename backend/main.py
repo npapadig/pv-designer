@@ -1,6 +1,7 @@
 """PV Designer web server. Run with:  python -m uvicorn backend.main:app"""
 from __future__ import annotations
 
+import mimetypes
 from pathlib import Path
 from typing import Literal
 
@@ -14,6 +15,9 @@ from pydantic import BaseModel, Field
 from . import electrical, energy, finance, report, shading, simulation, storage
 from .equipment import INVERTERS, Inverter
 from .layout import LayoutParams, compute_layout
+
+# Windows may not know this font type; set it so the browser gets the right header.
+mimetypes.add_type("font/woff2", ".woff2")
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
 FRONTEND_DIR = ROOT_DIR / "frontend"

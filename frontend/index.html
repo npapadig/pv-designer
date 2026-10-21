@@ -8,16 +8,55 @@
   <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
   <link rel="stylesheet" href="vendor/leaflet-draw/leaflet.draw.css">
   <link rel="stylesheet" href="style.css">
+  <script>
+    // Apply the saved light/dark choice before the page paints, so it does not flash.
+    try { const t = localStorage.getItem("pv-designer.theme"); if (t) document.documentElement.dataset.theme = t; } catch {}
+  </script>
 </head>
 <body>
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <!-- @license lucide-static - ISC -->
+    <symbol id="i-save" viewBox="0 0 24 24"><path d="M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M17 21v-7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v7"/><path d="M7 3v4a1 1 0 0 0 1 1h7"/></symbol>
+    <symbol id="i-file-plus" viewBox="0 0 24 24"><path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z"/><path d="M14 2v5a1 1 0 0 0 1 1h5"/><path d="M9 15h6"/><path d="M12 18v-6"/></symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24"><path d="M10 11v6"/><path d="M14 11v6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></symbol>
+    <symbol id="i-grid" viewBox="0 0 24 24"><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/></symbol>
+    <symbol id="i-cloud-sun" viewBox="0 0 24 24"><path d="M12 2v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="M20 12h2"/><path d="m19.07 4.93-1.41 1.41"/><path d="M15.947 12.65a4 4 0 0 0-5.925-4.128"/><path d="M13 22H7a5 5 0 1 1 4.9-6H13a3 3 0 0 1 0 6Z"/></symbol>
+    <symbol id="i-plug" viewBox="0 0 24 24"><path d="M6.3 20.3a2.4 2.4 0 0 0 3.4 0L12 18l-6-6-2.3 2.3a2.4 2.4 0 0 0 0 3.4Z"/><path d="m2 22 3-3"/><path d="M7.5 13.5 10 11"/><path d="M10.5 16.5 13 14"/><path d="m18 3-4 4h6l-4 4"/></symbol>
+    <symbol id="i-zap" viewBox="0 0 24 24"><path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"/></symbol>
+    <symbol id="i-file-text" viewBox="0 0 24 24"><path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z"/><path d="M14 2v5a1 1 0 0 0 1 1h5"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></symbol>
+    <symbol id="i-euro" viewBox="0 0 24 24"><path d="M4 10h12"/><path d="M4 14h9"/><path d="M19 6a7.7 7.7 0 0 0-5.2-2A7.9 7.9 0 0 0 6 12c0 4.4 3.5 8 7.8 8 2 0 3.8-.8 5.2-2"/></symbol>
+    <symbol id="i-chart" viewBox="0 0 24 24"><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></symbol>
+    <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></symbol>
+    <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+    <symbol id="i-folder" viewBox="0 0 24 24"><path d="m6 14 1.5-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 1.94 2.5l-1.54 6a2 2 0 0 1-1.95 1.5H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H18a2 2 0 0 1 2 2v2"/></symbol>
+    <symbol id="i-pin" viewBox="0 0 24 24"><path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/></symbol>
+    <symbol id="i-pentagon" viewBox="0 0 24 24"><path d="M10.83 2.38a2 2 0 0 1 2.34 0l8 5.74a2 2 0 0 1 .73 2.25l-3.04 9.26a2 2 0 0 1-1.9 1.37H7.04a2 2 0 0 1-1.9-1.37L2.1 10.37a2 2 0 0 1 .73-2.25z"/></symbol>
+    <symbol id="i-left" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></symbol>
+    <symbol id="i-right" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
+    <symbol id="i-up" viewBox="0 0 24 24"><path d="m18 15-6-6-6 6"/></symbol>
+  </svg>
+  <main id="map"></main>
+  <nav id="rail" aria-label="Βήματα">
+    <div class="logo" title="PV Designer"><svg class="ic"><use href="#i-sun"/></svg></div>
+    <a href="#secProject" data-step="secProject"><b><svg class="ic"><use href="#i-folder"/></svg><i>1</i></b><span>Έργο</span></a>
+    <a href="#secSite" data-step="secSite"><b><svg class="ic"><use href="#i-pin"/></svg><i>2</i></b><span>Χώρος</span></a>
+    <a href="#secPanels" data-step="secPanels"><b><svg class="ic"><use href="#i-grid"/></svg><i>3</i></b><span>Πάνελ</span></a>
+    <a href="#secShading" data-step="secShading"><b><svg class="ic"><use href="#i-cloud-sun"/></svg><i>4</i></b><span>Σκιές</span></a>
+    <a href="#electrical" data-step="electrical"><b><svg class="ic"><use href="#i-plug"/></svg><i>5</i></b><span>Inverter</span></a>
+    <a href="#secEnergy" data-step="secEnergy"><b><svg class="ic"><use href="#i-zap"/></svg><i>6</i></b><span>Παραγωγή</span></a>
+    <a href="#finance" data-step="finance"><b><svg class="ic"><use href="#i-euro"/></svg><i>7</i></b><span>Οικονομικά</span></a>
+    <button id="btnTheme" class="icon-btn" type="button" title="Σκούρο / φωτεινό θέμα" aria-label="Σκούρο / φωτεινό θέμα"><svg class="ic"><use href="#i-moon"/></svg><svg class="ic"><use href="#i-sun"/></svg></button>
+  </nav>
   <aside id="sidebar">
-    <header>
-      <h1>☀️ PV Designer <small id="appVersion" class="version"></small></h1>
-      <p class="muted">Σχεδιασμός φωτοβολταϊκών και πρόβλεψη παραγωγής</p>
+    <header class="panel-head">
+      <div><span id="stepKicker" class="kicker"></span><span class="brandname">PV Designer <small id="appVersion" class="version"></small></span></div>
+      <button id="btnCollapse" class="icon-btn ghost" type="button" title="Απόκρυψη" aria-label="Απόκρυψη"><svg class="ic"><use href="#i-left"/></svg></button>
     </header>
-
-    <section>
-      <h2>1. Έργο</h2>
+    <div class="panel-body">
+    <section id="secProject" class="step">
+      <h2>Έργο</h2>
       <label>Όνομα έργου <input id="projectName" value="Νέο έργο"></label>
       <details id="reportInfo">
         <summary>Στοιχεία για την αναφορά PDF</summary>
@@ -26,23 +65,23 @@
         <label>Συντάκτης / εταιρεία <input id="reportAuthor" placeholder="Το όνομά σας ή της εταιρείας σας"></label>
       </details>
       <div class="row">
-        <button id="btnSave">💾 Αποθήκευση</button>
+        <button id="btnSave"><svg class="ic"><use href="#i-save"/></svg>Αποθήκευση</button>
         <select id="projectList"><option value="">Άνοιγμα έργου…</option></select>
       </div>
       <div class="row">
-        <button id="btnNew" class="secondary">Νέο</button>
-        <button id="btnDelete" class="secondary danger">Διαγραφή</button>
+        <button id="btnNew" class="secondary"><svg class="ic"><use href="#i-file-plus"/></svg>Νέο</button>
+        <button id="btnDelete" class="secondary danger"><svg class="ic"><use href="#i-trash"/></svg>Διαγραφή</button>
       </div>
     </section>
 
-    <section>
-      <h2>2. Τοποθεσία</h2>
+    <section id="secSite" class="step">
+      <h2>Τοποθεσία</h2>
       <div class="row">
         <input id="searchBox" placeholder="Διεύθυνση ή πόλη…">
-        <button id="btnSearch">🔍</button>
+        <button id="btnSearch" class="icon-btn" title="Αναζήτηση" aria-label="Αναζήτηση"><svg class="ic"><use href="#i-search"/></svg></button>
       </div>
       <p class="muted small">Μετά σχεδίασε την περιοχή με το εργαλείο πολυγώνου πάνω αριστερά στον χάρτη.</p>
-      <div class="row">
+      <div class="row segmented">
         <label class="radio"><input type="radio" name="drawMode" value="area" checked> Περιοχή πάνελ</label>
         <label class="radio"><input type="radio" name="drawMode" value="keepout"> Εμπόδιο</label>
       </div>
@@ -52,8 +91,8 @@
       <p class="muted small" id="shapesInfo">Καμία περιοχή.</p>
     </section>
 
-    <section>
-      <h2>3. Πάνελ και τοποθέτηση</h2>
+    <section id="secPanels" class="step">
+      <h2>Πάνελ και τοποθέτηση</h2>
       <label>Μοντέλο πάνελ
         <select id="panelPreset"></select>
       </label>
@@ -85,14 +124,14 @@
         <label>Κενό μεταξύ πάνελ (m) <input id="colGap" type="number" value="0.02" step="0.01" min="0"></label>
         <label>Κενό σειρών (m) <input id="rowGap" type="number" step="0.1" min="0" placeholder="αυτόματο"></label>
       </div>
-      <button id="btnLayout" class="primary">▦ Τοποθέτηση πάνελ</button>
+      <button id="btnLayout" class="primary"><svg class="ic"><use href="#i-grid"/></svg>Τοποθέτηση πάνελ</button>
     </section>
 
-    <section>
-      <h2>4. Σκιάσεις</h2>
+    <section id="secShading" class="step">
+      <h2>Σκιάσεις</h2>
       <p class="muted small">Υπολογίζει πόση ηλιακή ενέργεια χάνεται τον χρόνο από τις σκιές των εμποδίων
         και των σειρών πάνελ μεταξύ τους. Το αποτέλεσμα μπαίνει αυτόματα στην παραγωγή.</p>
-      <button id="btnShading" class="primary">🌤️ Ανάλυση σκιάσεων</button>
+      <button id="btnShading" class="primary"><svg class="ic"><use href="#i-cloud-sun"/></svg>Ανάλυση σκιάσεων</button>
       <p id="shadingInfo" class="muted small"></p>
       <div id="shadingLegend" class="legend small" hidden>
         <span><i style="background:#2563eb"></i>&lt;1%</span>
@@ -101,7 +140,7 @@
         <span><i style="background:#dc2626"></i>&gt;10%</span>
         <span class="muted">απώλεια ανά πάνελ</span>
       </div>
-      <label class="radio"><input type="checkbox" id="showShadows"> Δείξε τις σκιές στον χάρτη</label>
+      <label class="radio switch"><input type="checkbox" id="showShadows"> Δείξε τις σκιές στον χάρτη</label>
       <div class="grid2" id="shadowControls" hidden>
         <label>Μήνας <select id="shadowMonth"></select></label>
         <label>Ώρα <span id="shadowHourLabel"></span>
@@ -110,8 +149,8 @@
       <p id="sunInfo" class="muted small"></p>
     </section>
 
-    <section id="electrical">
-      <h2>5. Inverters και strings</h2>
+    <section id="electrical" class="step">
+      <h2>Inverters και strings</h2>
       <label>Inverter
         <select id="invPreset"></select>
       </label>
@@ -161,12 +200,12 @@
         </div>
         <p class="muted small">Αν αλλάξεις κάποια τιμή, ο inverter γίνεται «Δικός μου».</p>
       </details>
-      <button id="btnStrings" class="primary">🔌 Σχεδιασμός strings</button>
+      <button id="btnStrings" class="primary"><svg class="ic"><use href="#i-plug"/></svg>Σχεδιασμός strings</button>
       <div id="elecResult"></div>
     </section>
 
-    <section>
-      <h2>6. Παραγωγή ενέργειας</h2>
+    <section id="secEnergy" class="step">
+      <h2>Παραγωγή ενέργειας</h2>
       <label>Μέθοδος υπολογισμού
         <select id="energyMethod">
           <option value="detailed">Αναλυτική: ωριαία προσομοίωση με inverter και απώλειες</option>
@@ -186,26 +225,11 @@
         </div>
         <p class="muted small">Τα καλώδια δίνονται στη μέγιστη ισχύ: σε χαμηλή παραγωγή χάνεται αναλογικά λιγότερο.</p>
       </details>
-      <button id="btnEnergy" class="primary">⚡ Υπολογισμός παραγωγής</button>
+      <button id="btnEnergy" class="primary"><svg class="ic"><use href="#i-zap"/></svg>Υπολογισμός παραγωγής</button>
     </section>
 
-    <section id="results">
-      <h2>Αποτελέσματα</h2>
-      <div class="stats">
-        <div><span id="statCount">–</span><small>πάνελ</small></div>
-        <div><span id="statKwp">–</span><small>kWp</small></div>
-        <div><span id="statKwh">–</span><small>kWh / έτος</small></div>
-        <div><span id="statYield">–</span><small>kWh / kWp</small></div>
-      </div>
-      <p id="statExtra" class="muted small"></p>
-      <p id="energyWarning" class="warning small" hidden></p>
-      <div id="elecSummary"></div>
-      <canvas id="chart" height="180"></canvas>
-      <div id="lossTable"></div>
-      <button id="btnReport" class="primary">📄 Αναφορά PDF για τον πελάτη</button>
-    </section>
-    <section id="finance">
-      <h2>7. Οικονομική ανάλυση</h2>
+    <section id="finance" class="step">
+      <h2>Οικονομική ανάλυση</h2>
       <div class="finance-inputs">
         <div class="grid2">
           <label>Κόστος συστήματος (€/kWp, με ΦΠΑ) <input id="finCapex" type="number" value="1100" step="50" min="0"></label>
@@ -238,7 +262,7 @@
             <label>Διάρκεια ζωής (έτη) <input id="finLife" type="number" value="25" min="1" max="40"></label>
           </div>
         </details>
-        <button id="btnFinance" class="primary">€ Υπολογισμός απόδοσης επένδυσης</button>
+        <button id="btnFinance" class="primary"><svg class="ic"><use href="#i-euro"/></svg>Υπολογισμός απόδοσης επένδυσης</button>
       </div>
       <div id="financeResults" hidden>
         <div class="stats">
@@ -248,14 +272,44 @@
           <div><span id="finLcoe">–</span><small>LCOE €/kWh</small></div>
         </div>
         <p id="finExtra" class="muted small"></p>
-        <canvas id="financeChart" height="200"></canvas>
+        <div class="chart-box"><canvas id="financeChart" height="200"></canvas></div>
         <p class="muted small">Οι υπολογισμοί είναι εκτίμηση. Οι τιμές ρεύματος και οι όροι του κάθε προγράμματος
           αλλάζουν, γι' αυτό έλεγξε τις τρέχουσες τιμές με τον πάροχο και τον ΔΕΔΔΗΕ.</p>
       </div>
     </section>
+    </div>
+    <footer class="panel-foot">
+      <button id="btnPrev" class="ghost" type="button"><svg class="ic"><use href="#i-left"/></svg>Πίσω</button>
+      <button id="btnNext" type="button">Επόμενο<svg class="ic"><use href="#i-right"/></svg></button>
+    </footer>
   </aside>
+  <button id="btnExpand" class="icon-btn" type="button" title="Άνοιγμα" aria-label="Άνοιγμα" hidden><svg class="ic"><use href="#i-right"/></svg></button>
 
-  <main id="map"></main>
+  <div id="mapHint" hidden><svg class="ic"><use href="#i-pentagon"/></svg><span>Σχεδίασε την περιοχή των πάνελ με τα εργαλεία πάνω αριστερά στον χάρτη</span></div>
+  <section id="results" class="dock">
+    <div class="dock-bar">
+      <div class="stats">
+        <div><span id="statCount">–</span><small>πάνελ</small></div>
+        <div><span id="statKwp">–</span><small>kWp</small></div>
+        <div class="hero"><span id="statKwh">–</span><small>kWh / έτος</small></div>
+        <div><span id="statYield">–</span><small>kWh / kWp</small></div>
+      </div>
+      <div class="dock-actions">
+        <button id="btnDock" class="ghost" type="button"><svg class="ic"><use href="#i-chart"/></svg><span>Ανάλυση</span><svg class="ic"><use href="#i-up"/></svg></button>
+        <button id="btnReport" class="primary"><svg class="ic"><use href="#i-file-text"/></svg>Αναφορά PDF</button>
+      </div>
+    </div>
+    <div class="dock-more">
+      <div class="dock-col">
+        <p id="energyWarning" class="warning small" hidden></p>
+        <h3>Μηνιαία παραγωγή</h3>
+        <div class="chart-box"><canvas id="chart" height="180"></canvas></div>
+        <p id="statExtra" class="muted small"></p>
+        <div id="elecSummary"></div>
+      </div>
+      <div class="dock-col" id="lossTable"></div>
+    </div>
+  </section>
   <div id="toast" hidden></div>
 
   <script src="vendor/leaflet/leaflet.js"></script>
@@ -263,5 +317,6 @@
   <script src="vendor/chartjs/chart.umd.js"></script>
   <script src="app.js"></script>
   <script src="electrical.js"></script>
+  <script src="ui.js"></script>
 </body>
 </html>
