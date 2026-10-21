@@ -15,15 +15,74 @@ const state = { projectId: null, layout: null, energy: null };
 let chart = null;
 
 // ---------- Map ----------
-const map = L.map("map", { maxZoom: 22 }).setView([37.9838, 23.7275], 17);
-const satellite = L.tileLayer(
-  "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-  { maxNativeZoom: 19, maxZoom: 22, attribution: "Imagery © Esri" }
+const MAX_ZOOM = 23;
+const map = L.map("map", { maxZoom: MAX_ZOOM }).setView([37.9838, 23.7275], 17);
+
+// Esri imagery is sharper in some places than others (zoom 17 in rural areas, up to
+// 21+ in cities). Above the best available level Esri serves "Map data not yet
+// available" tiles, so each Esri layer stretches its sharpest real tiles instead.
+function esriLayer(url, label) {
+  const layer = L.tileLayer(url, { maxNativeZoom: 19, maxZoom: MAX_ZOOM, attribution: `${label} © Esri, Maxar` });
+  layer.tilemapUrl = url.replace("/tile/{z}/{y}/{x}", "/tilemap");
+  return layer;
+}
+const satellite = esriLayer(
+  "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", "Imagery"
 ).addTo(map);
+const clarity = esriLayer(
+  "https://clarity.maptiles.arcgis.com/arcgis/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", "Clarity"
+);
 const streets = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-  maxNativeZoom: 19, maxZoom: 22, attribution: "© OpenStreetMap",
+  maxNativeZoom: 19, maxZoom: MAX_ZOOM, attribution: "© OpenStreetMap",
 });
-L.control.layers({ "Δορυφόρος": satellite, "Χάρτης": streets }).addTo(map);
+L.control.layers({
+  "Δορυφόρος (Esri)": satellite,
+  "Δορυφόρος (Esri Clarity, συχνά πιο καθαρός)": clarity,
+  "Χάρτης δρόμων": streets,
+}).addTo(map);
+
+// Ask Esri's tilemap which zoom levels have real imagery at the map centre.
+const nativeZoomCache = new Map();
+async function bestNativeZoom(layer) {
+  const c = map.getCenter();
+  const key = `${layer.tilemapUrl}|${c.lat.toFixed(3)}|${c.lng.toFixed(3)}`;
+  if (!nativeZoomCache.has(key)) nativeZoomCache.set(key, await queryNativeZoom(layer, c));
+  return nativeZoomCache.get(key);
+}
+
+async function queryNativeZoom(layer, c) {
+  for (let z = 22; z >= 16; z--) {
+    const n = 2 ** z;
+    const x = Math.floor(((c.lng + 180) / 360) * n);
+    const latR = (c.lat * Math.PI) / 180;
+    const y = Math.floor(((1 - Math.log(Math.tan(latR) + 1 / Math.cos(latR)) / Math.PI) / 2) * n);
+    try {
+      const r = await fetch(`${layer.tilemapUrl}/${z}/${y}/${x}/1/1?f=json`);
+      const d = await r.json();
+      if (d.data && d.data[0] === 1) return z;
+    } catch {
+      return null; // tilemap not reachable: keep the current setting
+    }
+  }
+  return null;
+}
+
+let tilemapTimer = null;
+function refreshNativeZoom() {
+  clearTimeout(tilemapTimer);
+  tilemapTimer = setTimeout(async () => {
+    for (const layer of [satellite, clarity]) {
+      if (!map.hasLayer(layer)) continue;
+      const z = await bestNativeZoom(layer);
+      if (z && z !== layer.options.maxNativeZoom) {
+        layer.options.maxNativeZoom = z;
+        layer.redraw();
+      }
+    }
+  }, 400);
+}
+map.on("moveend baselayerchange", refreshNativeZoom);
+refreshNativeZoom();
 L.control.scale({ imperial: false }).addTo(map);
 
 const areas = new L.FeatureGroup().addTo(map);
