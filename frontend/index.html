@@ -89,6 +89,26 @@
       <p class="muted small">Ύψος πάνω από την επιφάνεια όπου μπαίνουν τα πάνελ (καμινάδα, τοιχίο, δέντρο, γειτονικό κτίριο).
         Με 0 το εμπόδιο απλώς εξαιρείται χωρίς να ρίχνει σκιά. Κάνε κλικ σε ένα εμπόδιο για να αλλάξεις το ύψος του.</p>
       <p class="muted small" id="shapesInfo">Καμία περιοχή.</p>
+      <details id="nudgeBox" open>
+        <summary>Μετατόπιση σχεδίων</summary>
+        <p class="muted small">Αν η εικόνα του χάρτη είναι λίγο μετατοπισμένη, μετακίνησε όλες τις περιοχές και τα εμπόδια μαζί.
+          Και με Shift + βελάκια.</p>
+        <div class="nudge-pad">
+          <button type="button" data-nudge="up" title="Βόρεια" aria-label="Βόρεια">↑</button>
+          <button type="button" data-nudge="left" title="Δυτικά" aria-label="Δυτικά">←</button>
+          <button type="button" data-nudge="right" title="Ανατολικά" aria-label="Ανατολικά">→</button>
+          <button type="button" data-nudge="down" title="Νότια" aria-label="Νότια">↓</button>
+        </div>
+        <div class="row segmented">
+          <label class="radio"><input type="radio" name="nudgeStep" value="0.1" checked> 0,1 m</label>
+          <label class="radio"><input type="radio" name="nudgeStep" value="0.5"> 0,5 m</label>
+          <label class="radio"><input type="radio" name="nudgeStep" value="1"> 1 m</label>
+        </div>
+        <div class="row nudge-foot">
+          <p class="muted small" id="nudgeInfo"></p>
+          <button type="button" id="btnNudgeReset" class="ghost">Επαναφορά</button>
+        </div>
+      </details>
       <details id="googleBox">
         <summary>Χάρτης Google (προαιρετικό)</summary>
         <p class="muted small">Βάλε το κλειδί API της Google για πιο καθαρές δορυφορικές εικόνες. Μένει αποθηκευμένο μόνο στον υπολογιστή σου.</p>
@@ -325,6 +345,7 @@
   <script src="vendor/leaflet-draw/leaflet.draw.js"></script>
   <script src="vendor/chartjs/chart.umd.js"></script>
   <script src="app.js?v=__VERSION__"></script>
+  <script src="nudge.js?v=__VERSION__"></script>
   <script src="electrical.js?v=__VERSION__"></script>
   <script src="ui.js?v=__VERSION__"></script>
 </body>
