@@ -481,6 +481,7 @@ function renderResults() {
     });
   }
   window.elec?.render();
+  window.faces?.renderTable();
   renderFinance();
 }
 

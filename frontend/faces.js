@@ -150,6 +150,28 @@
       const list = areas.getLayers().map((l) => (l.pvFace ? { ...l.pvFace, suggest_deg: l.pvSuggest ?? null } : null));
       return list.some(Boolean) ? list : null;
     },
+    // Results per face: panels, kWp, angles, shading and production.
+    renderTable() {
+      const box = $("facesTable");
+      const l = state.layout;
+      if (!l || !l.faces) { box.innerHTML = ""; return; }
+      const sh = (state.shading && state.shading.faces) || [];
+      const en = {};
+      ((state.energy && state.energy.faces) || []).forEach((f, i) => { en[f.face ?? i] = f; });
+      const rows = l.faces.map((f, i) => {
+        const e = en[i];
+        return `<tr><td>${i + 1}</td><td class="num">${fmt(f.count)}</td><td class="num">${fmt(f.kwp, 2)}</td>
+          <td class="num">${fmt(f.tilt_deg)}°</td><td class="num">${fmt(f.azimuth_deg)}° ${compass(f.azimuth_deg)}</td>
+          <td class="num">${sh[i] ? fmt(sh[i].annual_loss_pct, 1) + "%" : "–"}</td>
+          <td class="num">${e ? fmt(e.annual_kwh) : "–"}</td><td class="num">${e ? fmt(e.specific_yield) : "–"}</td></tr>`;
+      }).join("");
+      box.innerHTML = `<h3>Ανά πλευρά στέγης</h3>
+        <table class="losses faces-table">
+          <tr class="head"><td>Πλευρά</td><td class="num">Πάνελ</td><td class="num">kWp</td><td class="num">Κλίση</td>
+            <td class="num">Αζιμ.</td><td class="num">Σκίαση</td><td class="num">kWh/έτος</td><td class="num">kWh/kWp</td></tr>
+          ${rows}
+        </table>`;
+    },
     load(list) {
       areas.getLayers().forEach((l, i) => {
         const f = (list || [])[i];

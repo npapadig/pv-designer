@@ -377,3 +377,4 @@ table.losses tr.total:last-child td { color: var(--teal); }
 .face-box button:hover { background: #e2e8f0; }
 .face-box button.ghost { background: transparent; color: #475569; }
 .face-box .muted { color: #667085; margin: 0; }
+.faces-table tr.head td { color: var(--muted); font-weight: 650; }

@@ -248,3 +248,48 @@ def test_one_face_designs_like_before():
 def test_electrical_api_with_faces():
     r = client.post("/api/electrical", json={"module": MODULE.model_dump(), "n_modules": 32, "face_modules": [16, 16]})
     assert r.status_code == 200 and len(r.json()["faces"]) == 2
+
+
+def _faces_project():
+    from tests.test_report import make_project
+    lay = compute_faces_layout(GABLE, LayoutParams(setback_m=0.3))
+    faces = [{"tilt_deg": f["tilt_deg"], "azimuth_deg": f["azimuth_deg"]} for f in lay["faces"]]
+    sh = shading.analyze(lay["panels"], [], 30, 180, "flush", faces, lay["panel_face"])
+    en = energy.estimate_faces(LAT0, LON0, [{**f, "kwp": lf["kwp"], "shading_monthly_pct": sf["monthly_loss_pct"]}
+                                            for f, lf, sf in zip(faces, lay["faces"], sh["faces"])], 14, "offline")
+    return make_project(areas=[f["area"] for f in GABLE], layout=lay, shading=sh, energy=en), lay, en
+
+
+def test_face_rows_combine_layout_shading_and_production():
+    from backend import report
+    project, lay, en = _faces_project()
+    rows = report.face_rows(project)
+    assert [r["face"] for r in rows] == [1, 2]
+    assert [r["count"] for r in rows] == [f["count"] for f in lay["faces"]]
+    assert [r["azimuth_deg"] for r in rows] == [180, 0]
+    assert sum(r["annual_kwh"] for r in rows) == en["annual_kwh"]
+    assert rows[1]["specific_yield"] < rows[0]["specific_yield"]
+    project["layout"].pop("faces")
+    assert report.face_rows(project) is None
+
+
+def test_face_rows_match_faces_by_index_when_one_face_is_empty():
+    from backend import report
+    project = {"layout": {"faces": [{"count": 0, "kwp": 0, "tilt_deg": 30, "azimuth_deg": 90},
+                                    {"count": 4, "kwp": 1.64, "tilt_deg": 30, "azimuth_deg": 270}]},
+               "energy": {"faces": [{"face": 1, "annual_kwh": 2000, "specific_yield": 1220}]}}
+    rows = report.face_rows(project)
+    assert rows[0]["annual_kwh"] is None and rows[1]["annual_kwh"] == 2000
+
+
+def test_pdf_with_roof_faces(monkeypatch):
+    from PIL import Image as PILImage
+    from backend import mapimage, report
+    monkeypatch.setattr(mapimage, "_native_zoom", lambda c, lat, lon: 20)
+    monkeypatch.setattr(mapimage, "_fetch_tile", lambda c, z, x, y: PILImage.new("RGB", (256, 256), (80, 110, 70)))
+    project, _, _ = _faces_project()
+    ctx = report.ReportContext(project, imagery=False)
+    flow = report.layout_section(ctx)
+    texts = " ".join(getattr(f, "text", "") for f in flow)
+    assert "Πλευρές στέγης" in texts
+    assert report.build_pdf(project, imagery=False).startswith(b"%PDF")
