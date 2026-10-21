@@ -262,4 +262,21 @@ def project_report(project_id: str):
         raise HTTPException(404, "Το έργο δεν βρέθηκε.")
 
 
+# The page links its own CSS and JS with ?v=<version>, so a browser that cached the files of
+# an older version fetches the new ones after an update. no-cache makes it check every time.
+@app.get("/", include_in_schema=False)
+@app.get("/index.html", include_in_schema=False)
+def index_page():
+    html = (FRONTEND_DIR / "index.html").read_text(encoding="utf-8").replace("__VERSION__", VERSION)
+    return Response(html, media_type="text/html", headers={"Cache-Control": "no-cache"})
+
+
+@app.middleware("http")
+async def no_stale_frontend(request, call_next):
+    response = await call_next(request)
+    if not request.url.path.startswith("/api/"):
+        response.headers.setdefault("Cache-Control", "no-cache")
+    return response
+
+
 app.mount("/", StaticFiles(directory=FRONTEND_DIR, html=True), name="frontend")

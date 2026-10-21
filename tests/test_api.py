@@ -61,3 +61,13 @@ def test_simulate_endpoint_offline(monkeypatch, tmp_path):
     body = r.json()
     assert body["source"] == "offline" and body["warning"]
     assert body["loss_steps"]
+
+
+def test_index_links_assets_with_version():
+    from backend.main import VERSION
+    r = client.get("/")
+    assert r.status_code == 200
+    assert f"style.css?v={VERSION}" in r.text and f"ui.js?v={VERSION}" in r.text
+    assert "__VERSION__" not in r.text
+    assert r.headers["cache-control"] == "no-cache"
+    assert client.get("/style.css").headers["cache-control"] == "no-cache"

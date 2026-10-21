@@ -7,7 +7,7 @@
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Ctext y=%22.9em%22 font-size=%2290%22%3E☀️%3C/text%3E%3C/svg%3E">
   <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
   <link rel="stylesheet" href="vendor/leaflet-draw/leaflet.draw.css">
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css?v=__VERSION__">
   <script>
     // Apply the saved light/dark choice before the page paints, so it does not flash.
     try { const t = localStorage.getItem("pv-designer.theme"); if (t) document.documentElement.dataset.theme = t; } catch {}
@@ -315,8 +315,8 @@
   <script src="vendor/leaflet/leaflet.js"></script>
   <script src="vendor/leaflet-draw/leaflet.draw.js"></script>
   <script src="vendor/chartjs/chart.umd.js"></script>
-  <script src="app.js"></script>
-  <script src="electrical.js"></script>
-  <script src="ui.js"></script>
+  <script src="app.js?v=__VERSION__"></script>
+  <script src="electrical.js?v=__VERSION__"></script>
+  <script src="ui.js?v=__VERSION__"></script>
 </body>
 </html>
