@@ -14,7 +14,7 @@ from pydantic import BaseModel, Field
 
 from . import electrical, energy, finance, report, settings, shading, simulation, storage
 from .equipment import INVERTERS, Inverter
-from .layout import LayoutParams, compute_layout
+from .layout import LayoutParams, compute_faces_layout, compute_layout
 
 # Windows may not know these types; set them so the browser gets the right header.
 mimetypes.add_type("font/woff2", ".woff2")
@@ -44,6 +44,28 @@ class LayoutRequest(BaseModel):
     setback_m: float = Field(0.5, ge=0, le=20)
 
 
+class FaceArea(BaseModel):
+    """One roof face: its outline and, optionally, its own tilt and azimuth (else the common ones)."""
+    area: list[list[float]] = Field(..., description="[[lat, lng], ...]")
+    tilt_deg: float | None = Field(None, ge=0, le=90)
+    azimuth_deg: float | None = Field(None, ge=0, le=360)
+
+
+class FacesLayoutRequest(LayoutRequest):
+    area: list[list[float]] = []  # unused; the faces carry the outlines
+    faces: list[FaceArea] = Field(..., min_length=1)
+
+
+class Face(BaseModel):
+    tilt_deg: float = Field(..., ge=0, le=90)
+    azimuth_deg: float = Field(..., ge=0, le=360)
+
+
+class EnergyFace(Face):
+    kwp: float = Field(..., ge=0)
+    shading_monthly_pct: list[float] | None = Field(None, min_length=12, max_length=12)
+
+
 class EnergyRequest(BaseModel):
     lat: float = Field(..., ge=-90, le=90)
     lon: float = Field(..., ge=-180, le=180)
@@ -53,6 +75,7 @@ class EnergyRequest(BaseModel):
     loss_pct: float = Field(14, ge=0, le=60)
     source: Literal["auto", "pvgis", "offline"] = "auto"
     shading_monthly_pct: list[float] | None = Field(None, min_length=12, max_length=12)
+    faces: list[EnergyFace] | None = None  # roof faces; then kwp/tilt/azimuth/shading come from each face
 
 
 class Obstacle(BaseModel):
@@ -66,6 +89,8 @@ class ShadingRequest(BaseModel):
     tilt_deg: float = Field(30, ge=0, le=90)
     azimuth_deg: float = Field(180, ge=0, le=360)
     mounting: Literal["flush", "rack"] = "flush"
+    faces: list[Face] | None = None        # roof faces with their own tilt/azimuth
+    panel_face: list[int] | None = None    # face index of each panel (needed with faces)
 
 
 class ShadowsRequest(ShadingRequest):
@@ -123,6 +148,7 @@ class SimulationRequest(BaseModel):
     ac_wiring_pct: float = Field(0.5, ge=0, le=20)
     availability_pct: float = Field(0, ge=0, le=50)
     shading_monthly_pct: list[float] | None = Field(None, min_length=12, max_length=12)
+    faces: list[EnergyFace] | None = None  # roof faces on this inverter; their kwp give each one's share
 
 
 @app.get("/api/health")
@@ -159,8 +185,24 @@ def layout(req: LayoutRequest):
         raise HTTPException(400, str(e))
 
 
+@app.post("/api/layout/faces")
+def layout_faces(req: FacesLayoutRequest):
+    params = LayoutParams(**req.model_dump(exclude={"area", "faces"}))
+    try:
+        return compute_faces_layout([f.model_dump() for f in req.faces], params)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
 @app.post("/api/energy")
 def energy_estimate(req: EnergyRequest):
+    if req.faces:
+        try:
+            return energy.estimate_faces(req.lat, req.lon, [f.model_dump() for f in req.faces], req.loss_pct, req.source)
+        except ValueError as e:
+            raise HTTPException(400, str(e))
+        except Exception as e:
+            raise HTTPException(502, str(e))
     try:
         result = energy.estimate(req.lat, req.lon, req.kwp, req.tilt_deg, req.azimuth_deg, req.loss_pct, req.source)
     except Exception as e:
@@ -170,11 +212,15 @@ def energy_estimate(req: EnergyRequest):
     return result
 
 
+def _faces(req) -> list[dict] | None:
+    return [f.model_dump() for f in req.faces] if req.faces else None
+
+
 @app.post("/api/shading")
 def shading_analysis(req: ShadingRequest):
     try:
         return shading.analyze(req.panels, [o.model_dump() for o in req.obstacles],
-                               req.tilt_deg, req.azimuth_deg, req.mounting)
+                               req.tilt_deg, req.azimuth_deg, req.mounting, _faces(req), req.panel_face)
     except ValueError as e:
         raise HTTPException(400, str(e))
 
@@ -183,7 +229,7 @@ def shading_analysis(req: ShadingRequest):
 def shadows(req: ShadowsRequest):
     try:
         return shading.shadows_at(req.panels, [o.model_dump() for o in req.obstacles],
-                                  req.tilt_deg, req.azimuth_deg, req.mounting, req.when)
+                                  req.tilt_deg, req.azimuth_deg, req.mounting, req.when, _faces(req), req.panel_face)
     except ValueError as e:
         raise HTTPException(400, str(e))
 
@@ -213,6 +259,9 @@ def electrical_design(req: ElectricalRequest):
 def simulate(req: SimulationRequest):
     args = req.model_dump()
     args["tilt"], args["azimuth"] = args.pop("tilt_deg"), args.pop("azimuth_deg")
+    if args["faces"]:
+        args["faces"] = [{"dc_kwp": f["kwp"], "tilt": f["tilt_deg"], "azimuth": f["azimuth_deg"],
+                          "shading_monthly_pct": f["shading_monthly_pct"]} for f in args["faces"]]
     try:
         return simulation.simulate(**args)
     except ValueError as e:

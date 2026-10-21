@@ -140,3 +140,65 @@ def estimate(lat, lon, kwp, tilt, azimuth, loss_pct=14.0, source="auto") -> dict
             )
             return result
     return offline_estimate(lat, lon, kwp, tilt, azimuth, loss_pct)
+
+
+def estimate_faces(lat, lon, faces, loss_pct=14.0, source="auto") -> dict:
+    """Production of several roof faces, each with its own power, tilt, azimuth and shading.
+
+    faces: [{"kwp", "tilt_deg", "azimuth_deg", "shading_monthly_pct" (optional)}, ...].
+    Each face is estimated on its own (PVGIS or offline) and the results are added up;
+    "faces" in the result keeps the numbers of each face.
+    """
+    parts = []
+    for f in faces:
+        if f["kwp"] <= 0:
+            continue
+        r = estimate(lat, lon, f["kwp"], f["tilt_deg"], f["azimuth_deg"], loss_pct, source)
+        if f.get("shading_monthly_pct"):
+            r = apply_shading(r, f["shading_monthly_pct"], f["kwp"])
+        parts.append((f, r))
+    if not parts:
+        raise ValueError("Η ισχύς πρέπει να είναι μεγαλύτερη από 0.")
+    kwp = sum(f["kwp"] for f, _ in parts)
+
+    def weighted(get):  # average over the faces, weighted by their power
+        return sum(f["kwp"] * get(r) for f, r in parts) / kwp
+
+    monthly = []
+    for i in range(12):
+        m = {
+            "month": i + 1,
+            "kwh": round(sum(r["monthly"][i]["kwh"] for _, r in parts), 1),
+            "irradiation": round(weighted(lambda r: r["monthly"][i]["irradiation"]), 1),
+        }
+        if any("kwh_unshaded" in r["monthly"][i] for _, r in parts):
+            m["kwh_unshaded"] = round(sum(r["monthly"][i].get("kwh_unshaded", r["monthly"][i]["kwh"]) for _, r in parts), 1)
+        monthly.append(m)
+    annual = sum(r["annual_kwh"] for _, r in parts)
+    sources = list(dict.fromkeys(r["source"] for _, r in parts))
+    keys = set.intersection(*(set(r.get("losses", {})) for _, r in parts))
+    result = {
+        "source": " + ".join(sources),
+        "annual_kwh": round(annual, 0),
+        "specific_yield": round(annual / kwp, 0),
+        "monthly": monthly,
+        "annual_irradiation": round(weighted(lambda r: r["annual_irradiation"]), 0),
+        "total_losses_pct": round(weighted(lambda r: r["total_losses_pct"]), 1),
+        "losses": {k: round(weighted(lambda r: r["losses"][k]), 2) for k in sorted(keys)},
+        "faces": [
+            {"kwp": f["kwp"], "tilt_deg": f["tilt_deg"], "azimuth_deg": f["azimuth_deg"],
+             "annual_kwh": r["annual_kwh"], "specific_yield": r["specific_yield"],
+             "annual_irradiation": r["annual_irradiation"], "shading_loss_pct": r.get("shading_loss_pct", 0.0)}
+            for f, r in parts
+        ],
+    }
+    if any("annual_kwh_unshaded" in r for _, r in parts):
+        before = sum(r.get("annual_kwh_unshaded", r["annual_kwh"]) for _, r in parts)
+        loss = round(100 * (1 - annual / before), 2) if before else 0.0
+        result["annual_kwh_unshaded"] = round(before, 0)
+        result["shading_loss_pct"] = round(loss, 1)
+        result["losses"]["shading"] = loss
+    warning = next((r["warning"] for _, r in parts if r.get("warning")), None)
+    if warning:
+        result["warning"] = warning
+    return result

@@ -7,7 +7,7 @@ filled row by row, then rotated and projected back to lat/lng.
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 
 from pyproj import Transformer
 from shapely import affinity
@@ -122,4 +122,36 @@ def compute_layout(area_latlngs: list, p: LayoutParams) -> dict:
         "module_area_m2": round(count * p.panel_width_m * p.panel_length_m, 1),
         "row_gap_m": round(row_gap, 2),
         "center": [lat0, lon0],
+    }
+
+
+def compute_faces_layout(faces: list, p: LayoutParams) -> dict:
+    """Layout of several roof faces, each with its own tilt and azimuth (None = the common value in p).
+
+    faces: [{"area": [[lat, lng], ...], "tilt_deg": float | None, "azimuth_deg": float | None}, ...].
+    Returns the totals, all panels in one list with the face index of each panel, and one entry per face.
+    """
+    if not faces:
+        raise ValueError("Δεν υπάρχει καμία πλευρά στέγης.")
+    panels, panel_face, per_face = [], [], []
+    for i, f in enumerate(faces):
+        tilt = p.tilt_deg if f.get("tilt_deg") is None else f["tilt_deg"]
+        azimuth = p.azimuth_deg if f.get("azimuth_deg") is None else f["azimuth_deg"]
+        res = compute_layout(f["area"], replace(p, tilt_deg=tilt, azimuth_deg=azimuth))
+        panels += res["panels"]
+        panel_face += [i] * res["count"]
+        per_face.append({"tilt_deg": tilt, "azimuth_deg": azimuth,
+                         **{k: v for k, v in res.items() if k != "panels"}})
+    count = len(panels)
+    return {
+        "panels": panels,
+        "panel_face": panel_face,
+        "faces": per_face,
+        "count": count,
+        "kwp": round(count * p.panel_power_w / 1000.0, 3),
+        "area_m2": round(sum(f["area_m2"] for f in per_face), 1),
+        "usable_area_m2": round(sum(f["usable_area_m2"] for f in per_face), 1),
+        "module_area_m2": round(count * p.panel_width_m * p.panel_length_m, 1),
+        "row_gap_m": per_face[-1]["row_gap_m"],
+        "center": per_face[0]["center"],
     }
