@@ -24,13 +24,15 @@ const elec = {
   collect() {
     const inputs = {};
     ELEC_INPUTS.forEach((id) => (inputs[id] = $(id).value));
+    inputs.mixFaces = $("mixFaces").checked;
     const design = state.electrical || null;
     return { inputs, design, report: design ? design.report : null };
   },
 
   load(saved) {
     if (!saved) return;
-    Object.entries(saved.inputs || {}).forEach(([id, v]) => { if ($(id) && v != null) $(id).value = v; });
+    Object.entries(saved.inputs || {}).forEach(([id, v]) => { if ($(id) && v != null && id !== "mixFaces") $(id).value = v; });
+    $("mixFaces").checked = !!(saved.inputs || {}).mixFaces;
     toggleLossInputs();
     state.electrical = saved.design || null;
     renderDesign();
@@ -49,7 +51,8 @@ const elec = {
       soiling_pct: +$("lSoiling").value, mismatch_pct: +$("lMismatch").value, module_quality_pct: +$("lQuality").value,
       dc_wiring_pct: +$("lDc").value, ac_wiring_pct: +$("lAc").value, availability_pct: +$("lAvail").value,
       shading_monthly_pct: state.shading ? state.shading.monthly_loss_pct : null,
-      faces: window.faces?.energyFaces() || null,
+      // With strings per face, each face brings the power of its connected panels.
+      faces: (window.faces?.energyFaces() || null)?.map((f, i) => (d.faces ? { ...f, kwp: d.faces[i].dc_kwp } : f)) || null,
     });
   },
 
@@ -107,7 +110,7 @@ Object.keys(INV_FIELDS).forEach((id) => $(id).addEventListener("input", () => {
   elec.reset();
 }));
 ["invCount", "modsPerString", "dcAcTarget", "tMin", "tMax", "phases", "modVoc", "modIsc", "modVmp", "modImp",
-  "modBetaVoc", "mounting", "panelPower"].forEach((id) => $(id).addEventListener("change", () => elec.reset()));
+  "modBetaVoc", "mounting", "panelPower", "mixFaces"].forEach((id) => $(id).addEventListener("change", () => elec.reset()));
 
 function toggleLossInputs() {
   $("lossSimple").hidden = elec.detailed();
@@ -148,6 +151,8 @@ async function runDesign() {
     mounting: $("mounting").value,
     dc_ac_target: +$("dcAcTarget").value,
     phases: $("phases").value,
+    face_modules: state.layout.faces ? state.layout.faces.map((f) => f.count) : null,
+    mix_faces: $("mixFaces").checked,
   });
   if (sel === "auto") fillInverterFields(state.electrical.inverter);
   state.energy = null;
@@ -158,7 +163,10 @@ $("btnStrings").onclick = () => withBusy($("btnStrings"), runDesign);
 const ICONS = { ok: "✅", warning: "⚠️", error: "⛔" };
 
 function designHeadline(d) {
-  return `${d.n_inverters} × ${d.inverter.name} · ${d.n_strings} string(s) των ${d.modules_per_string} πάνελ · ` +
+  const lengths = d.faces
+    ? [...new Set(d.faces.filter((f) => f.strings).map((f) => f.modules_per_string))].join("/")
+    : d.modules_per_string;
+  return `${d.n_inverters} × ${d.inverter.name} · ${d.n_strings} string(s) των ${lengths} πάνελ · ` +
     `${fmt(d.dc_kwp, 2)} kWp DC / ${fmt(d.ac_kw, 1)} kW AC · DC/AC ${fmt(d.dc_ac_ratio, 2)}`;
 }
 
@@ -167,12 +175,18 @@ function renderDesign() {
   const d = state.electrical;
   if (!d) { box.innerHTML = ""; return; }
   const esc = (t) => String(t).replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[c]);
+  const side = (p, j) => (p.mppt_faces && p.mppt_faces[j].length
+    ? ` (πλευρά ${p.mppt_faces[j].map((f) => f + 1).join(" + ")})` : "");
   const invRows = d.per_inverter.map((p, i) =>
-    `<li>Inverter ${i + 1}: ${p.mppts.map((n, j) => `MPPT ${j + 1}: ${n} string`).join(", ")}</li>`).join("");
+    `<li>Inverter ${i + 1}: ${p.mppts.map((n, j) => `MPPT ${j + 1}: ${n} string${side(p, j)}`).join(", ")}</li>`).join("");
+  const faceRows = d.faces ? d.faces.map((f, i) =>
+    `<li>Πλευρά ${i + 1}: ${f.modules_used} από ${f.modules} πάνελ` +
+    (f.strings ? ` σε ${f.strings} string των ${f.modules_per_string}, ${f.mppts} MPPT` : " (δεν συνδέονται)") + `</li>`).join("") : "";
   box.innerHTML = `
     <div class="elec-card ${d.ok ? "" : "bad"}">
       <strong>${esc(designHeadline(d))}</strong>
       <ul class="small">${invRows}</ul>
+      ${faceRows ? `<ul class="small">${faceRows}</ul>` : ""}
       <p class="muted small">Τάση string: ${fmt(d.voltages.voc_cold)} V ανοιχτοκύκλωμα στο κρύο, λειτουργία
         ${fmt(d.voltages.vmp_hot)}–${fmt(d.voltages.vmp_cold)} V (κύτταρα ${fmt(d.temps.cell_max)} έως ${fmt(d.temps.cell_min)} °C).
         Επιτρεπτό μήκος string για αυτόν τον inverter: ${d.string_range.min}–${d.string_range.max} πάνελ.</p>

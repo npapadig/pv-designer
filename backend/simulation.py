@@ -150,7 +150,7 @@ def simulate(
         share = sum(f["dc_kwp"] for f in faces)
         if share <= 0:
             raise ValueError("Χρειάζονται πάνελ και inverter για την προσομοίωση.")
-        faces = [{**f, "dc_kwp": f["dc_kwp"] * dc_kwp / share} for f in faces if f["dc_kwp"] > 0]
+        faces = [{**f, "dc_kwp": f["dc_kwp"] * dc_kwp / share, "face": i} for i, f in enumerate(faces) if f["dc_kwp"] > 0]
     else:
         faces = [{"dc_kwp": dc_kwp, "tilt": tilt, "azimuth": azimuth, "shading_monthly_pct": shading_monthly_pct}]
     chains = []
@@ -285,7 +285,7 @@ def simulate(
         for f, c in zip(faces, chains):
             kwh = annual * float(c["steps"]["dc_wiring"].sum()) / 1000.0 / dc_total if dc_total else 0.0
             result["faces"].append({
-                "kwp": round(f["dc_kwp"], 3), "tilt_deg": f["tilt"], "azimuth_deg": f["azimuth"],
+                "face": f["face"], "kwp": round(f["dc_kwp"], 3), "tilt_deg": f["tilt"], "azimuth_deg": f["azimuth"],
                 "annual_kwh": round(kwh, 0), "specific_yield": round(kwh / f["dc_kwp"], 0),
                 "annual_irradiation": round(float(c["poa_global"].sum()) / 1000.0, 0),
             })

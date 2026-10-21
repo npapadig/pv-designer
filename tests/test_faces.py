@@ -2,6 +2,8 @@
 from fastapi.testclient import TestClient
 
 from backend import energy, shading, simulation
+from backend.electrical import Module, design
+from backend.equipment import INVERTERS
 from backend.layout import LayoutParams, compute_faces_layout, compute_layout, split_area
 from backend.main import app
 from tests.test_layout import LAT0, LON0
@@ -188,3 +190,106 @@ def test_split_api():
     r = client.post("/api/split", json={"area": rect(-5, -4, 5, 4), "line": rect(-6, 0, 6, 0)[:2]})
     assert r.status_code == 200 and len(r.json()["pieces"]) == 2
     assert client.post("/api/split", json={"area": rect(-5, -4, 5, 4), "line": [[LAT0, LON0]]}).status_code == 400
+
+
+MODULE = Module(power_w=410, voc=37.3, isc=13.9, vmp=31.0, imp=13.2)
+
+
+def test_strings_stay_on_their_face_with_own_mppt():
+    d = design(MODULE, 0, face_modules=[16, 16])
+    assert d["modules_used"] == 32 and not d["mppt_shared"]
+    assert [f["modules_used"] for f in d["faces"]] == [16, 16]
+    # Every MPPT carries strings of one face only, and both faces have their own MPPT.
+    mppts = [m for p in d["per_inverter"] for m in p["mppt_faces"] if m]
+    assert all(len(m) == 1 for m in mppts)
+    assert {m[0] for m in mppts} == {0, 1}
+    assert d["report"]["tables"][-1]["title"] == "Strings ανά πλευρά στέγης"
+
+
+def test_faces_strings_can_have_different_lengths():
+    d = design(MODULE, 0, face_modules=[20, 9], phases="3")
+    lengths = [f["modules_per_string"] for f in d["faces"]]
+    assert lengths[1] == 9 and lengths[0] in (10, 20)
+    assert d["modules_used"] == 29
+    # Cold voltage from the longest string, hot voltage from the shortest.
+    assert d["voltages"]["voc_cold"] > d["voltages"]["vmp_hot"] / 9 * max(lengths)
+
+
+def test_more_faces_than_mppts_warns():
+    inv = next(i for i in INVERTERS if i.n_mppt == 2 and i.phases == 3 and i.pac_w >= 10000)
+    d = design(MODULE, 0, inverter=inv, n_inverters=1, face_modules=[10, 10, 10])
+    # One string per MPPT fits (current limit): the third face finds no MPPT and is left out, with a warning.
+    assert d["mppt_shared"] and d["modules_used"] == 20
+    assert any("περισσότερα MPPT" in c["text"] and "ασύνδετα" in c["text"] for c in d["checks"])
+
+
+def test_face_too_small_for_a_string_warns():
+    d = design(MODULE, 0, face_modules=[14, 3], phases="3")
+    assert d["faces"][1]["strings"] == 0
+    assert any("Η πλευρά 2" in c["text"] for c in d["checks"])
+
+
+def test_mixing_faces_uses_all_panels_and_warns():
+    d = design(MODULE, 0, face_modules=[14, 7], phases="3", mix_faces=True)
+    assert d["modules_used"] == 21 and d["mix_faces"]
+    assert any("ανάμειξη" in c["text"] for c in d["checks"])
+
+
+def test_one_face_designs_like_before():
+    old = design(MODULE, 24)
+    new = design(MODULE, 0, face_modules=[24, 0])
+    new.pop("faces"), new.pop("mppt_shared")
+    for inv in new["per_inverter"]:
+        inv.pop("mppt_faces")
+    old["report"]["tables"], new["report"]["tables"] = old["report"]["tables"][:2], new["report"]["tables"][:2]
+    assert new == old
+
+
+def test_electrical_api_with_faces():
+    r = client.post("/api/electrical", json={"module": MODULE.model_dump(), "n_modules": 32, "face_modules": [16, 16]})
+    assert r.status_code == 200 and len(r.json()["faces"]) == 2
+
+
+def _faces_project():
+    from tests.test_report import make_project
+    lay = compute_faces_layout(GABLE, LayoutParams(setback_m=0.3))
+    faces = [{"tilt_deg": f["tilt_deg"], "azimuth_deg": f["azimuth_deg"]} for f in lay["faces"]]
+    sh = shading.analyze(lay["panels"], [], 30, 180, "flush", faces, lay["panel_face"])
+    en = energy.estimate_faces(LAT0, LON0, [{**f, "kwp": lf["kwp"], "shading_monthly_pct": sf["monthly_loss_pct"]}
+                                            for f, lf, sf in zip(faces, lay["faces"], sh["faces"])], 14, "offline")
+    return make_project(areas=[f["area"] for f in GABLE], layout=lay, shading=sh, energy=en), lay, en
+
+
+def test_face_rows_combine_layout_shading_and_production():
+    from backend import report
+    project, lay, en = _faces_project()
+    rows = report.face_rows(project)
+    assert [r["face"] for r in rows] == [1, 2]
+    assert [r["count"] for r in rows] == [f["count"] for f in lay["faces"]]
+    assert [r["azimuth_deg"] for r in rows] == [180, 0]
+    assert sum(r["annual_kwh"] for r in rows) == en["annual_kwh"]
+    assert rows[1]["specific_yield"] < rows[0]["specific_yield"]
+    project["layout"].pop("faces")
+    assert report.face_rows(project) is None
+
+
+def test_face_rows_match_faces_by_index_when_one_face_is_empty():
+    from backend import report
+    project = {"layout": {"faces": [{"count": 0, "kwp": 0, "tilt_deg": 30, "azimuth_deg": 90},
+                                    {"count": 4, "kwp": 1.64, "tilt_deg": 30, "azimuth_deg": 270}]},
+               "energy": {"faces": [{"face": 1, "annual_kwh": 2000, "specific_yield": 1220}]}}
+    rows = report.face_rows(project)
+    assert rows[0]["annual_kwh"] is None and rows[1]["annual_kwh"] == 2000
+
+
+def test_pdf_with_roof_faces(monkeypatch):
+    from PIL import Image as PILImage
+    from backend import mapimage, report
+    monkeypatch.setattr(mapimage, "_native_zoom", lambda c, lat, lon: 20)
+    monkeypatch.setattr(mapimage, "_fetch_tile", lambda c, z, x, y: PILImage.new("RGB", (256, 256), (80, 110, 70)))
+    project, _, _ = _faces_project()
+    ctx = report.ReportContext(project, imagery=False)
+    flow = report.layout_section(ctx)
+    texts = " ".join(getattr(f, "text", "") for f in flow)
+    assert "Πλευρές στέγης" in texts
+    assert report.build_pdf(project, imagery=False).startswith(b"%PDF")

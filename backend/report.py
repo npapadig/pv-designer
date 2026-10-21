@@ -262,6 +262,41 @@ def headline_kpis(ctx: ReportContext) -> list[tuple[str, str]]:
     return items
 
 
+def face_rows(project: dict) -> list[dict] | None:
+    """One row per roof face (panels, kWp, angles, shading, production), or None without faces."""
+    faces = (project.get("layout") or {}).get("faces")
+    if not faces:
+        return None
+    shading = (project.get("shading") or {}).get("faces") or []
+    energy = {f.get("face", i): f for i, f in enumerate((project.get("energy") or {}).get("faces") or [])}
+    rows = []
+    for i, f in enumerate(faces):
+        e = energy.get(i) or {}
+        rows.append({
+            "face": i + 1, "count": f.get("count", 0), "kwp": f.get("kwp", 0.0),
+            "tilt_deg": f.get("tilt_deg"), "azimuth_deg": f.get("azimuth_deg"),
+            "shading_pct": shading[i]["annual_loss_pct"] if i < len(shading) else None,
+            "annual_kwh": e.get("annual_kwh"),
+            "specific_yield": e.get("specific_yield"),
+        })
+    return rows
+
+
+def _faces_table(ctx: "ReportContext", rows: list[dict]):
+    table = [[str(r["face"]), num(r["count"]), num(r["kwp"], 2), f"{num(r['tilt_deg'])}°",
+              f"{num(r['azimuth_deg'])}° ({compass(r['azimuth_deg'])})",
+              f"{num(r['shading_pct'], 1)}%" if r["shading_pct"] is not None else "–",
+              num(r["annual_kwh"]) if r["annual_kwh"] is not None else "–",
+              num(r["specific_yield"]) if r["specific_yield"] is not None else "–"] for r in rows]
+    kwh = [r["annual_kwh"] for r in rows if r["annual_kwh"] is not None]
+    kwp = sum(r["kwp"] for r in rows)
+    table.append(["Σύνολο", num(sum(r["count"] for r in rows)), num(kwp, 2), "", "", "",
+                  num(sum(kwh)) if kwh else "–", num(sum(kwh) / kwp) if kwh and kwp else "–"])
+    return ctx.data_table(["Πλευρά", "Πάνελ", "kWp", "Κλίση", "Αζιμούθιο", "Σκίαση", "kWh/έτος", "kWh/kWp"],
+                          table, total_row=True,
+                          widths=[CONTENT_W * w for w in (0.1, 0.09, 0.1, 0.1, 0.19, 0.12, 0.15, 0.15)])
+
+
 # ---------------------------------------------------------------- cover
 def cover(ctx: ReportContext) -> list:
     p, info, st = ctx.project, ctx.info, ctx.styles
@@ -294,6 +329,10 @@ def summary_section(ctx: ReportContext):
         text = (f"Προτείνεται φωτοβολταϊκό σύστημα ισχύος <b>{num(ctx.kwp(), 2)} kWp</b> με "
                 f"<b>{num(l.get('count'))}</b> πάνελ, με κλίση {num(s.get('tilt_deg'))}° και "
                 f"{compass(s.get('azimuth_deg', 180)).lower()} προσανατολισμό ({num(s.get('azimuth_deg'))}°).")
+        if l.get("faces"):
+            text = (f"Προτείνεται φωτοβολταϊκό σύστημα ισχύος <b>{num(ctx.kwp(), 2)} kWp</b> με "
+                    f"<b>{num(l.get('count'))}</b> πάνελ σε {len(l['faces'])} πλευρές στέγης, η καθεμία με "
+                    "τη δική της κλίση και προσανατολισμό.")
         if e:
             text += (f" Η αναμενόμενη ετήσια παραγωγή είναι <b>{num(e.get('annual_kwh'))} kWh</b>, "
                      f"δηλαδή {num(e.get('specific_yield'))} kWh ανά εγκατεστημένο kWp.")
@@ -346,7 +385,15 @@ def layout_section(ctx: ReportContext):
         ("Κενό μεταξύ σειρών", f"{num(row_gap, 2)} m" if row_gap is not None else "–"),
         ("Αριθμός εμποδίων", num(len(ctx.project.get("keepouts") or []))),
     ]
+    faces = face_rows(ctx.project)
+    if faces:
+        rows = [r for r in rows if r[0] not in ("Κλίση", "Αζιμούθιο")]
+        rows.insert(7, ("Πλευρές στέγης", f"{len(faces)} (δες τον πίνακα)"))
     out += [CondPageBreak(8 * cm), ctx.subheading("Στοιχεία συστήματος"), ctx.kv_table(rows)]
+    if faces:
+        out += [CondPageBreak(5 * cm), ctx.subheading("Πλευρές στέγης"), _faces_table(ctx, faces), Spacer(1, 4),
+                ctx.para("Κάθε πλευρά υπολογίζεται με τη δική της κλίση, προσανατολισμό και σκίαση. "
+                         "Αζιμούθιο: 0° Βορράς, 90° Ανατολή, 180° Νότος, 270° Δύση.", "small")]
     return out
 
 

@@ -150,9 +150,10 @@ def estimate_faces(lat, lon, faces, loss_pct=14.0, source="auto") -> dict:
     "faces" in the result keeps the numbers of each face.
     """
     parts = []
-    for f in faces:
+    for i, f in enumerate(faces):
         if f["kwp"] <= 0:
             continue
+        f = {**f, "face": i}
         r = estimate(lat, lon, f["kwp"], f["tilt_deg"], f["azimuth_deg"], loss_pct, source)
         if f.get("shading_monthly_pct"):
             r = apply_shading(r, f["shading_monthly_pct"], f["kwp"])
@@ -186,7 +187,7 @@ def estimate_faces(lat, lon, faces, loss_pct=14.0, source="auto") -> dict:
         "total_losses_pct": round(weighted(lambda r: r["total_losses_pct"]), 1),
         "losses": {k: round(weighted(lambda r: r["losses"][k]), 2) for k in sorted(keys)},
         "faces": [
-            {"kwp": f["kwp"], "tilt_deg": f["tilt_deg"], "azimuth_deg": f["azimuth_deg"],
+            {"face": f["face"], "kwp": f["kwp"], "tilt_deg": f["tilt_deg"], "azimuth_deg": f["azimuth_deg"],
              "annual_kwh": r["annual_kwh"], "specific_yield": r["specific_yield"],
              "annual_irradiation": r["annual_irradiation"], "shading_loss_pct": r.get("shading_loss_pct", 0.0)}
             for f, r in parts
