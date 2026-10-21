@@ -37,9 +37,16 @@ const clarity = esriLayer(
 const streets = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
   maxNativeZoom: 19, maxZoom: MAX_ZOOM, attribution: "© OpenStreetMap",
 });
+// Hellenic Cadastre aerial orthophotos (free WMS, Greece only, imagery from about
+// 2007-2009). Requested in EPSG:4326, which the service has long supported.
+const ktimatologio = L.tileLayer.wms("http://gis.ktimanet.gr/wms/wmsopen/wmsserver.aspx", {
+  layers: "KTBASEMAP", format: "image/jpeg", version: "1.1.1", crs: L.CRS.EPSG4326,
+  maxNativeZoom: 20, maxZoom: MAX_ZOOM, attribution: "Ορθοφωτογραφίες © Ελληνικό Κτηματολόγιο",
+});
 L.control.layers({
   "Δορυφόρος (Esri)": satellite,
   "Δορυφόρος (Esri Clarity, συχνά πιο καθαρός)": clarity,
+  "Ορθοφωτογραφίες Κτηματολογίου (Ελλάδα, 2007-09)": ktimatologio,
   "Χάρτης δρόμων": streets,
 }).addTo(map);
 
