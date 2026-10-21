@@ -21,5 +21,4 @@
 
 ## Next steps
 - Confirm with the owner that Google and Κτηματολόγιο layers show imagery.
-- Owner asked (2026-10-21) about "το εργαλείο με τα κουτάκια" (likely a box/rectangle drawing or panel-grid tool);
-  clarify what they mean before building.
+- Owner prefers multiple-choice questions; in chat use numbered options (no checkbox cards available).
