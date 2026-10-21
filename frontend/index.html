@@ -46,6 +46,9 @@
         <label class="radio"><input type="radio" name="drawMode" value="area" checked> Περιοχή πάνελ</label>
         <label class="radio"><input type="radio" name="drawMode" value="keepout"> Εμπόδιο</label>
       </div>
+      <label>Ύψος νέου εμποδίου (m) <input id="obstacleHeight" type="number" value="1" step="0.5" min="0"></label>
+      <p class="muted small">Ύψος πάνω από την επιφάνεια όπου μπαίνουν τα πάνελ (καμινάδα, τοιχίο, δέντρο, γειτονικό κτίριο).
+        Με 0 το εμπόδιο απλώς εξαιρείται χωρίς να ρίχνει σκιά. Κάνε κλικ σε ένα εμπόδιο για να αλλάξεις το ύψος του.</p>
       <p class="muted small" id="shapesInfo">Καμία περιοχή.</p>
     </section>
 
@@ -86,7 +89,29 @@
     </section>
 
     <section>
-      <h2>4. Παραγωγή ενέργειας</h2>
+      <h2>4. Σκιάσεις</h2>
+      <p class="muted small">Υπολογίζει πόση ηλιακή ενέργεια χάνεται τον χρόνο από τις σκιές των εμποδίων
+        και των σειρών πάνελ μεταξύ τους. Το αποτέλεσμα μπαίνει αυτόματα στην παραγωγή.</p>
+      <button id="btnShading" class="primary">🌤️ Ανάλυση σκιάσεων</button>
+      <p id="shadingInfo" class="muted small"></p>
+      <div id="shadingLegend" class="legend small" hidden>
+        <span><i style="background:#2563eb"></i>&lt;1%</span>
+        <span><i style="background:#facc15"></i>1–5%</span>
+        <span><i style="background:#f97316"></i>5–10%</span>
+        <span><i style="background:#dc2626"></i>&gt;10%</span>
+        <span class="muted">απώλεια ανά πάνελ</span>
+      </div>
+      <label class="radio"><input type="checkbox" id="showShadows"> Δείξε τις σκιές στον χάρτη</label>
+      <div class="grid2" id="shadowControls" hidden>
+        <label>Μήνας <select id="shadowMonth"></select></label>
+        <label>Ώρα <span id="shadowHourLabel"></span>
+          <input id="shadowHour" type="range" min="6" max="20" step="0.5" value="10"></label>
+      </div>
+      <p id="sunInfo" class="muted small"></p>
+    </section>
+
+    <section>
+      <h2>5. Παραγωγή ενέργειας</h2>
       <label>Συνολικές απώλειες συστήματος (%) <input id="loss" type="number" value="14" min="0" max="60"></label>
       <button id="btnEnergy" class="primary">⚡ Υπολογισμός παραγωγής</button>
     </section>

@@ -417,7 +417,8 @@ def loss_steps(ctx: ReportContext) -> tuple[float, list[tuple[str, float, float]
     nominal = h * kwp
     losses = e.get("losses") or {}
     steps, cur = [], nominal
-    for key, label in [("aoi", "Γωνία πρόσπτωσης (ανακλάσεις στο γυαλί)"),
+    for key, label in [("shading", "Σκιάσεις (εμπόδια και σειρές πάνελ)"),
+                       ("aoi", "Γωνία πρόσπτωσης (ανακλάσεις στο γυαλί)"),
                        ("spectral", "Φασματικές επιδράσεις"),
                        ("temperature", "Θερμοκρασία και χαμηλή ακτινοβολία")]:
         pct = losses.get(key)
