@@ -23,7 +23,10 @@ Repo: github.com/npapadig/pv-designer, single `main` branch, several Claude thre
   `shading.py`, `electrical.py` + `equipment.py`, `finance.py`, `report.py` + `mapimage.py` (reportlab PDF,
   fonts in `backend/fonts/`), `storage.py` (projects), `settings.py` (`data/settings.json`, Google key).
 - Frontend: plain HTML/JS, no build step. `frontend/app.js` (map, layers, steps logic, API calls),
-  `electrical.js` (inverter/simulation UI), `ui.js` (look: rail, panel, dock, theme). Libraries vendored in
+  `electrical.js` (inverter/simulation UI), `ui.js` (look: rail, panel, dock, theme), `nudge.js` (move all drawings
+  by metres to match offset imagery; uses app.js globals).
+- Roof faces (v0.6, backend only so far): `/api/layout/faces`, and optional `faces` / `panel_face` on
+  `/api/shading`, `/api/shadows`, `/api/energy`, `/api/simulate` (details in `docs/streams/faces.md`). Libraries vendored in
   `frontend/vendor/` (Leaflet 1.9.4, Leaflet.draw 1.0.4, Chart.js 4.4.1, Inter font).
 - Data that must survive updates lives in `data/` (git-ignored, excluded by the updater).
 - Version: `VERSION` → `GET /api/version` → header badge and launcher console. `CHANGELOG.md` in Greek.
