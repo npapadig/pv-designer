@@ -11,8 +11,8 @@ from dataclasses import dataclass, field, replace
 
 from pyproj import Transformer
 from shapely import affinity
-from shapely.geometry import Polygon, box
-from shapely.ops import unary_union
+from shapely.geometry import LineString, Polygon, box
+from shapely.ops import split, unary_union
 
 # Sun elevation at solar noon on the winter solstice is 90 - lat - 23.44.
 WINTER_SOLSTICE_DECLINATION = 23.44
@@ -155,3 +155,53 @@ def compute_faces_layout(faces: list, p: LayoutParams) -> dict:
         "row_gap_m": per_face[-1]["row_gap_m"],
         "center": per_face[0]["center"],
     }
+
+
+def _bearing(dx: float, dy: float) -> float:
+    return (math.degrees(math.atan2(dx, dy)) + 360.0) % 360.0
+
+
+def split_area(area_latlngs: list, line_latlngs: list, extend_m: float = 1.5) -> list:
+    """Cut a drawn roof into faces along a line (e.g. the ridge).
+
+    The two end segments are lengthened by extend_m so a line that stops just short of the edge
+    still cuts through. Returns [{"area": [[lat, lng], ...], "azimuth_deg": suggestion}, ...]; the
+    suggested azimuth points away from the cut line, the way a roof face slopes down from its ridge.
+    One piece means the line did not cut the area.
+    """
+    if len(area_latlngs) < 3:
+        raise ValueError("Η περιοχή χρειάζεται τουλάχιστον 3 σημεία.")
+    if len(line_latlngs) < 2:
+        raise ValueError("Η γραμμή χρειάζεται τουλάχιστον 2 σημεία.")
+    lat0 = sum(pt[0] for pt in area_latlngs) / len(area_latlngs)
+    lon0 = sum(pt[1] for pt in area_latlngs) / len(area_latlngs)
+    fwd, inv = _transformers(lat0, lon0)
+    area = _to_xy(area_latlngs, fwd)
+    pts = [fwd.transform(lng, lat) for lat, lng in line_latlngs]
+
+    def lengthen(a, b):  # move b further away from a
+        dx, dy = b[0] - a[0], b[1] - a[1]
+        d = math.hypot(dx, dy)
+        return (b[0] + dx / d * extend_m, b[1] + dy / d * extend_m) if d > 1e-9 else b
+
+    pts[0] = lengthen(pts[1], pts[0])
+    pts[-1] = lengthen(pts[-2], pts[-1])
+    line = LineString(pts)
+    pieces = [g for g in split(area, line).geoms if g.geom_type == "Polygon" and g.area >= 0.05]
+    if len(pieces) < 2:
+        return [{"area": [list(pt) for pt in area_latlngs], "azimuth_deg": None}]
+
+    out = []
+    for piece in pieces:
+        # The segment of the cut line that borders this piece the most gives the face direction.
+        edge = piece.exterior.buffer(0.01)
+        segs = [LineString(pts[i:i + 2]) for i in range(len(pts) - 1)]
+        seg = max(segs, key=lambda sg: sg.intersection(edge).length)
+        (ax, ay), (bx, by) = seg.coords
+        nx, ny = by - ay, -(bx - ax)  # perpendicular to the segment
+        c = piece.representative_point()
+        if (c.x - ax) * nx + (c.y - ay) * ny < 0:
+            nx, ny = -nx, -ny
+        coords = [inv.transform(x, y) for x, y in list(piece.exterior.coords)[:-1]]
+        out.append({"area": [[lat, lng] for lng, lat in coords], "azimuth_deg": round(_bearing(nx, ny))})
+    return out

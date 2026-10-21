@@ -109,6 +109,20 @@
           <button type="button" id="btnNudgeReset" class="ghost">Επαναφορά</button>
         </div>
       </details>
+      <details id="facesBox" open>
+        <summary>Πλευρές στέγης</summary>
+        <p class="muted small">Για στέγη με πολλές πλευρές (δίριχτη, τετράριχτη): σχεδίασε όλη τη στέγη ως μία περιοχή,
+          πάτα «Χωρισμός σε πλευρές» και τράβηξε μια γραμμή πάνω στον κορφιά, από άκρη σε άκρη. Κάνε κλικ σε μια πλευρά
+          για να αλλάξεις την κλίση και το αζιμούθιό της.</p>
+        <div class="row">
+          <button type="button" id="btnSplit" class="secondary">Χωρισμός σε πλευρές</button>
+        </div>
+        <div class="row" id="splitActions" hidden>
+          <button type="button" id="btnSplitDone">Τέλος γραμμής</button>
+          <button type="button" id="btnSplitCancel" class="ghost">Ακύρωση</button>
+        </div>
+        <p class="muted small" id="facesInfo"></p>
+      </details>
       <details id="googleBox">
         <summary>Χάρτης Google (προαιρετικό)</summary>
         <p class="muted small">Βάλε το κλειδί API της Google για πιο καθαρές δορυφορικές εικόνες. Μένει αποθηκευμένο μόνο στον υπολογιστή σου.</p>
@@ -346,6 +360,7 @@
   <script src="vendor/chartjs/chart.umd.js"></script>
   <script src="app.js?v=__VERSION__"></script>
   <script src="nudge.js?v=__VERSION__"></script>
+  <script src="faces.js?v=__VERSION__"></script>
   <script src="electrical.js?v=__VERSION__"></script>
   <script src="ui.js?v=__VERSION__"></script>
 </body>

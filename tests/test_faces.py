@@ -2,7 +2,7 @@
 from fastapi.testclient import TestClient
 
 from backend import energy, shading, simulation
-from backend.layout import LayoutParams, compute_faces_layout, compute_layout
+from backend.layout import LayoutParams, compute_faces_layout, compute_layout, split_area
 from backend.main import app
 from tests.test_layout import LAT0, LON0
 from tests.test_shading import rect
@@ -132,7 +132,7 @@ def test_simulation_face_shares_scale_to_the_designed_power():
     w = simulation.clearsky_weather(LAT0, LON0)
     res = simulation.simulate(LAT0, LON0, 30, 180, 9.0, 8.0, weather=w,
                               faces=[{"dc_kwp": 6.0, "tilt": 30, "azimuth": 180}, {"dc_kwp": 4.0, "tilt": 30, "azimuth": 0}])
-    assert [f["dc_kwp"] for f in res["faces"]] == [5.4, 3.6]
+    assert [f["kwp"] for f in res["faces"]] == [5.4, 3.6]
 
 
 def test_faces_api_end_to_end():
@@ -156,3 +156,35 @@ def test_faces_api_end_to_end():
                                                 "when": "2025-12-21T10:00:00Z",
                                                 "obstacles": [{"polygon": rect(-3, -7, 3, -5), "height_m": 6}]})
     assert shadows.status_code == 200 and shadows.json()["shadows"]
+
+
+def _m2(latlngs):
+    return compute_layout(latlngs, LayoutParams())["area_m2"]
+
+
+def test_split_along_the_ridge_gives_two_faces_facing_away_from_it():
+    roof = rect(-5, -4, 5, 4)
+    ridge = rect(-4.5, 0, 4.5, 0)[:2]  # stops short of both gable ends; the ends are lengthened
+    pieces = split_area(roof, ridge)
+    assert len(pieces) == 2
+    by_az = {p["azimuth_deg"]: p for p in pieces}
+    assert set(by_az) == {0, 180}
+    assert abs(_m2(by_az[180]["area"]) - 40) < 0.5 and abs(_m2(by_az[0]["area"]) - 40) < 0.5
+    # The south piece is the one south of the ridge.
+    assert max(lat for lat, _ in by_az[180]["area"]) <= max(lat for lat, _ in by_az[0]["area"])
+
+
+def test_split_with_a_bent_line_and_a_line_that_misses():
+    roof = rect(-5, -4, 5, 4)
+    bent = [rect(-6, -4, -6, -4)[0], rect(0, 2, 0, 2)[0], rect(6, -4, 6, -4)[0]]
+    pieces = split_area(roof, bent)
+    assert len(pieces) == 2
+    assert abs(sum(_m2(p["area"]) for p in pieces) - 80) < 0.5
+    outside = [rect(20, 20, 20, 20)[0], rect(30, 20, 30, 20)[0]]
+    assert len(split_area(roof, outside)) == 1
+
+
+def test_split_api():
+    r = client.post("/api/split", json={"area": rect(-5, -4, 5, 4), "line": rect(-6, 0, 6, 0)[:2]})
+    assert r.status_code == 200 and len(r.json()["pieces"]) == 2
+    assert client.post("/api/split", json={"area": rect(-5, -4, 5, 4), "line": [[LAT0, LON0]]}).status_code == 400

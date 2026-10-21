@@ -285,7 +285,7 @@ def simulate(
         for f, c in zip(faces, chains):
             kwh = annual * float(c["steps"]["dc_wiring"].sum()) / 1000.0 / dc_total if dc_total else 0.0
             result["faces"].append({
-                "dc_kwp": round(f["dc_kwp"], 3), "tilt_deg": f["tilt"], "azimuth_deg": f["azimuth"],
+                "kwp": round(f["dc_kwp"], 3), "tilt_deg": f["tilt"], "azimuth_deg": f["azimuth"],
                 "annual_kwh": round(kwh, 0), "specific_yield": round(kwh / f["dc_kwp"], 0),
                 "annual_irradiation": round(float(c["poa_global"].sum()) / 1000.0, 0),
             })

@@ -49,6 +49,7 @@ const elec = {
       soiling_pct: +$("lSoiling").value, mismatch_pct: +$("lMismatch").value, module_quality_pct: +$("lQuality").value,
       dc_wiring_pct: +$("lDc").value, ac_wiring_pct: +$("lAc").value, availability_pct: +$("lAvail").value,
       shading_monthly_pct: state.shading ? state.shading.monthly_loss_pct : null,
+      faces: window.faces?.energyFaces() || null,
     });
   },
 
