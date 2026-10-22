@@ -33,14 +33,15 @@
   let shown = false; // no fade-in when the app opens, so the map does not flash through
   function hide() { $("home").hidden = true; }
 
-  // "Νέο έργο" first asks where the panels go; the start cards come back with "Πίσω".
-  function choosing(on) {
-    $("homeStart").hidden = on;
-    $("homeChoose").hidden = !on;
+  // "Νέο έργο" first asks where the panels go, then (for a building) the roof; "Πίσω" goes one back.
+  function screen(name) {
+    $("homeStart").hidden = name !== "start";
+    $("homeChoose").hidden = name !== "choose";
+    $("homeRoof").hidden = name !== "roof";
   }
 
   async function show() {
-    choosing(false);
+    screen("start");
     const open = !!state.projectId || areas.getLayers().length > 0;
     $("homeContinue").hidden = !open;
     $("homeContinueName").textContent = $("projectName").value;
@@ -108,52 +109,75 @@
     return true;
   }
 
-  // A new project of the chosen kind (saved with it as project_type), opened at the "Χώρος" step.
-  function begin(type) {
+  // A new project of the chosen kind and roof (saved with it as project_type and roof_type),
+  // opened at the "Χώρος" step. faces.js also picks the mounting: racks when flat, flush when pitched.
+  function begin(type, roof) {
     if (!newProject()) return false;
     state.projectType = type;
+    if (window.faces) faces.setRoof(roof);
     markSaved();
     hide();
     goStep("secSite");
     return true;
   }
 
-  // On an existing building: straight to the map, at the address search.
-  $("homeBuilding").onclick = () => {
-    if (!begin("existing")) return;
-    $("searchBox").focus();
-  };
+  // A building: first the roof question.
+  let building = null;
+  function askRoof(type) {
+    building = type;
+    $("homeRoofAsk").textContent = type === "new" ? "Τι στέγη θα έχει το νέο κτίριο;" : "Τι στέγη έχει το κτίριο;";
+    screen("roof");
+  }
+  $("homeBuilding").onclick = () => askRoof("existing");
+  $("homeNewBuilding").onclick = () => askRoof("new");
 
-  // On a new building: first where it will stand, then plan.js offers to upload the floor plan.
-  $("homeNewBuilding").onclick = () => {
-    if (!begin("new")) return;
-    if (window.plan) plan.askWhere();
+  // An existing building goes straight to the address search; a new one is first placed on the map,
+  // then plan.js offers to upload the floor plan.
+  function startBuilding(roof) {
+    if (!begin(building, roof)) return;
+    if (building === "new" && window.plan) plan.askWhere();
     $("searchBox").focus();
-  };
+  }
+  $("homeFlat").onclick = () => startBuilding("flat");
+  $("homePitched").onclick = () => startBuilding("pitched");
 
   // A park on a field: flat ground, panels on racks (the layout proposals of the "Πάνελ" step).
   $("homePark").onclick = () => {
-    if (!begin("park")) return;
-    $("mounting").value = "rack";
-    $("mounting").dispatchEvent(new Event("change"));
-    markSaved();
+    if (!begin("park", "flat")) return;
     $("searchBox").focus();
     toast("Βρες το χωράφι και σχεδίασε το περίγραμμά του με το εργαλείο πολυγώνου. Στο βήμα «Πάνελ» θα βρεις έτοιμες προτάσεις διάταξης σε βάσεις.", 8000);
   };
 
-  $("homeNew").onclick = () => choosing(true);
-  $("homeBack").onclick = () => choosing(false);
+  $("homeNew").onclick = () => screen("choose");
+  $("homeBack").onclick = () => screen("start");
+  $("homeRoofBack").onclick = () => screen("choose");
   $("homeContinue").onclick = hide;
   $("btnHome").onclick = show;
   $("btnHomeSheet").onclick = show;
   $("homeTheme").onclick = () => $("btnTheme").click();
   document.addEventListener("keydown", (e) => {
     if (e.key !== "Escape" || $("home").hidden) return;
-    if (!$("homeChoose").hidden) choosing(false);
+    if (!$("homeRoof").hidden) screen("choose");
+    else if (!$("homeChoose").hidden) screen("start");
     else if (!$("homeContinue").hidden) hide();
   });
   api("/api/version").then((v) => { $("homeVersion").textContent = `v${v.version}`; }).catch(() => {});
 
   window.home = { show, hide };
   show();
+
+  // The app stops by itself when its browser is closed (backend/lifecycle.py): this page says hello,
+  // pings every 30 s and says bye when it goes away; a reload says hello again.
+  const pageId = window.crypto?.randomUUID?.() || String(Math.random()).slice(2);
+  const tellServer = (what) => fetch(`/api/lifecycle/${what}?page=${pageId}`, { method: "POST", keepalive: true });
+  let gone = false;
+  const ping = () => tellServer("ping").then((r) => { if (r.ok) gone = false; else throw r; }).catch(() => {
+    if (!gone) toast("Η εφαρμογή δεν τρέχει πια. Άνοιξέ τη ξανά με το αρχείο εκκίνησης.", 15000);
+    gone = true;
+  });
+  tellServer("hello").catch(() => {});
+  setInterval(ping, 30000);
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) ping(); });
+  addEventListener("pagehide", () => navigator.sendBeacon(`/api/lifecycle/bye?page=${pageId}`));
+  addEventListener("pageshow", (e) => { if (e.persisted) tellServer("hello").catch(() => {}); });
 })();

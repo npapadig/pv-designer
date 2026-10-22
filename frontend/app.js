@@ -101,6 +101,8 @@ const shadowsLayer = new L.FeatureGroup().addTo(map);
 // className hooks the shapes to draw.css (soft dark halo, hover); it applies when a shape is added to the map.
 const AREA_STYLE = { color: "#ff8a3d", weight: 2.5, opacity: 1, fillColor: "#ffc53d", fillOpacity: 0.12, lineJoin: "round", className: "pv-shape pv-area" };
 const KEEPOUT_STYLE = { color: "#ff4d6d", weight: 2, opacity: 1, fillColor: "#ff4d6d", fillOpacity: 0.25, lineJoin: "round", className: "pv-shape pv-keepout" };
+// A tree is an obstacle too; shapes.css gives it a leafy edge.
+const TREE_STYLE = { color: "#166534", weight: 2, opacity: 1, fillColor: "#22c55e", fillOpacity: 0.5, lineJoin: "round", className: "pv-shape pv-keepout pv-tree" };
 const DRAFT_STYLE = { color: "#ffc53d", weight: 2.5, opacity: 1, dashArray: "7 6", fillColor: "#ffc53d", fillOpacity: 0.1, lineJoin: "round", className: "pv-shape" };
 
 // Greek texts of Leaflet.draw; set before the control is made, which reads some of them once.
@@ -134,34 +136,63 @@ function drawMode() {
   return document.querySelector("input[name=drawMode]:checked").value;
 }
 
+// The mode buttons start drawing at once: a polygon for «Περιοχή πάνελ» and «Εμπόδιο», a circle
+// for «Δέντρο» (shapes.js).
+document.querySelectorAll("input[name=drawMode]").forEach((r) => r.addEventListener("click", () => {
+  const pen = drawControl._toolbars.draw._modes.polygon.handler;
+  if (pen.enabled()) pen.disable(); // again, in the colour of the new kind
+  if (r.value === "tree") window.shapes?.startTree();
+  else pen.enable();
+}));
+
+const NEW_OBSTACLE_M = 1; // a new obstacle starts 1 m high; changed in the list or with a click on it
+
 function addShape(layer, kind, height) {
-  layer.setStyle(kind === "keepout" ? KEEPOUT_STYLE : AREA_STYLE);
+  layer.setStyle(kind === "keepout" ? (layer.pvTree ? TREE_STYLE : KEEPOUT_STYLE) : AREA_STYLE);
   layer.pvKind = kind;
-  if (kind === "keepout") setObstacleHeight(layer, height ?? +$("obstacleHeight").value);
+  if (kind === "keepout") setObstacleHeight(layer, height ?? NEW_OBSTACLE_M);
   (kind === "keepout" ? keepouts : areas).addLayer(layer);
   editGroup.addLayer(layer);
   updateShapesInfo();
 }
 
+// The name in the lists and tooltips: the one typed in, else «Εμπόδιο 2» by its place in the list.
+function shapeName(layer) {
+  if (layer.pvName) return layer.pvName;
+  return layer.pvKind === "keepout" ? `Εμπόδιο ${keepouts.getLayers().indexOf(layer) + 1}` : `Χώρος ${areas.getLayers().indexOf(layer) + 1}`;
+}
+
 // Obstacles carry a height (m above the panel surface) used by the shading analysis.
 function setObstacleHeight(layer, h) {
   layer.pvHeight = Math.max(0, +h || 0);
-  layer.bindTooltip(layer.pvHeight ? `Εμπόδιο ${fmt(layer.pvHeight, 1)} m` : "Εμπόδιο (χωρίς σκιά)");
+  // Worked out when shown, so a new name or place in the list shows at once; text, not HTML.
+  if (!layer.getTooltip()) {
+    layer.bindTooltip(() => {
+      let text = `${shapeName(layer)} · ${layer.pvHeight ? `${fmt(layer.pvHeight, 1)} m` : "χωρίς σκιά"}`;
+      if (layer.pvTree) {
+        const b = layer.getBounds();
+        text += ` · Ø ${fmt(map.distance(b.getSouthWest(), b.getSouthEast()), 1)} m`;
+      }
+      return document.createTextNode(text);
+    });
+  }
   layer.off("click").on("click", () => {
     if (window.drawTools?.editing) return;
     const box = L.DomUtil.create("div");
-    box.innerHTML = `<label>Ύψος εμποδίου (m) <input type="number" min="0" step="0.5" value="${layer.pvHeight}"></label>`;
+    box.innerHTML = `<b></b><label>Ύψος (m) <input type="number" min="0" step="0.5" value="${layer.pvHeight}"></label>`;
+    box.querySelector("b").textContent = shapeName(layer);
     const input = box.querySelector("input");
-    input.onchange = () => { setObstacleHeight(layer, input.value); clearShading(); };
+    input.onchange = () => { setObstacleHeight(layer, input.value); clearShading(); window.shapes?.record(); };
     L.popup().setLatLng(layer.getBounds().getCenter()).setContent(box).openOn(map);
     setTimeout(() => input.focus(), 50);
   });
+  map.fire("pv:shapes"); // the lists in the side panel (shapes.js)
 }
 
 map.on(L.Draw.Event.CREATED, (e) => {
   // A drawn rectangle becomes a plain polygon, so its corners can be edited one by one.
   const layer = e.layer instanceof L.Rectangle ? L.polygon(e.layer.getLatLngs(), e.layer.options) : e.layer;
-  addShape(layer, drawMode());
+  addShape(layer, drawMode() === "area" ? "area" : "keepout");
   clearLayout();
 });
 
@@ -175,6 +206,7 @@ function updateShapesInfo() {
 }
 
 // ---------- Search ----------
+// Suggestions while typing come from search.js; the button (and Enter with no suggestion) asks Nominatim.
 async function search() {
   const q = $("searchBox").value.trim();
   if (!q) return;
@@ -182,16 +214,22 @@ async function search() {
     const r = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(q)}`);
     const res = await r.json();
     if (!res.length) return toast("Δεν βρέθηκε η διεύθυνση.");
-    if (!$("projectAddress").value) $("projectAddress").value = q;
-    const at = L.latLng(+res[0].lat, +res[0].lon);
-    map.setView(at, 19);
-    document.dispatchEvent(new CustomEvent("pv:found", { detail: at })); // plan.js: a new building's place
+    showFound(L.latLng(+res[0].lat, +res[0].lon), q);
   } catch {
     toast("Η αναζήτηση απέτυχε. Έλεγξε τη σύνδεση στο internet.");
   }
 }
+
+// The found place goes to the middle of the free part of the map; plan.js also listens for
+// "pv:found" (where a new building will stand).
+function showFound(at, label) {
+  if (!$("projectAddress").value) $("projectAddress").value = label;
+  if (window.plan) plan.centerOn(at, 19);
+  else map.setView(at, 19);
+  document.dispatchEvent(new CustomEvent("pv:found", { detail: at }));
+}
 $("btnSearch").onclick = search;
-$("searchBox").addEventListener("keydown", (e) => { if (e.key === "Enter") search(); });
+$("searchBox").addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.defaultPrevented) search(); });
 
 // ---------- Panel presets ----------
 PANEL_PRESETS.forEach((p, i) => $("panelPreset").add(new Option(p.name, i)));
@@ -632,15 +670,19 @@ function collectProject() {
   return {
     name: $("projectName").value || "Χωρίς όνομα",
     project_type: state.projectType || "existing",
+    roof_type: state.roofType || "pitched",
     settings: {
       ...settings(), loss_pct: +$("loss").value, preset: $("panelPreset").value,
       panel_name: PANEL_PRESETS[$("panelPreset").value].power ? PANEL_PRESETS[$("panelPreset").value].name : null,
     },
     report_info: { client: $("clientName").value, address: $("projectAddress").value, author: $("reportAuthor").value },
     areas: areas.getLayers().map(latlngsOf),
+    area_names: areas.getLayers().map((l) => l.pvName || ""),
     area_faces: window.faces?.collect() || null,
     keepouts: keepouts.getLayers().map(latlngsOf),
     keepout_heights: keepouts.getLayers().map((l) => l.pvHeight || 0),
+    keepout_names: keepouts.getLayers().map((l) => l.pvName || ""),
+    keepout_shapes: keepouts.getLayers().map((l) => (l.pvTree ? "tree" : "")), // only the look on the map
     shading: state.shading,
     layout: state.layout ? { ...state.layout, panels: panelsLayer.getLayers().map(latlngsOf) } : null,
     energy: state.energy,
@@ -660,8 +702,11 @@ function resetProject() {
   $("clientName").value = "";
   $("projectAddress").value = "";
   state.projectType = "existing";
+  state.roofType = "pitched";
+  window.faces?.syncRoof();
   clearLayout();
   updateShapesInfo();
+  window.shapes?.resetHistory(); // undo does not go back to the previous project
   markSaved();
 }
 
@@ -694,10 +739,22 @@ function loadProject(p) {
   $("clientName").value = info.client || "";
   $("projectAddress").value = info.address || "";
   if (info.author) $("reportAuthor").value = info.author;
-  (p.areas || []).forEach((a) => addShape(L.polygon(a), "area"));
+  (p.areas || []).forEach((a, i) => {
+    const layer = L.polygon(a);
+    layer.pvName = (p.area_names || [])[i] || undefined; // older projects: «Χώρος N»
+    addShape(layer, "area");
+  });
   window.faces?.load(p.area_faces);
+  // Older projects have no roof type: pitched if the roof was split into faces.
+  state.roofType = p.roof_type || (p.area_faces && p.project_type !== "park" ? "pitched" : "flat");
+  window.faces?.syncRoof();
   // Projects saved before shading analysis have no heights: their obstacles cast no shadow.
-  (p.keepouts || []).forEach((k, i) => addShape(L.polygon(k), "keepout", (p.keepout_heights || [])[i] || 0));
+  (p.keepouts || []).forEach((k, i) => {
+    const layer = L.polygon(k);
+    layer.pvName = (p.keepout_names || [])[i] || undefined; // older projects: «Εμπόδιο N»
+    layer.pvTree = (p.keepout_shapes || [])[i] === "tree" || undefined;
+    addShape(layer, "keepout", (p.keepout_heights || [])[i] || 0);
+  });
   if (p.layout) {
     p.layout.panels.forEach((pp) =>
       addPanel(pp)
@@ -718,6 +775,7 @@ function loadProject(p) {
   window.plan?.load(p.plan);
   renderResults();
   if (p.view) map.setView(p.view.center, p.view.zoom);
+  window.shapes?.resetHistory();
   markSaved();
 }
 
@@ -828,32 +886,32 @@ function refreshGoogleViewport() {
 }
 map.on("moveend baselayerchange", refreshGoogleViewport);
 
-function setGoogleStatus(msg) { $("googleStatus").textContent = msg; }
-
-$("btnGoogleKey").onclick = () => withBusy($("btnGoogleKey"), async () => {
-  const key = $("googleKey").value.trim();
-  await api("/api/settings", "PUT", { google_maps_key: key });
-  if (!key) {
-    setGoogleStatus("Το κλειδί αφαιρέθηκε.");
-    if (google.layer) { map.removeLayer(google.layer); satellite.addTo(map); }
-    return;
-  }
+// With a saved key Google opens by itself. Without a working key (e.g. a new installation) the map
+// menu gets a small "Κλειδί Google…" entry; a key is saved only once Google has accepted it.
+const googleKeyBox = L.DomUtil.create("div", "google-key");
+googleKeyBox.hidden = true;
+googleKeyBox.innerHTML = `<a href="#" title="Πιο καθαρές δορυφορικές εικόνες από τη Google, με δικό σου κλειδί API">Κλειδί Google…</a>`;
+layersControl.getContainer().querySelector(".leaflet-control-layers-list").append(googleKeyBox);
+L.DomEvent.on(googleKeyBox.firstChild, "click", async (e) => {
+  L.DomEvent.stop(e);
+  const key = (prompt("Κλειδί API της Google (Map Tiles API) για πιο καθαρές δορυφορικές εικόνες.\nΜένει αποθηκευμένο μόνο σε αυτόν τον υπολογιστή.", "") || "").trim();
+  if (!key) return;
   try {
     await startGoogle(key);
-    setGoogleStatus("✓ Ο χάρτης Google είναι ενεργός.");
+    await api("/api/settings", "PUT", { google_maps_key: key });
+    googleKeyBox.hidden = true;
     toast("Ο χάρτης Google ενεργοποιήθηκε.");
-  } catch (e) {
-    setGoogleStatus(`Δεν δούλεψε το κλειδί: ${e.message}`);
+  } catch (err) {
+    toast(`Δεν δούλεψε το κλειδί: ${err.message}`, 7000);
   }
 });
 
 api("/api/settings").then(async (s) => {
-  if (!s.google_maps_key) return;
-  $("googleKey").value = s.google_maps_key;
+  if (!s.google_maps_key) { googleKeyBox.hidden = false; return; }
   try {
     await startGoogle(s.google_maps_key);
-    setGoogleStatus("✓ Ο χάρτης Google είναι ενεργός.");
   } catch (e) {
-    setGoogleStatus(`Δεν δούλεψε το κλειδί: ${e.message}`);
+    googleKeyBox.hidden = false;
+    toast(`Ο χάρτης Google δεν άνοιξε: ${e.message}`, 7000);
   }
 }).catch(() => {});

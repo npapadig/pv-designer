@@ -10,6 +10,7 @@
   <link rel="stylesheet" href="style.css?v=__VERSION__">
   <link rel="stylesheet" href="home.css?v=__VERSION__">
   <link rel="stylesheet" href="draw.css?v=__VERSION__">
+  <link rel="stylesheet" href="shapes.css?v=__VERSION__">
   <link rel="stylesheet" href="options.css?v=__VERSION__">
   <link rel="stylesheet" href="help.css?v=__VERSION__">
   <link rel="stylesheet" href="i18n.css?v=__VERSION__">
@@ -73,6 +74,16 @@
         </div>
         <button id="homeBack" class="ghost home-back" type="button"><svg class="ic"><use href="#i-left"/></svg>Πίσω</button>
       </div>
+      <div id="homeRoof" hidden>
+        <p class="home-ask" id="homeRoofAsk">Τι στέγη έχει το κτίριο;</p>
+        <div class="home-cards">
+          <button id="homeFlat" class="home-card" type="button"><span class="home-ic"><svg class="ic" viewBox="0 0 24 24"><path d="M2 8h20"/><path d="M4 8v13h16V8"/><path d="M10 21v-5h4v5"/></svg></span>
+            <b>Επίπεδη ταράτσα (0°)</b><small>Τα πάνελ μπαίνουν σε βάσεις, με την κλίση που θέλεις.</small></button>
+          <button id="homePitched" class="home-card" type="button"><span class="home-ic"><svg class="ic" viewBox="0 0 24 24"><path d="M2 12 12 3l10 9"/><path d="M5 9.5V21h14V9.5"/><path d="M10 21v-6h4v6"/></svg></span>
+            <b>Κεκλιμένη στέγη</b><small>Κεραμοσκεπή ή λαμαρίνα: τα πάνελ μπαίνουν παράλληλα στη στέγη, που μπορείς να τη χωρίσεις σε πλευρές.</small></button>
+        </div>
+        <button id="homeRoofBack" class="ghost home-back" type="button"><svg class="ic"><use href="#i-left"/></svg>Πίσω</button>
+      </div>
       <h3 class="home-sub">Αποθηκευμένα έργα</h3>
       <div id="homeProjects" class="home-grid"></div>
       <p id="homeEmpty" class="muted small" hidden>Δεν υπάρχουν ακόμα αποθηκευμένα έργα. Πάτα «Νέο έργο» για να ξεκινήσεις.</p>
@@ -118,9 +129,15 @@
 
     <section id="secSite" class="step">
       <h2>Τοποθεσία</h2>
-      <div class="row">
-        <input id="searchBox" placeholder="Διεύθυνση ή πόλη…">
+      <div class="row search-row">
+        <input id="searchBox" placeholder="Διεύθυνση ή πόλη…" autocomplete="off" role="combobox" aria-autocomplete="list"
+          aria-expanded="false" aria-controls="searchList">
         <button id="btnSearch" class="icon-btn" title="Αναζήτηση" aria-label="Αναζήτηση"><svg class="ic"><use href="#i-search"/></svg></button>
+        <ul id="searchList" class="search-list" role="listbox" aria-label="Προτάσεις διευθύνσεων" hidden></ul>
+      </div>
+      <div class="row segmented" id="roofRow">
+        <label class="radio"><input type="radio" name="roofType" value="flat"> Επίπεδη ταράτσα</label>
+        <label class="radio"><input type="radio" name="roofType" value="pitched" checked> Κεκλιμένη στέγη</label>
       </div>
       <p class="muted small">Μετά σχεδίασε την περιοχή με το εργαλείο πολυγώνου πάνω αριστερά στον χάρτη.</p>
       <div id="planAsk" class="plan-ask" hidden>
@@ -174,34 +191,24 @@
         </div>
         <input type="file" id="planFile" accept="image/png,image/jpeg" hidden>
       </details>
-      <div class="row segmented">
-        <label class="radio"><input type="radio" name="drawMode" value="area" checked> Περιοχή πάνελ</label>
-        <label class="radio"><input type="radio" name="drawMode" value="keepout"> Εμπόδιο</label>
+      <div class="row segmented" id="drawModes">
+        <label class="radio" data-help="draw-area"><input type="radio" name="drawMode" value="area" checked> Περιοχή πάνελ</label>
+        <label class="radio" data-help="draw-obstacle"><input type="radio" name="drawMode" value="keepout"> Εμπόδιο</label>
+        <label class="radio" data-help="draw-tree"><input type="radio" name="drawMode" value="tree"> Δέντρο</label>
       </div>
-      <label>Ύψος νέου εμποδίου (m) <input id="obstacleHeight" type="number" value="1" step="0.5" min="0"></label>
-      <p class="muted small">Ύψος πάνω από την επιφάνεια όπου μπαίνουν τα πάνελ (καμινάδα, τοιχίο, δέντρο, γειτονικό κτίριο).
-        Με 0 το εμπόδιο απλώς εξαιρείται χωρίς να ρίχνει σκιά. Κάνε κλικ σε ένα εμπόδιο για να αλλάξεις το ύψος του.</p>
+      <p class="muted small">Πάτα «Περιοχή πάνελ» ή «Εμπόδιο» και κάνε κλικ γύρω γύρω στον χάρτη· κλικ στο πρώτο σημείο για
+        να κλείσει. Για «Δέντρο» πάτα στο κέντρο του και σύρε ως την άκρη του. Διπλό κλικ σε ένα σχήμα για να το επιλέξεις.</p>
       <p class="muted small" id="shapesInfo">Καμία περιοχή.</p>
-      <details id="nudgeBox" open>
-        <summary>Μετατόπιση σχεδίων</summary>
-        <p class="muted small">Αν η εικόνα του χάρτη είναι λίγο μετατοπισμένη, μετακίνησε όλες τις περιοχές και τα εμπόδια μαζί.
-          Και με Shift + βελάκια.</p>
-        <div class="nudge-pad">
-          <button type="button" data-nudge="up" title="Βόρεια" aria-label="Βόρεια">↑</button>
-          <button type="button" data-nudge="left" title="Δυτικά" aria-label="Δυτικά">←</button>
-          <button type="button" data-nudge="right" title="Ανατολικά" aria-label="Ανατολικά">→</button>
-          <button type="button" data-nudge="down" title="Νότια" aria-label="Νότια">↓</button>
-        </div>
-        <div class="row segmented">
-          <label class="radio"><input type="radio" name="nudgeStep" value="0.1" checked> 0,1 m</label>
-          <label class="radio"><input type="radio" name="nudgeStep" value="0.5"> 0,5 m</label>
-          <label class="radio"><input type="radio" name="nudgeStep" value="1"> 1 m</label>
-        </div>
-        <div class="row nudge-foot">
-          <p class="muted small" id="nudgeInfo"></p>
-          <button type="button" id="btnNudgeReset" class="ghost">Επαναφορά</button>
-        </div>
-      </details>
+      <div id="areaList" class="shape-list" data-help="list-areas" hidden>
+        <h3>Χώροι πάνελ</h3>
+        <div class="shape-rows"></div>
+      </div>
+      <div id="keepoutList" class="shape-list" data-help="list-keepouts" hidden>
+        <h3>Εμπόδια</h3>
+        <p class="muted small">Ύψος πάνω από την επιφάνεια των πάνελ (καμινάδα, τοιχίο, δέντρο, γειτονικό κτίριο). Με 0 το
+          εμπόδιο απλώς μένει έξω, χωρίς σκιά.</p>
+        <div class="shape-rows"></div>
+      </div>
       <details id="facesBox" open>
         <summary>Πλευρές στέγης</summary>
         <p class="muted small">Για στέγη με πολλές πλευρές (δίριχτη, τετράριχτη): σχεδίασε όλη τη στέγη ως μία περιοχή,
@@ -215,15 +222,6 @@
           <button type="button" id="btnSplitCancel" class="ghost">Ακύρωση</button>
         </div>
         <p class="muted small" id="facesInfo"></p>
-      </details>
-      <details id="googleBox">
-        <summary>Χάρτης Google (προαιρετικό)</summary>
-        <p class="muted small">Βάλε το κλειδί API της Google για πιο καθαρές δορυφορικές εικόνες. Μένει αποθηκευμένο μόνο στον υπολογιστή σου.</p>
-        <div class="row">
-          <input id="googleKey" type="password" placeholder="AIza…" autocomplete="off">
-          <button id="btnGoogleKey" type="button">Αποθήκευση</button>
-        </div>
-        <p class="muted small" id="googleStatus"></p>
       </details>
     </section>
 
@@ -467,11 +465,12 @@
   <script src="app.js?v=__VERSION__"></script>
   <script src="draw.js?v=__VERSION__"></script>
   <script src="shapes.js?v=__VERSION__"></script>
-  <script src="nudge.js?v=__VERSION__"></script>
+  <script src="ruler.js?v=__VERSION__"></script>
   <script src="faces.js?v=__VERSION__"></script>
   <script src="options.js?v=__VERSION__"></script>
   <script src="electrical.js?v=__VERSION__"></script>
   <script src="ui.js?v=__VERSION__"></script>
+  <script src="search.js?v=__VERSION__"></script>
   <script src="plan.js?v=__VERSION__"></script>
   <script src="home.js?v=__VERSION__"></script>
   <script src="helptexts.js?v=__VERSION__"></script>

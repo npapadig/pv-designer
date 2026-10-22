@@ -55,6 +55,7 @@
     let group = labels.get(layer);
     if (!group) labels.set(layer, (group = L.layerGroup().addTo(map)));
     group.clearLayers();
+    if (layer.pvTree) return; // a tree's 24 short sides would only hide it (its size is in its tooltip)
     const pts = ring(layer), n = pts.length;
     for (let i = 0; i < n; i++) {
       const m = label(pts[i], pts[(i + 1) % n], kindClass(layer), editing ? () => sideBox(layer, i) : null);
@@ -80,7 +81,7 @@
   }
   map.on("zoomend", refreshAll);
 
-  // Nudge, the side box and dragging a selected shape (shapes.js) move shapes with setLatLngs, which fires no event of its own. Leaflet.draw's
+  // The side box, undo and dragging a selected shape (shapes.js) move shapes with setLatLngs, which fires no event of its own. Leaflet.draw's
   // editor also keeps a reference to the old points, so point it at the new ones (and redraw its handles).
   const setLatLngs = L.Polyline.prototype.setLatLngs;
   L.Polyline.include({
@@ -113,7 +114,7 @@
   function drawDraft() {
     draft.clearLayers();
     if (!drawing) return;
-    const cls = document.querySelector("input[name=drawMode]:checked")?.value === "keepout" ? "keepout draft" : "area draft";
+    const cls = document.querySelector("input[name=drawMode]:checked")?.value !== "area" ? "keepout draft" : "area draft";
     if (drawing.type === "rectangle") {
       if (drawing._shape) sideLabels(drawing._shape.getLatLngs()[0], true, cls, draft);
       return;
@@ -134,7 +135,7 @@
     const mode = drawControl._toolbars.draw._modes[e.layerType];
     drawing = mode ? mode.handler : null;
     if (drawing) {
-      const keepout = document.querySelector("input[name=drawMode]:checked")?.value === "keepout";
+      const keepout = document.querySelector("input[name=drawMode]:checked")?.value !== "area"; // also «Δέντρο»
       Object.assign(drawing.options.shapeOptions, keepout ? DRAFT_KEEPOUT : DRAFT_AREA);
       drawing.options.icon = drawing.options.touchIcon = HANDLE;
     }
@@ -149,6 +150,90 @@
     drawDraft();
   });
 
+  // ---------- Toolbar ----------
+  // One bar on the map for every drawing tool, in groups: draw (here), edit (here and ruler.js), undo
+  // and clipboard (shapes.js). Every button has an icon, a title and a data-help id for the help
+  // texts. The tool in use lights up; a second click on it ends it. Leaflet.draw's own buttons are
+  // hidden (draw.css); its Τέλος / Ακύρωση bar moves here, next to the tool in use.
+  const svg = (paths) => `<svg class="ic" viewBox="0 0 24 24" aria-hidden="true">${paths}</svg>`;
+  const PENTAGON = '<path d="M10.83 2.38a2 2 0 0 1 2.34 0l8 5.74a2 2 0 0 1 .73 2.25l-3.04 9.26a2 2 0 0 1-1.9 1.37H7.04a2 2 0 0 1-1.9-1.37L2.1 10.37a2 2 0 0 1 .73-2.25z"/>';
+  const TOOL_ICONS = {
+    area: svg(PENTAGON),
+    keepout: svg(`${PENTAGON}<path d="m9.5 10.5 5 5"/><path d="m14.5 10.5-5 5"/>`),
+    tree: svg('<path d="M8 19a4 4 0 0 1-2.24-7.32A3.5 3.5 0 0 1 9 6.03V6a3 3 0 1 1 6 0v.04a3.5 3.5 0 0 1 3.24 5.65A4 4 0 0 1 16 19Z"/><path d="M12 19v3"/>'),
+    rect: svg('<rect width="18" height="14" x="3" y="5" rx="1.5"/>'),
+    edit: svg('<path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/><path d="m15 5 4 4"/>'),
+  };
+  const toolbar = L.DomUtil.create("div", "pv-toolbar");
+  map.addControl(new (L.Control.extend({ options: { position: "topleft" }, onAdd: () => toolbar }))());
+  L.DomEvent.disableClickPropagation(toolbar);
+  L.DomEvent.disableScrollPropagation(toolbar);
+  const groups = {};
+  const byType = {}; // Leaflet.draw layerType -> its button
+  let activeTool = null;
+
+  function addTool({ group, help, title, icon, cls, layerType, onClick }) {
+    const g = groups[group] || (groups[group] = L.DomUtil.create("div", "pv-tb-group", toolbar));
+    const a = L.DomUtil.create("a", `pv-tb ${cls || ""}`, g);
+    a.href = "#";
+    a.title = title;
+    a.dataset.help = help;
+    a.setAttribute("role", "button");
+    a.setAttribute("aria-label", title);
+    a.innerHTML = icon;
+    if (layerType) byType[layerType] = a;
+    L.DomEvent.on(a, "click", (e) => {
+      L.DomEvent.preventDefault(e);
+      if (a === activeTool) return endTools();
+      onClick();
+    });
+    return a;
+  }
+
+  // Ends whichever drawing tool is on (also the tree and the ruler).
+  function endTools() {
+    Object.values(drawControl._toolbars.draw._modes).forEach((m) => m.handler.disable());
+    window.shapes?.stopTree();
+    window.ruler?.stop();
+  }
+
+  const checkedMode = () => document.querySelector("input[name=drawMode]:checked")?.value;
+  const pickMode = (value) => () => document.querySelector(`input[name=drawMode][value=${value}]`).click(); // app.js starts the tool
+  const areaTool = addTool({
+    group: "draw", help: "draw-area", cls: "area", icon: TOOL_ICONS.area, onClick: pickMode("area"),
+    title: "Περιοχή πάνελ: κλικ γύρω γύρω στον χάρτη, κλικ στο πρώτο σημείο για να κλείσει",
+  });
+  const keepoutTool = addTool({
+    group: "draw", help: "draw-obstacle", cls: "keepout", icon: TOOL_ICONS.keepout, onClick: pickMode("keepout"),
+    title: "Εμπόδιο (καμινάδα, τοιχίο, γειτονικό κτίριο): σχεδιάζεται όπως η περιοχή",
+  });
+  addTool({
+    group: "draw", help: "draw-tree", cls: "tree", icon: TOOL_ICONS.tree, layerType: "tree", onClick: pickMode("tree"),
+    title: "Δέντρο: πάτα στο κέντρο του και σύρε ως την άκρη του",
+  });
+  addTool({
+    group: "draw", help: "draw-rectangle", icon: TOOL_ICONS.rect, layerType: "rectangle",
+    title: "Ορθογώνιο: πάτα και σύρε (περιοχή πάνελ ή εμπόδιο, όπως το κουμπί που πάτησες τελευταίο)",
+    onClick() { endTools(); drawControl._toolbars.draw._modes.rectangle.handler.enable(); },
+  });
+
+  // Leaflet.draw's bar (Τέλος, Σβήσε το τελευταίο σημείο, Ακύρωση) beside the tool in use.
+  const drawActions = drawControl._toolbars.draw._actionsContainer;
+  toolbar.appendChild(drawActions);
+
+  function setActive(a) {
+    if (activeTool) L.DomUtil.removeClass(activeTool, "active");
+    activeTool = a || null;
+    if (!activeTool) return;
+    L.DomUtil.addClass(activeTool, "active");
+    drawActions.style.top = `${activeTool.getBoundingClientRect().top - toolbar.getBoundingClientRect().top}px`;
+  }
+  map.on("draw:drawstart", (e) => {
+    const polygon = e.layerType === "polygon" && (checkedMode() === "area" ? areaTool : keepoutTool);
+    setActive(polygon || byType[e.layerType]);
+  });
+  map.on("draw:drawstop", () => setActive(null));
+
   // ---------- Editing ----------
   // An "Επεξεργασία" button on the map turns on handles for every area and obstacle: drag a corner,
   // click the faint dot in the middle of a side for a new corner, click a corner to remove it, click
@@ -159,25 +244,13 @@
   L.Edit.PolyVerticesEdit.prototype.options.icon = HANDLE;
   L.Edit.PolyVerticesEdit.prototype.options.touchIcon = HANDLE;
 
-  const PENCIL = `<svg class="ic" viewBox="0 0 24 24"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/><path d="m15 5 4 4"/></svg>`;
-  let editButton = null;
-  const EditControl = L.Control.extend({
-    options: { position: "topleft" },
-    onAdd() {
-      const box = L.DomUtil.create("div", "leaflet-bar pv-edit-control");
-      editButton = L.DomUtil.create("a", "", box);
-      editButton.href = "#";
-      editButton.setAttribute("role", "button");
-      editButton.title = "Επεξεργασία σχημάτων: κορυφές, μήκη πλευρών";
-      editButton.innerHTML = `${PENCIL}<span>Επεξεργασία</span>`;
-      L.DomEvent.disableClickPropagation(box);
-      L.DomEvent.on(editButton, "click", (e) => { L.DomEvent.preventDefault(e); editing ? stop(true) : start(); });
-      return box;
-    },
+  const editButton = addTool({
+    group: "edit", help: "draw-edit", icon: TOOL_ICONS.edit, onClick: () => (editing ? stop(true) : start()),
+    title: "Επεξεργασία όλων των σχημάτων: κορυφές, μήκη πλευρών",
   });
-  map.addControl(new EditControl());
 
   const bar = L.DomUtil.create("div", "pv-editbar", map.getContainer());
+  bar.dataset.help = "bar-edit";
   bar.hidden = true;
   bar.innerHTML = `<div class="pv-editbar-text"><b>Επεξεργασία σχημάτων</b>
       <span>Σύρε μια κορυφή για να τη μετακινήσεις · κλικ στη μισοδιάφανη κουκκίδα στη μέση μιας πλευράς = νέα κορυφή ·
@@ -193,7 +266,7 @@
     const list = shapes();
     if (!list.length) return toast("Σχεδίασε πρώτα μια περιοχή.");
     map.closePopup();
-    Object.values(drawControl._toolbars.draw._modes).forEach((m) => m.handler.disable());
+    endTools(); // also the tree and the ruler
     saved = new Map(list.map((l) => [l, ring(l).map((p) => L.latLng(p.lat, p.lng))]));
     editing = true;
     map.fire("draw:editstart"); // faces.js: no face box while editing
@@ -233,10 +306,6 @@
   // Any change of a shape makes the panel layout out of date.
   const changed = () => clearLayout();
   for (const g of [areas, keepouts]) g.on("layeradd", (e) => e.layer.on("edit", changed));
-  // Moving all drawings (nudge.js) first ends editing, keeping the changes: "Ακύρωση" would undo the move too.
-  // draw.js loads before nudge.js, so these run before its own handlers.
-  document.querySelectorAll("[data-nudge], #btnNudgeReset").forEach((b) => b.addEventListener("click", () => stop(true)));
-  document.addEventListener("keydown", (e) => { if (e.shiftKey && e.key.startsWith("Arrow")) stop(true); }, true);
 
   // ---------- Side box: new length, push in/out, new corner ----------
   // Geometry in local metres (x east, y north) around the shape, as in meters() above.
@@ -259,6 +328,14 @@
       xy: pts.map((p) => [(p.lng - lng0) * r.east, (p.lat - lat0) * r.north]),
       back: ([x, y]) => L.latLng(lat0 + y / r.north, lng0 + x / r.east),
     };
+  }
+  // Area in m², in the same local metres as the side lengths.
+  function area(pts) {
+    if (pts.length < 3) return 0;
+    const { xy } = local(pts);
+    let twice = 0;
+    for (let i = 0; i < xy.length; i++) twice += cross(xy[i], xy[(i + 1) % xy.length]);
+    return Math.abs(twice) / 2;
   }
   function reshape(layer, fn) {
     const { xy, back } = local(ring(layer));
@@ -312,6 +389,7 @@
     const pts = ring(layer), n = pts.length;
     const a = pts[i], b = pts[(i + 1) % n], len = meters(a, b);
     const box = L.DomUtil.create("div", "pv-side-box");
+    box.dataset.help = "side-box";
     box.innerHTML = `<b>Πλευρά ${i + 1} · ${fmt(len, 2)} m</b>
       <label>Νέο μήκος (m) <input name="len" type="number" min="0.1" step="0.01" value="${len.toFixed(2)}"></label>
       <p class="muted small">Η κορυφή με τον λευκό κύκλο μένει στη θέση της· η επόμενη πλευρά μετακινείται παράλληλα.</p>
@@ -397,6 +475,7 @@
     options: { position: "topright" },
     onAdd() {
       const box = L.DomUtil.create("div", "pv-compass");
+      box.dataset.help = "map-compass";
       box.title = "Βορράς πάνω";
       box.setAttribute("aria-label", "Πυξίδα: Βορράς πάνω, Νότος κάτω, Ανατολή δεξιά, Δύση αριστερά");
       box.innerHTML = `<svg viewBox="0 0 80 80" aria-hidden="true">
@@ -416,7 +495,7 @@
   map.addControl(new Compass());
 
   window.drawTools = {
-    meters, refresh, refreshAll,
+    meters, area, refresh, refreshAll, edgeLabel: label, addTool,
     get editing() { return editing; },
   };
 })();

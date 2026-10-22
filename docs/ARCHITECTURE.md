@@ -6,9 +6,11 @@ Repo: github.com/npapadig/pv-designer, single `main` branch, several Claude thre
 
 ## Features (user flow = the 7 steps on the left rail)
 1. **Έργο**: save/load/delete projects (JSON in `data/projects/`), PDF report download.
-2. **Χώρος**: address search (Nominatim), draw panel areas and keep-outs/obstacles (with heights) on the map.
+2. **Χώρος**: address search (suggestions while typing from Photon in `search.js`; the button uses Nominatim),
+   draw panel areas and keep-outs/obstacles (with heights) on the map.
    Base maps: Esri World Imagery (default), Esri Clarity, Κτηματολόγιο orthophotos (WMS, 2007-09), OSM streets,
-   and Google satellite once the owner saves an API key (then it becomes the default).
+   and Google satellite with a saved API key (then it opens by itself as the default; without a working key the map
+   menu shows a small «Κλειδί Google…» entry).
 3. **Πάνελ**: module presets (with electrical values), tilt, azimuth (+ auto-align to longest edge), portrait/landscape,
    flush vs rack, setbacks, gaps; auto row spacing for racks (winter-solstice noon).
 4. **Σκιές**: obstacle prisms + row-to-row shading, monthly shading %, shadows on the map at a chosen time.
@@ -29,6 +31,11 @@ Repo: github.com/npapadig/pv-designer, single `main` branch, several Claude thre
   `data/plans/` via `POST/GET /api/plans`), `draw.js`/`draw.css` (side lengths, styles, edit mode, compass),
   `options.js`/`options.css` + `layout.layout_options` / `POST /api/layout/options` / `/api/layout/ew` (3 proposals +
   manual; tilts in `OPTION_*` constants), `mapimage.py` uses the on-screen base map (`basemap` sent by the app).
+- Start of a project (stream arxi, 2026-10-22): the start screen asks existing building / new building / park on a
+  field (`project_type`: existing/new/park), then for a building flat or pitched roof (`roof_type`: flat/pitched;
+  flat hides `#facesBox` and picks racks). A new building is first placed (search or map click, `plan.askWhere`),
+  then the floor plan is offered at that spot. Older projects: type "new" if they have a plan, roof "pitched" if
+  they have faces.
 - Roof faces (v0.6-0.8): `frontend/faces.js` (split a roof along a line via `/api/split`, per-face tilt/azimuth);
   `/api/layout/faces`, and optional `faces` / `panel_face` on `/api/shading`, `/api/shadows`, `/api/energy`,
   `/api/simulate`, `/api/electrical` (strings per face → own MPPT, optional mixing). Details: `docs/streams/faces.md`. Libraries vendored in
@@ -42,7 +49,15 @@ Repo: github.com/npapadig/pv-designer, single `main` branch, several Claude thre
 - `start_windows.bat` runs `update.ps1` (compares latest `main` SHA with `.version`, downloads the ZIP, robocopies
   over the app except `.venv` and `data`, then the bat restarts itself), finds **Python 3.12** (installs it with
   `py install 3.12` if missing), creates/keeps `.venv`, `pip install -r requirements.txt` when `requirements.txt`
-  changed, then runs uvicorn on port 8000.
+  changed, then starts `pythonw -m backend.lifecycle` (no console window) and closes itself once the server
+  answers on port 8000; if the app already answers there, it only opens the browser (no update check).
+- `backend/lifecycle.py`: starts uvicorn, opens the browser only when `/api/health` answers, and stops the server
+  when the browser is closed. Every page (`home.js`) POSTs `/api/lifecycle/hello`, `ping` every 30 s and `bye`
+  (sendBeacon on `pagehide`); stop ~10 s after a bye with no page left, or after 3 min without news (hidden tabs,
+  crashes); sleep of the PC restarts the timers. Only the launcher arms the stop (tests / plain uvicorn never stop).
+  With pythonw the server log is `%TEMP%\pv-designer-server.log`; a failed start shows a Windows message box.
+  `PV_DESIGNER_PORT` changes the port for tests. `update.ps1` also stops a running `backend.lifecycle`.
+  `start_mac_linux.sh` runs the same module (with its terminal).
 - Keep CRLF (`.gitattributes` has `-text`), greeklish console text, no `if errorlevel` after Python Install Manager
   calls (negative exit codes), and never delete `.venv` when a reinstall suffices (OneDrive/AV file locks).
 - The owner's folder was under OneDrive; the updater warns about it.

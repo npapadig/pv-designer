@@ -1,0 +1,56 @@
+/* Shapes (shapes.js): the selected shape on the map, trees and the lists of shapes in the side panel.
+   Uses the theme colours of style.css; the toolbar buttons are in draw.css. */
+
+/* ---------- Selected shape ---------- */
+/* CSS wins over the SVG attributes Leaflet sets: a moving dashed outline ("marching ants"). */
+.leaflet-overlay-pane path.pv-shape.pv-selected {
+  stroke-dasharray: 9 6; stroke-width: 3.5px; cursor: move; animation: pv-ants 0.9s linear infinite;
+}
+.leaflet-overlay-pane path.pv-area.pv-selected { fill-opacity: 0.24; }
+.leaflet-overlay-pane path.pv-keepout.pv-selected { fill-opacity: 0.4; }
+@keyframes pv-ants { to { stroke-dashoffset: -15; } }
+@media (prefers-reduced-motion: reduce) { .leaflet-overlay-pane path.pv-shape.pv-selected { animation: none; } }
+
+/* ---------- Lists in the side panel ---------- */
+.shape-list h3 { margin-top: 16px; }
+.shape-list > p { margin: -2px 0 8px; }
+.shape-rows { display: grid; gap: 6px; margin-bottom: 12px; }
+.shape-row {
+  display: grid; grid-template-columns: 76px minmax(0, 1fr) auto 32px; gap: 6px; align-items: center;
+  padding: 5px 5px 5px 9px; border-radius: 12px; border: 1px solid var(--line); background: var(--soft);
+  cursor: pointer; transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+}
+.shape-row:hover { background: var(--field); }
+.shape-row.on { border-color: var(--sun-2); box-shadow: 0 0 0 3px var(--ring); }
+.shape-no {
+  display: flex; align-items: center; gap: 7px; min-width: 0;
+  font-size: 0.76rem; font-weight: 700; color: var(--text); white-space: nowrap;
+}
+.shape-no::before { content: ""; flex: none; width: 10px; height: 10px; border-radius: 3px; background: #ff4d6d; }
+.shape-row.area .shape-no::before { background: #ffc53d; }
+.shape-row input { height: 32px; margin: 0; padding: 0 8px; border-radius: 9px; font-size: 0.82rem; }
+.shape-num { display: flex; align-items: center; gap: 4px; margin: 0; font-size: 0.76rem; white-space: nowrap; }
+.shape-num input { width: 58px; padding-right: 2px; }
+.shape-row button.shape-del { width: 32px; height: 32px; border-radius: 9px; }
+.shape-row button.shape-del .ic { width: 15px; height: 15px; }
+.shape-row button.shape-del:hover { color: var(--danger); background: var(--danger-soft); }
+
+/* ---------- Trees ---------- */
+/* A crown darker in the middle with a ruffled edge like leaves (#pvTreeFill, #pvTree in shapes.js). */
+.leaflet-overlay-pane path.pv-tree { fill: url(#pvTreeFill); filter: url(#pvTree); }
+.leaflet-overlay-pane path.pv-tree:hover { fill-opacity: 0.62; }
+.leaflet-overlay-pane path.pv-tree.pv-selected { filter: url(#pvHalo); fill-opacity: 0.6; }
+.pv-tree-drawing, .pv-tree-drawing .leaflet-interactive { cursor: crosshair !important; }
+.leaflet-tooltip.pv-tree-tip {
+  background: var(--glass-strong); color: var(--text); border: 1px solid var(--line-strong); border-radius: 10px;
+  box-shadow: var(--shadow); font: 500 12px/1.4 var(--font); padding: 6px 10px; max-width: 260px; white-space: normal;
+}
+.leaflet-tooltip.pv-tree-tip::before { border-right-color: var(--glass-strong); }
+.segmented label.radio:has(input[value=tree]:checked) {
+  background: linear-gradient(135deg, #4ade80, #16a34a); box-shadow: 0 4px 14px rgba(22, 163, 74, 0.35);
+}
+.shape-row.tree .shape-no::before { background: #22c55e; border-radius: 50%; }
+
+/* Three mode buttons side by side: keep «Περιοχή πάνελ» on one line. */
+#drawModes label.radio { padding: 9px 4px; font-size: 0.8rem; white-space: nowrap; }
+.shape-m2 { justify-content: flex-end; min-width: 62px; color: var(--muted); font-weight: 600; font-variant-numeric: tabular-nums; }

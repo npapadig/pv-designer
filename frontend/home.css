@@ -49,9 +49,9 @@
 .home-card.new .home-ic { background: rgba(255, 255, 255, 0.22); color: #fff; }
 
 .home-ask { margin: 0 0 14px; font-size: 1.15rem; font-weight: 720; letter-spacing: -0.02em; }
-#homeChoose { animation: rise 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); }
-#homeChoose .home-card { min-height: 190px; }
-#homeChoose .home-card:hover { border-color: var(--sun-2); }
+#homeChoose, #homeRoof { animation: rise 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); }
+#homeChoose .home-card, #homeRoof .home-card { min-height: 190px; }
+#homeChoose .home-card:hover, #homeRoof .home-card:hover { border-color: var(--sun-2); }
 .home-back { margin-top: 12px; }
 
 .home-sub { margin: 38px 0 14px; }
@@ -87,7 +87,7 @@
   .home-head { margin-bottom: 22px; }
   .home-title h1 { font-size: 1.35rem; }
   .home-cards, .home-grid { grid-template-columns: 1fr; gap: 12px; }
-  .home-card, #homeChoose .home-card { min-height: 0; padding: 18px 18px 18px 78px; justify-content: center; }
+  .home-card, #homeChoose .home-card, #homeRoof .home-card { min-height: 0; padding: 18px 18px 18px 78px; justify-content: center; }
   .home-ic { top: 50%; transform: translateY(-50%); left: 18px; }
   .home-sub { margin-top: 28px; }
   .proj-open { min-height: 0; }
@@ -120,3 +120,21 @@
 .plan-ask .row { margin-bottom: 0; }
 .plan-ask button.ghost { height: 32px; padding: 0 10px; }
 .leaflet-container.plan-where { cursor: crosshair; }
+
+/* "Κλειδί Google…" in the map menu, only while there is no working key (app.js). */
+.google-key { margin-top: 6px; padding-top: 6px; border-top: 1px solid #ddd; }
+.google-key a { color: #64748b; font-size: 0.76rem; text-decoration: none; }
+.google-key a:hover { color: #111827; text-decoration: underline; }
+
+/* Address suggestions under the search box (search.js). */
+.search-row { position: relative; }
+.search-list {
+  position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 40; margin: 0; padding: 6px; list-style: none;
+  max-height: 320px; overflow-y: auto; border-radius: 14px; background: var(--glass-strong); border: 1px solid var(--line-strong);
+  box-shadow: var(--shadow); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
+}
+.search-list li { display: flex; flex-direction: column; gap: 1px; padding: 8px 10px; border-radius: 10px; cursor: pointer; }
+.search-list li b { font-size: 0.86rem; font-weight: 650; overflow-wrap: anywhere; }
+.search-list li span { color: var(--muted); font-size: 0.74rem; }
+.search-list li:hover, .search-list li.active { background: var(--field-hover); }
+.search-list li.active { outline: 1px solid var(--ring); }

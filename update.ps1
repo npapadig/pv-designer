@@ -9,9 +9,10 @@ function Get-AppVersion { if (Test-Path $versionFile) { 'v' + (Get-Content $vers
 $oldVersion = Get-AppVersion
 
 # A copy of the app that is still running locks files in .venv and holds port 8000.
-# (The venv python.exe is a launcher, so match the server by its command line.)
+# (The venv python.exe is a launcher, so match the server by its command line;
+# since the hidden start it runs as "pythonw -m backend.lifecycle".)
 Get-CimInstance Win32_Process -Filter "Name like 'python%'" -ErrorAction SilentlyContinue |
-  Where-Object { $_.CommandLine -like '*uvicorn*backend.main:app*' } |
+  Where-Object { $_.CommandLine -like '*uvicorn*backend.main:app*' -or $_.CommandLine -like '*backend.lifecycle*' } |
   ForEach-Object { Write-Host 'Kleinei h efarmogh poy etrexe hdh...'; Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
 
 if ($root -match 'OneDrive') {
