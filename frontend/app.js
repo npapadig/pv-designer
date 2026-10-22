@@ -152,7 +152,7 @@ function setObstacleHeight(layer, h) {
     const box = L.DomUtil.create("div");
     box.innerHTML = `<label>Ύψος εμποδίου (m) <input type="number" min="0" step="0.5" value="${layer.pvHeight}"></label>`;
     const input = box.querySelector("input");
-    input.onchange = () => { setObstacleHeight(layer, input.value); clearShading(); };
+    input.onchange = () => { setObstacleHeight(layer, input.value); clearShading(); window.shapes?.record(); };
     L.popup().setLatLng(layer.getBounds().getCenter()).setContent(box).openOn(map);
     setTimeout(() => input.focus(), 50);
   });
@@ -658,6 +658,7 @@ function resetProject() {
   $("projectAddress").value = "";
   clearLayout();
   updateShapesInfo();
+  window.shapes?.resetHistory(); // undo does not go back to the previous project
   markSaved();
 }
 
@@ -712,6 +713,7 @@ function loadProject(p) {
   window.plan?.load(p.plan);
   renderResults();
   if (p.view) map.setView(p.view.center, p.view.zoom);
+  window.shapes?.resetHistory();
   markSaved();
 }
 
