@@ -12,6 +12,12 @@ goal, files it owns, numbered items, checks to run, and a status table. Max 2 st
 | pdf | `pdf.md` | `mapimage.py`, εικόνα στο `report.py` | ΤΕΛΟΣ (v0.9.0) |
 | draw | `draw.md` | `draw.js`, `draw.css`, app.js «Map» | ΤΕΛΟΣ (v0.9.0) |
 | options | `options.md` | προτάσεις διάταξης, app.js «Layout» | ΤΕΛΟΣ (v0.9.0) |
+| sxedio | `sxedio.md` | `draw.js/.css`, `shapes.js`, `ruler.js`, app.js «Map», `nudge.js` (σβήνεται) | ΤΡΕΧΕΙ (2026-10-22) |
+| arxi | `arxi.md` | `home.js/.css`, `plan.js`, `faces.js`, app.js «Search»/«Google», launcher, `lifecycle.py` | ΤΡΕΧΕΙ (2026-10-22) |
+| voitheia | `voitheia.md` | `help.js/.css`, `helptexts.js` | ΤΡΕΧΕΙ (2026-10-22) |
+| glossa | `glossa.md` | `i18n.js`, `lang/en.js`, `report.py`, `backend/i18n.py` | ΤΡΕΧΕΙ (2026-10-22) |
+
+2026-10-22: ο Νίκος επέτρεψε να τρέχουν περισσότερες από 2 ροές μαζί (PLAN.md).
 
 Suggested split by area (owned files), so streams do not collide:
 - **maps**: map layers and drawing in `frontend/app.js` (map section), `backend/settings.py`.
