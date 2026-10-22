@@ -108,24 +108,37 @@
     return true;
   }
 
-  // On an existing building: straight to the map, at the address search.
-  $("homeBuilding").onclick = () => {
-    if (!newProject()) return;
+  // A new project of the chosen kind (saved with it as project_type), opened at the "Χώρος" step.
+  function begin(type) {
+    if (!newProject()) return false;
+    state.projectType = type;
+    markSaved();
     hide();
     goStep("secSite");
+    return true;
+  }
+
+  // On an existing building: straight to the map, at the address search.
+  $("homeBuilding").onclick = () => {
+    if (!begin("existing")) return;
     $("searchBox").focus();
   };
 
-  // On a floor plan: pick the image first (plan.js), then place it on the map.
-  $("homePlan").onclick = () => {
-    if (!window.plan) return toast("Η κάτοψη δεν είναι ακόμα διαθέσιμη.");
-    if (!okToLeave()) return;
-    plan.pickFile(async (file) => {
-      newProject(true);
-      hide();
-      goStep("secSite");
-      await plan.start(file);
-    });
+  // On a new building: first where it will stand, then plan.js offers to upload the floor plan.
+  $("homeNewBuilding").onclick = () => {
+    if (!begin("new")) return;
+    if (window.plan) plan.askWhere();
+    $("searchBox").focus();
+  };
+
+  // A park on a field: flat ground, panels on racks (the layout proposals of the "Πάνελ" step).
+  $("homePark").onclick = () => {
+    if (!begin("park")) return;
+    $("mounting").value = "rack";
+    $("mounting").dispatchEvent(new Event("change"));
+    markSaved();
+    $("searchBox").focus();
+    toast("Βρες το χωράφι και σχεδίασε το περίγραμμά του με το εργαλείο πολυγώνου. Στο βήμα «Πάνελ» θα βρεις έτοιμες προτάσεις διάταξης σε βάσεις.", 8000);
   };
 
   $("homeNew").onclick = () => choosing(true);

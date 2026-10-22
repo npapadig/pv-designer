@@ -62,8 +62,10 @@
         <div class="home-cards">
           <button id="homeBuilding" class="home-card" type="button"><span class="home-ic"><svg class="ic"><use href="#i-house"/></svg></span>
             <b>Σε υπάρχον κτίριο</b><small>Βρίσκεις το κτίριο στον δορυφορικό χάρτη και σχεδιάζεις τη στέγη πάνω του.</small></button>
-          <button id="homePlan" class="home-card" type="button"><span class="home-ic"><svg class="ic"><use href="#i-image"/></svg></span>
-            <b>Σε σχέδιο κάτοψης</b><small>Ανεβάζεις μια εικόνα της κάτοψης (PNG ή JPG), τη βάζεις στη θέση της στον χάρτη και σχεδιάζεις πάνω της.</small></button>
+          <button id="homeNewBuilding" class="home-card" type="button"><span class="home-ic"><svg class="ic" viewBox="0 0 24 24"><path d="M13.22 2.42a2 2 0 0 0-2.51.05l-7 6A2 2 0 0 0 3 10v9a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7.35"/><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M15 6h6"/><path d="M18 3v6"/></svg></span>
+            <b>Σε νέο κτίριο</b><small>Δείχνεις πρώτα πού θα χτιστεί και μετά ανεβάζεις την κάτοψη (PNG ή JPG) για να σχεδιάσεις πάνω της.</small></button>
+          <button id="homePark" class="home-card" type="button"><span class="home-ic"><svg class="ic" viewBox="0 0 24 24"><path d="M5 14h14l-2.5-8h-9z"/><path d="M12 6v8"/><path d="M6.25 10h11.5"/><path d="M12 14v4"/><path d="M8 18h8"/><path d="M2 21h20"/></svg></span>
+            <b>Πάρκο σε χωράφι</b><small>Φωτοβολταϊκό στο έδαφος: σχεδιάζεις το χωράφι και τα πάνελ μπαίνουν σε βάσεις.</small></button>
         </div>
         <button id="homeBack" class="ghost home-back" type="button"><svg class="ic"><use href="#i-left"/></svg>Πίσω</button>
       </div>
@@ -117,6 +119,21 @@
         <button id="btnSearch" class="icon-btn" title="Αναζήτηση" aria-label="Αναζήτηση"><svg class="ic"><use href="#i-search"/></svg></button>
       </div>
       <p class="muted small">Μετά σχεδίασε την περιοχή με το εργαλείο πολυγώνου πάνω αριστερά στον χάρτη.</p>
+      <div id="planAsk" class="plan-ask" hidden>
+        <div id="planAskWhere">
+          <p class="small"><b>Νέο κτίριο:</b> πού θα χτιστεί; Γράψε τη διεύθυνση στην αναζήτηση ή κάνε κλικ στο σημείο
+            πάνω στον χάρτη.</p>
+          <button type="button" id="btnPlanAskSkip" class="ghost">Παράλειψη</button>
+        </div>
+        <div id="planAskPlan" hidden>
+          <p class="small"><b>Νέο κτίριο:</b> έχεις σχέδιο κάτοψης (εικόνα PNG ή JPG); Ανέβασέ το για να σχεδιάσεις τη
+            στέγη πάνω του.</p>
+          <div class="row">
+            <button type="button" id="btnPlanAskUpload"><svg class="ic"><use href="#i-image"/></svg>Ανέβασμα κάτοψης</button>
+            <button type="button" id="btnPlanAskNo" class="ghost">Όχι τώρα</button>
+          </div>
+        </div>
+      </div>
       <details id="planBox">
         <summary>Κάτοψη κτιρίου</summary>
         <div id="planEmpty">

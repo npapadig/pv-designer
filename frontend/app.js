@@ -182,7 +182,9 @@ async function search() {
     const res = await r.json();
     if (!res.length) return toast("Δεν βρέθηκε η διεύθυνση.");
     if (!$("projectAddress").value) $("projectAddress").value = q;
-    map.setView([+res[0].lat, +res[0].lon], 19);
+    const at = L.latLng(+res[0].lat, +res[0].lon);
+    map.setView(at, 19);
+    document.dispatchEvent(new CustomEvent("pv:found", { detail: at })); // plan.js: a new building's place
   } catch {
     toast("Η αναζήτηση απέτυχε. Έλεγξε τη σύνδεση στο internet.");
   }
@@ -628,6 +630,7 @@ $("reportAuthor").onchange = () => { try { localStorage.setItem(AUTHOR_KEY, $("r
 function collectProject() {
   return {
     name: $("projectName").value || "Χωρίς όνομα",
+    project_type: state.projectType || "existing",
     settings: {
       ...settings(), loss_pct: +$("loss").value, preset: $("panelPreset").value,
       panel_name: PANEL_PRESETS[$("panelPreset").value].power ? PANEL_PRESETS[$("panelPreset").value].name : null,
@@ -655,6 +658,7 @@ function resetProject() {
   $("projectName").value = "Νέο έργο";
   $("clientName").value = "";
   $("projectAddress").value = "";
+  state.projectType = "existing";
   clearLayout();
   updateShapesInfo();
   markSaved();
@@ -675,6 +679,8 @@ function hasUnsavedWork() {
 function loadProject(p) {
   resetProject();
   state.projectId = p.id;
+  // Older projects have no type: one with a floor plan was a new building.
+  state.projectType = p.project_type || (p.plan?.image ? "new" : "existing");
   $("projectName").value = p.name;
   const s = p.settings || {};
   if (s.preset != null) $("panelPreset").value = s.preset;
