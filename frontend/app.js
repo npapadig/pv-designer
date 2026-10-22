@@ -560,6 +560,15 @@ function renderFinance() {
 }
 
 // ---------- PDF report ----------
+// The report's map picture uses the same base map as the screen.
+function activeBasemap() {
+  if (google.layer && map.hasLayer(google.layer)) return "google";
+  if (map.hasLayer(clarity)) return "clarity";
+  if (map.hasLayer(ktimatologio)) return "ktimatologio";
+  if (map.hasLayer(streets)) return "streets";
+  return "esri";
+}
+
 async function downloadReport() {
   if (!state.layout || !state.layout.count) await runLayout();
   if (!state.layout.count) return;
@@ -570,7 +579,7 @@ async function downloadReport() {
   const r = await fetch("/api/report", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(collectProject()),
+    body: JSON.stringify({ ...collectProject(), basemap: activeBasemap() }),
   });
   if (!r.ok) {
     const data = await r.json().catch(() => ({}));
