@@ -118,7 +118,8 @@ const drawControl = new L.Control.Draw({
     rectangle: { shapeOptions: DRAFT_STYLE },
     polyline: false, circle: false, marker: false, circlemarker: false,
   },
-  edit: { featureGroup: editGroup },
+  // Editing has its own, clearer button (draw.js); the toolbar keeps only "delete".
+  edit: { featureGroup: editGroup, edit: false },
 });
 map.addControl(drawControl);
 
@@ -140,6 +141,7 @@ function setObstacleHeight(layer, h) {
   layer.pvHeight = Math.max(0, +h || 0);
   layer.bindTooltip(layer.pvHeight ? `Εμπόδιο ${fmt(layer.pvHeight, 1)} m` : "Εμπόδιο (χωρίς σκιά)");
   layer.off("click").on("click", () => {
+    if (window.drawTools?.editing) return;
     const box = L.DomUtil.create("div");
     box.innerHTML = `<label>Ύψος εμποδίου (m) <input type="number" min="0" step="0.5" value="${layer.pvHeight}"></label>`;
     const input = box.querySelector("input");
@@ -150,7 +152,9 @@ function setObstacleHeight(layer, h) {
 }
 
 map.on(L.Draw.Event.CREATED, (e) => {
-  addShape(e.layer, drawMode());
+  // A drawn rectangle becomes a plain polygon, so its corners can be edited one by one.
+  const layer = e.layer instanceof L.Rectangle ? L.polygon(e.layer.getLatLngs(), e.layer.options) : e.layer;
+  addShape(layer, drawMode());
   clearLayout();
 });
 map.on(L.Draw.Event.EDITED, clearLayout);

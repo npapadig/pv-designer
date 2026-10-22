@@ -42,3 +42,43 @@
 .leaflet-error-draw-tooltip { background: var(--danger); color: #fff; border-color: transparent; }
 .leaflet-error-draw-tooltip::before { border-right-color: var(--danger); }
 .leaflet-draw-guide-dash { width: 4px; height: 4px; border-radius: 50%; opacity: 0.9; }
+
+/* ---------- Editing ---------- */
+.pv-edit-control a {
+  display: flex !important; align-items: center; gap: 6px; width: auto !important; padding: 0 12px;
+  font: 600 12.5px/30px var(--font); white-space: nowrap; text-decoration: none;
+}
+.pv-edit-control .ic { width: 15px; height: 15px; }
+.pv-edit-control a.active, .pv-edit-control a.active:hover { color: #fff; background: var(--sun-2); }
+
+/* The bar with the hints and Τέλος / Ακύρωση, centred over the visible map. */
+.pv-editbar {
+  position: absolute; z-index: 1000; top: 12px; left: calc((100% + var(--left)) / 2); transform: translateX(-50%);
+  width: max-content; max-width: min(760px, calc(100% - var(--left) - 140px));
+  display: flex; gap: 14px; align-items: center; padding: 10px 12px 10px 16px; border-radius: 16px;
+  background: var(--glass-strong); color: var(--text); border: 1px solid var(--line-strong); box-shadow: var(--shadow);
+  backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); font-family: var(--font);
+}
+.pv-editbar[hidden] { display: none; }
+.pv-editbar-text { display: grid; gap: 2px; font-size: 12px; line-height: 1.4; }
+.pv-editbar-text b { font-size: 13px; }
+.pv-editbar-text span { color: var(--muted); }
+.pv-editbar-actions { display: flex; gap: 6px; flex: none; }
+.pv-editbar-actions button { flex: none; }
+.pv-editbar-actions button[data-a="done"] { color: #fff; background: var(--sun); border-color: transparent; }
+
+/* In edit mode the lengths are buttons, moved off the side so the "new corner" dot stays free. */
+.pv-editing .pv-edge span {
+  transform: translate(-50%, -50%) rotate(var(--a)) translateY(-16px); cursor: pointer;
+  background: var(--sun-2); color: #fff; border-color: transparent;
+}
+.pv-editing .pv-edge.keepout span { background: var(--sun-3); }
+.pv-editing .pv-edge span:hover { filter: brightness(1.12); box-shadow: 0 0 0 3px rgba(255, 197, 61, 0.45); }
+
+/* The side box (a Leaflet popup, light like the other map popups). */
+.pv-side-box { display: grid; gap: 6px; min-width: 220px; }
+.pv-side-box .row { display: flex; gap: 6px; margin: 0; }
+.pv-side-box button { color: #111827; background: #f1f5f9; border-color: #d0d5dd; }
+.pv-side-box button:hover { background: #e2e8f0; }
+.pv-side-box button.ghost { background: transparent; color: #475569; }
+.pv-side-box .muted { color: #667085; margin: 0; }
