@@ -200,19 +200,19 @@
   const checkedMode = () => document.querySelector("input[name=drawMode]:checked")?.value;
   const pickMode = (value) => () => document.querySelector(`input[name=drawMode][value=${value}]`).click(); // app.js starts the tool
   const areaTool = addTool({
-    group: "draw", help: "map-area", cls: "area", icon: TOOL_ICONS.area, onClick: pickMode("area"),
+    group: "draw", help: "draw-area", cls: "area", icon: TOOL_ICONS.area, onClick: pickMode("area"),
     title: "Περιοχή πάνελ: κλικ γύρω γύρω στον χάρτη, κλικ στο πρώτο σημείο για να κλείσει",
   });
   const keepoutTool = addTool({
-    group: "draw", help: "map-keepout", cls: "keepout", icon: TOOL_ICONS.keepout, onClick: pickMode("keepout"),
+    group: "draw", help: "draw-obstacle", cls: "keepout", icon: TOOL_ICONS.keepout, onClick: pickMode("keepout"),
     title: "Εμπόδιο (καμινάδα, τοιχίο, γειτονικό κτίριο): σχεδιάζεται όπως η περιοχή",
   });
   addTool({
-    group: "draw", help: "map-tree", cls: "tree", icon: TOOL_ICONS.tree, layerType: "tree", onClick: pickMode("tree"),
+    group: "draw", help: "draw-tree", cls: "tree", icon: TOOL_ICONS.tree, layerType: "tree", onClick: pickMode("tree"),
     title: "Δέντρο: πάτα στο κέντρο του και σύρε ως την άκρη του",
   });
   addTool({
-    group: "draw", help: "map-rect", icon: TOOL_ICONS.rect, layerType: "rectangle",
+    group: "draw", help: "draw-rectangle", icon: TOOL_ICONS.rect, layerType: "rectangle",
     title: "Ορθογώνιο: πάτα και σύρε (περιοχή πάνελ ή εμπόδιο, όπως το κουμπί που πάτησες τελευταίο)",
     onClick() { endTools(); drawControl._toolbars.draw._modes.rectangle.handler.enable(); },
   });
@@ -245,7 +245,7 @@
   L.Edit.PolyVerticesEdit.prototype.options.touchIcon = HANDLE;
 
   const editButton = addTool({
-    group: "edit", help: "map-edit", icon: TOOL_ICONS.edit, onClick: () => (editing ? stop(true) : start()),
+    group: "edit", help: "draw-edit", icon: TOOL_ICONS.edit, onClick: () => (editing ? stop(true) : start()),
     title: "Επεξεργασία όλων των σχημάτων: κορυφές, μήκη πλευρών",
   });
 

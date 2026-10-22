@@ -492,11 +492,11 @@
   };
   // In the toolbar of draw.js: [group, name, help id, title, action].
   const BUTTONS = [
-    ["history", "undo", "map-undo", "Αναίρεση της τελευταίας αλλαγής (Ctrl+Z)", undo],
-    ["history", "redo", "map-redo", "Επανάληψη (Ctrl+Y)", redo],
-    ["clipboard", "copy", "map-copy", "Αντιγραφή του επιλεγμένου σχήματος (Ctrl+C)", copy],
-    ["clipboard", "paste", "map-paste", "Επικόλληση αντιγράφου (Ctrl+V)", paste],
-    ["clipboard", "remove", "map-delete", "Διαγραφή του επιλεγμένου σχήματος (Delete)", remove],
+    ["history", "undo", "draw-undo", "Αναίρεση της τελευταίας αλλαγής (Ctrl+Z)", undo],
+    ["history", "redo", "draw-redo", "Επανάληψη (Ctrl+Y)", redo],
+    ["clipboard", "copy", "draw-copy", "Αντιγραφή του επιλεγμένου σχήματος (Ctrl+C)", copy],
+    ["clipboard", "paste", "draw-paste", "Επικόλληση αντιγράφου (Ctrl+V)", paste],
+    ["clipboard", "remove", "draw-delete", "Διαγραφή του επιλεγμένου σχήματος (Delete)", remove],
   ];
   const buttons = {};
   for (const [group, name, help, title, onClick] of BUTTONS) {
@@ -512,7 +512,7 @@
   // The hint bar while a shape is selected (same look as the edit bar of draw.js).
   const bar = L.DomUtil.create("div", "pv-editbar pv-selbar", container);
   bar.hidden = true;
-  bar.dataset.help = "bar-select";
+  bar.dataset.help = "draw-select";
   bar.innerHTML = `<div class="pv-editbar-text"><b></b>
       <span>Σύρε το για να το μετακινήσεις · σύρε μια κορυφή για να την αλλάξεις · Delete = διαγραφή ·
       Ctrl+C και Ctrl+V = αντίγραφο · Ctrl+Z = αναίρεση · Esc = τέλος.</span></div>
