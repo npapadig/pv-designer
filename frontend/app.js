@@ -833,32 +833,32 @@ function refreshGoogleViewport() {
 }
 map.on("moveend baselayerchange", refreshGoogleViewport);
 
-function setGoogleStatus(msg) { $("googleStatus").textContent = msg; }
-
-$("btnGoogleKey").onclick = () => withBusy($("btnGoogleKey"), async () => {
-  const key = $("googleKey").value.trim();
-  await api("/api/settings", "PUT", { google_maps_key: key });
-  if (!key) {
-    setGoogleStatus("Το κλειδί αφαιρέθηκε.");
-    if (google.layer) { map.removeLayer(google.layer); satellite.addTo(map); }
-    return;
-  }
+// With a saved key Google opens by itself. Without a working key (e.g. a new installation) the map
+// menu gets a small "Κλειδί Google…" entry; a key is saved only once Google has accepted it.
+const googleKeyBox = L.DomUtil.create("div", "google-key");
+googleKeyBox.hidden = true;
+googleKeyBox.innerHTML = `<a href="#" title="Πιο καθαρές δορυφορικές εικόνες από τη Google, με δικό σου κλειδί API">Κλειδί Google…</a>`;
+layersControl.getContainer().querySelector(".leaflet-control-layers-list").append(googleKeyBox);
+L.DomEvent.on(googleKeyBox.firstChild, "click", async (e) => {
+  L.DomEvent.stop(e);
+  const key = (prompt("Κλειδί API της Google (Map Tiles API) για πιο καθαρές δορυφορικές εικόνες.\nΜένει αποθηκευμένο μόνο σε αυτόν τον υπολογιστή.", "") || "").trim();
+  if (!key) return;
   try {
     await startGoogle(key);
-    setGoogleStatus("✓ Ο χάρτης Google είναι ενεργός.");
+    await api("/api/settings", "PUT", { google_maps_key: key });
+    googleKeyBox.hidden = true;
     toast("Ο χάρτης Google ενεργοποιήθηκε.");
-  } catch (e) {
-    setGoogleStatus(`Δεν δούλεψε το κλειδί: ${e.message}`);
+  } catch (err) {
+    toast(`Δεν δούλεψε το κλειδί: ${err.message}`, 7000);
   }
 });
 
 api("/api/settings").then(async (s) => {
-  if (!s.google_maps_key) return;
-  $("googleKey").value = s.google_maps_key;
+  if (!s.google_maps_key) { googleKeyBox.hidden = false; return; }
   try {
     await startGoogle(s.google_maps_key);
-    setGoogleStatus("✓ Ο χάρτης Google είναι ενεργός.");
   } catch (e) {
-    setGoogleStatus(`Δεν δούλεψε το κλειδί: ${e.message}`);
+    googleKeyBox.hidden = false;
+    toast(`Ο χάρτης Google δεν άνοιξε: ${e.message}`, 7000);
   }
 }).catch(() => {});

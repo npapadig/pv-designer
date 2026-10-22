@@ -120,3 +120,8 @@
 .plan-ask .row { margin-bottom: 0; }
 .plan-ask button.ghost { height: 32px; padding: 0 10px; }
 .leaflet-container.plan-where { cursor: crosshair; }
+
+/* "Κλειδί Google…" in the map menu, only while there is no working key (app.js). */
+.google-key { margin-top: 6px; padding-top: 6px; border-top: 1px solid #ddd; }
+.google-key a { color: #64748b; font-size: 0.76rem; text-decoration: none; }
+.google-key a:hover { color: #111827; text-decoration: underline; }

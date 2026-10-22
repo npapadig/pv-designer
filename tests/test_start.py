@@ -27,6 +27,12 @@ def test_start_screen_offers_three_kinds():
         assert el in html
 
 
+def test_google_box_is_gone():
+    # The key is entered from the map menu ("Κλειδί Google…", app.js) when there is none.
+    html = client.get("/").text
+    assert 'id="googleBox"' not in html and 'id="googleKey"' not in html
+
+
 def test_roof_question_and_switch():
     html = client.get("/").text
     for el in ('id="homeFlat"', 'id="homePitched"', 'id="roofRow"', 'name="roofType" value="flat"'):
