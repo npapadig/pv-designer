@@ -52,14 +52,16 @@
         <span class="opt-angles">${angles(o)}</span>
         <span class="opt-num"><em>${fmt(o.count)}</em> πάνελ</span>
         <span class="opt-num${o.kwp && o.kwp === best ? " best" : ""}"><em>${o.count ? fmt(o.kwp, 2) : "–"}</em> kWp</span>
-        ${o.count ? "" : `<span class="opt-num small">δεν χωράει</span>`}
+        ${o.count ? `<span class="opt-num small" title="Σε σχέση με την ιδανική τοποθέτηση (νότια, στην καλύτερη κλίση) = 100 %">Απόδοση <em>${fmt(o.yield_pct, 0)} %</em></span>`
+          : `<span class="opt-num small">δεν χωράει</span>`}
       </button>`).join("");
     box.innerHTML = `<h3>Προτάσεις διάταξης</h3>
       <div class="opt-cards">${cards}</div>
       <p class="muted small">Κάνε κλικ σε μία για να μπει στον χάρτη. Στις 3 πρώτες η κλίση είναι αυτή που χωράει
         τα περισσότερα πάνελ χωρίς σκίαση τον χειμώνα. Οι τιμές περνούν στις ρυθμίσεις παραπάνω, οπότε μπορείς
-        να τις αλλάξεις· η κάρτα «Χειροκίνητα» δείχνει τις ρυθμίσεις όπως είναι. Η παραγωγή υπολογίζεται
-        στο βήμα «Παραγωγή», για την πρόταση που θα διαλέξεις.</p>`;
+        να τις αλλάξεις· η κάρτα «Χειροκίνητα» δείχνει τις ρυθμίσεις όπως είναι. «Απόδοση» = πόσο φως πιάνει κάθε
+        πάνελ με αυτή την τοποθέτηση, σε σχέση με την ιδανική (νότια, στην καλύτερη κλίση για το σημείο) = 100 %.
+        Η παραγωγή υπολογίζεται στο βήμα «Παραγωγή», για την πρόταση που θα διαλέξεις.</p>`;
     box.querySelectorAll(".opt-card").forEach((b) => (b.onclick = () => apply(shown[+b.dataset.i])));
   }
 
@@ -71,7 +73,7 @@
     $("rowGap").value = o.row_spacing_m == null ? "" : o.row_spacing_m;
     $("ewMode").checked = ew;
     syncEw();
-    const { panels, key, title, note, east_west, ...res } = o;
+    const { panels, key, title, note, east_west, yield_pct, ...res } = o;
     setLayout(panels, res);
     chosen = key;
     box.querySelectorAll(".opt-card").forEach((b) => b.classList.toggle("chosen", shown[+b.dataset.i].key === key));

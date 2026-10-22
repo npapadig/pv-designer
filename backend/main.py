@@ -383,12 +383,20 @@ class OptionsRequest(LayoutRequest):
 
 @app.post("/api/layout/options")
 def layout_options_route(req: OptionsRequest):
-    # The cards compare installed power only (Νίκος, 2026-10-22), so no energy estimate here.
+    # The cards compare installed power and how well each placement catches the sun (Νίκος, 2026-10-22):
+    # no energy estimate and no PVGIS call here.
     params = LayoutParams(**req.model_dump(exclude={"area", "areas", "east_west"}))
     try:
-        return {"options": layout_options(req.areas, params, req.east_west)}
+        options = layout_options(req.areas, params, req.east_west)
     except ValueError as e:
         raise HTTPException(400, str(e))
+    lat, lon = options[0]["center"]
+    planes = [[(f["tilt_deg"], f["azimuth_deg"], f["kwp"] or 1.0) for f in o["faces"]] if o.get("faces")
+              else [(o["tilt_deg"], o["azimuth_deg"], 1.0)] for o in options]
+    yields = simulation.orientation_yield(lat, lon, planes)
+    for o, pct in zip(options, yields["pct"]):
+        o["yield_pct"] = pct
+    return {"options": options, "yield_source": yields["source"]}
 
 
 class AreasLayoutRequest(LayoutRequest):

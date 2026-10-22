@@ -108,7 +108,18 @@ def test_options_api_power_only():
     assert len(opts) == 4
     for o in opts:
         assert o["kwp"] > 0 and "annual_kwh" not in o
+        assert 50 < o["yield_pct"] <= 100
     assert opts[1]["kwp"] > opts[0]["kwp"]  # east-west fits more panels
+    assert opts[1]["yield_pct"] < opts[0]["yield_pct"]  # ...but each one catches less sun than facing south
+
+
+def test_orientation_yield_offline(monkeypatch, tmp_path):
+    from backend import simulation
+    monkeypatch.setattr(simulation, "WEATHER_DIR", tmp_path)  # no saved weather: clear-sky, still no internet
+    y = simulation.orientation_yield(38.0, 23.7, [[(30, 180, 1)], [(10, 90, 1), (10, 270, 1)], [(30, 0, 1)]])
+    south, ew, north = y["pct"]
+    assert y["source"] == "clearsky"
+    assert 97 < south <= 100 and 75 < ew < 95 and north < ew
 
 
 def test_options_api_empty_area():

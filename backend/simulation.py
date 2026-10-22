@@ -98,6 +98,60 @@ def get_weather(lat: float, lon: float) -> tuple[pd.DataFrame, str, str | None]:
         )
 
 
+def _nearest_cached_weather(lat: float, lon: float, max_deg: float = 1.0) -> pd.DataFrame | None:
+    """Hourly weather of the closest location already saved in data/weather (no internet), if near enough."""
+    best = None
+    for f in WEATHER_DIR.glob("tmy_*.json") if WEATHER_DIR.exists() else []:
+        try:
+            flat, flon = (float(v) for v in f.stem[4:].split("_"))
+        except ValueError:
+            continue
+        d = max(abs(flat - lat), abs(flon - lon))
+        if d <= max_deg and (best is None or d < best[0]):
+            best = (d, f)
+    if best is None:
+        return None
+    try:
+        return parse_pvgis_tmy(json.loads(best[1].read_text(encoding="utf-8")))
+    except Exception:
+        return None
+
+
+def orientation_yield(lat: float, lon: float, layouts: list[list[tuple[float, float, float]]]) -> dict:
+    """How well panels placed in each way catch the sun, in % of the best placement at this location.
+
+    layouts: one list of planes [(tilt, azimuth, weight), ...] per layout (two planes for east-west racks;
+    weight = kWp). Returns {"pct": [one % per layout], "source"}. 100 % = facing the
+    equator at the tilt that catches the most light over the year. Uses saved weather of a nearby location
+    when there is one, else clear-sky weather; no internet either way, so it is a quick comparison.
+    """
+    import pvlib
+
+    w = _nearest_cached_weather(lat, lon)
+    source = "weather" if w is not None else "clearsky"
+    if w is None:
+        w = clearsky_weather(lat, lon)
+    sol = pvlib.solarposition.get_solarposition(w.index, lat, lon)
+    dni_extra = pvlib.irradiance.get_extra_radiation(w.index)
+    airmass = pvlib.atmosphere.get_relative_airmass(sol["apparent_zenith"])
+
+    def annual(tilt, az):
+        poa = pvlib.irradiance.get_total_irradiance(
+            tilt, az, sol["apparent_zenith"], sol["azimuth"], w["dni"], w["ghi"], w["dhi"],
+            dni_extra=dni_extra, airmass=airmass, albedo=ALBEDO, model="perez",
+        )["poa_global"].fillna(0.0).clip(lower=0.0)
+        return float(poa.sum())
+
+    best_az = 180.0 if lat >= 0 else 0.0
+    best = max(annual(t, best_az) for t in range(0, 61, 2))
+    pct = []
+    for planes in layouts:
+        total_w = sum(p[2] for p in planes) or 1.0
+        got = sum(annual(t, az) * wt for t, az, wt in planes) / total_w
+        pct.append(round(100.0 * got / best, 1) if best else 0.0)
+    return {"pct": pct, "source": source}
+
+
 def inverter_efficiency(pdc: np.ndarray, pac0: float, eta_nom: float) -> np.ndarray:
     """PVWatts part-load efficiency curve (no clipping)."""
     pdc0 = pac0 / eta_nom
