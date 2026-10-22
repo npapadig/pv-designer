@@ -798,7 +798,7 @@ function refreshGoogleViewport() {
       north: b.getNorth(), south: b.getSouth(), east: b.getEast(), west: b.getWest(),
     });
     try {
-      const d = await (await fetch(`${GOOGLE_TILES}/viewport?${q}`)).json();
+      const d = await (await fetch(`https://tile.googleapis.com/tile/v1/viewport?${q}`)).json();
       const text = `Google${d.copyright ? " · " + d.copyright : ""}`;
       if (text !== google.attribution) {
         map.attributionControl.removeAttribution(google.attribution || "Google");

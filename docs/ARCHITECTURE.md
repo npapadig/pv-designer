@@ -25,6 +25,10 @@ Repo: github.com/npapadig/pv-designer, single `main` branch, several Claude thre
 - Frontend: plain HTML/JS, no build step. `frontend/app.js` (map, layers, steps logic, API calls),
   `electrical.js` (inverter/simulation UI), `ui.js` (look: rail, panel, dock, theme), `nudge.js` (move all drawings
   by metres to match offset imagery; uses app.js globals).
+- v0.9: `home.js`/`home.css` (start screen, project cards), `plan.js` (floor-plan image on the map; images in
+  `data/plans/` via `POST/GET /api/plans`), `draw.js`/`draw.css` (side lengths, styles, edit mode, compass),
+  `options.js`/`options.css` + `layout.layout_options` / `POST /api/layout/options` / `/api/layout/ew` (3 proposals +
+  manual; tilts in `OPTION_*` constants), `mapimage.py` uses the on-screen base map (`basemap` sent by the app).
 - Roof faces (v0.6-0.8): `frontend/faces.js` (split a roof along a line via `/api/split`, per-face tilt/azimuth);
   `/api/layout/faces`, and optional `faces` / `panel_face` on `/api/shading`, `/api/shadows`, `/api/energy`,
   `/api/simulate`, `/api/electrical` (strings per face → own MPPT, optional mixing). Details: `docs/streams/faces.md`. Libraries vendored in
