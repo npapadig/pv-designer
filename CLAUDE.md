@@ -51,8 +51,9 @@
 - If a new session cannot be started (e.g. I write from my phone), ask me once: "do it here (in a worktree) / wait".
 
 ## 5. Usage economy
-- At most 2 streams at a time (+ the coordinator).
-- Check usage at every merge (if a usage command is available) and tell me the weekly % in one line.
+- At most 2 streams at a time (+ the coordinator) — Νίκος, 2026-10-22 (final; replaces the earlier "more allowed").
+- When a stream is finished and merged, ARCHIVE its session; only then the coordinator starts the next stream(s).
+- Check usage at every merge and whenever a stream ends, and tell me the 5-hour % and weekly % in one line.
   - weekly >= 75 %: no NEW stream without my yes; finish what runs.
   - weekly >= my limit in §0: SAFE STOP. Merge only verified work, leave a working version, complete HANDOFF +
     KANE_ESY + TESTS_FOR_ME; half-done work stays on its branch with a note; continue after the weekly reset.
@@ -64,13 +65,17 @@
   medium; Sonnet for normal work and for the coordinator's routine (merges, checks, handoff), effort medium; Sonnet
   low or Haiku for mechanical work (texts, translations, renames, docs). Set it when you start a session (model/effort
   parameters), not mid-conversation (switching loses the cache). Say in one line what you picked and why.
-- YOU decide when streams are needed and how many run in parallel (Νίκος, 2026-10-22; replaces "at most 2").
+- YOU decide when a stream is needed (max 2 at a time, see above).
 - Streams only for BIG independent pieces (each stream starts cold and re-reads the code). Small fixes: do them in
   one session, one after the other. Merge in batches, not after every step.
 
 ## 6. Fresh sessions instead of long ones
 - Propose a NEW session (after a short handoff) when a stream's list is done, the conversation is long, or I bring
   a new unrelated topic. The coordinator renews itself the same way: CLAUDE.md -> HANDOFF.md -> PLAN.md -> KANE_ESY.
+- The coordinator decides WHEN to renew itself (from the usage % and how long the conversation has grown): first
+  update HANDOFF.md, PLAN.md, KANE_ESY.txt, docs/TESTS_FOR_ME.txt and the stream files, commit + push, then ask me
+  with an AskUserQuestion BUTTON ("Αλλαγή συντονιστή τώρα (Προτείνεται)" / "Αργότερα"). The new chat starts with:
+  «Διάβασε CLAUDE.md και HANDOFF.md και συνέχισε».
 
 ## 7. Automations
 - When work may hit the 5-hour limit and scheduled tasks are available, create a one-time task (reset time + ~10 min)

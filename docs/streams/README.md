@@ -17,7 +17,7 @@ goal, files it owns, numbered items, checks to run, and a status table. Max 2 st
 | voitheia | `voitheia.md` | `help.js/.css`, `helptexts.js` | ΤΕΛΟΣ (v0.12.1) |
 | glossa | `glossa.md` | `i18n.js`, `lang/en.js`, `report.py`, `backend/i18n.py` | ΤΕΛΟΣ (v0.12.1) |
 
-2026-10-22: ο Νίκος επέτρεψε να τρέχουν περισσότερες από 2 ροές μαζί (PLAN.md).
+2026-10-22 (τελικό): το πολύ 2 ροές μαζί· κάθε ροή που τελειώνει αρχειοθετείται πριν ξεκινήσει η επόμενη (CLAUDE.md §5).
 
 Suggested split by area (owned files), so streams do not collide:
 - **maps**: map layers and drawing in `frontend/app.js` (map section), `backend/settings.py`.
