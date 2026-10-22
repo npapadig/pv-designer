@@ -110,14 +110,15 @@ L.drawLocal.draw.handlers.polygon.tooltip = {
 };
 
 const editGroup = new L.FeatureGroup().addTo(map);
-map.addControl(new L.Control.Draw({
+const drawControl = new L.Control.Draw({
   draw: {
     polygon: { allowIntersection: false, showArea: true, shapeOptions: AREA_STYLE },
     rectangle: { shapeOptions: AREA_STYLE },
     polyline: false, circle: false, marker: false, circlemarker: false,
   },
   edit: { featureGroup: editGroup },
-}));
+});
+map.addControl(drawControl);
 
 function drawMode() {
   return document.querySelector("input[name=drawMode]:checked").value;
