@@ -114,6 +114,42 @@
         <button id="btnSearch" class="icon-btn" title="Αναζήτηση" aria-label="Αναζήτηση"><svg class="ic"><use href="#i-search"/></svg></button>
       </div>
       <p class="muted small">Μετά σχεδίασε την περιοχή με το εργαλείο πολυγώνου πάνω αριστερά στον χάρτη.</p>
+      <details id="planBox">
+        <summary>Κάτοψη κτιρίου</summary>
+        <div id="planEmpty">
+          <p class="muted small">Αν έχεις σχέδιο κάτοψης (εικόνα PNG ή JPG), βάλ' το πάνω στον χάρτη και σχεδίασε τη στέγη πάνω του.</p>
+          <div class="row"><button type="button" id="btnPlanUpload" class="secondary"><svg class="ic"><use href="#i-image"/></svg>Ανέβασμα κάτοψης</button></div>
+        </div>
+        <div id="planTools" hidden>
+          <p class="muted small" id="planHelp">Σύρε την κάτοψη με το ποντίκι για να τη μετακινήσεις. Για σωστό μέγεθος πάτα
+            «Κλίμακα» και κάνε κλικ σε δύο σημεία με γνωστή απόσταση (π.χ. τις άκρες ενός τοίχου).</p>
+          <div class="row">
+            <button type="button" id="btnPlanCenter" class="secondary">Στο κέντρο του χάρτη</button>
+            <button type="button" id="btnPlanScale" class="secondary">Κλίμακα (2 σημεία)</button>
+          </div>
+          <div id="planScaleRow" class="plan-scale" hidden>
+            <p class="muted small" id="planScaleInfo"></p>
+            <div class="row" id="planScaleSet" hidden>
+              <input id="planDist" type="number" min="0.01" step="0.01" aria-label="Πραγματική απόσταση σε μέτρα">
+              <span class="muted">m</span>
+              <button type="button" id="btnPlanScaleOk">Εφαρμογή</button>
+            </div>
+            <button type="button" id="btnPlanScaleCancel" class="ghost">Ακύρωση</button>
+          </div>
+          <label>Περιστροφή <input id="planRot" type="range" min="-180" max="180" step="0.5" value="0"></label>
+          <div class="grid2">
+            <label>Γωνία (°) <input id="planRotNum" type="number" step="0.1" value="0"></label>
+            <label>Πλάτος κάτοψης (m) <input id="planWidth" type="number" step="0.1" min="1"></label>
+          </div>
+          <label>Διαφάνεια <input id="planOpacity" type="range" min="10" max="100" step="5" value="60"></label>
+          <label class="radio switch"><input type="checkbox" id="planLock"> Κλείδωμα (για να σχεδιάσεις πάνω της)</label>
+          <div class="row">
+            <button type="button" id="btnPlanReplace" class="ghost">Άλλη εικόνα</button>
+            <button type="button" id="btnPlanRemove" class="ghost danger">Αφαίρεση κάτοψης</button>
+          </div>
+        </div>
+        <input type="file" id="planFile" accept="image/png,image/jpeg" hidden>
+      </details>
       <div class="row segmented">
         <label class="radio"><input type="radio" name="drawMode" value="area" checked> Περιοχή πάνελ</label>
         <label class="radio"><input type="radio" name="drawMode" value="keepout"> Εμπόδιο</label>
@@ -403,6 +439,7 @@
   <script src="faces.js?v=__VERSION__"></script>
   <script src="electrical.js?v=__VERSION__"></script>
   <script src="ui.js?v=__VERSION__"></script>
+  <script src="plan.js?v=__VERSION__"></script>
   <script src="home.js?v=__VERSION__"></script>
 </body>
 </html>

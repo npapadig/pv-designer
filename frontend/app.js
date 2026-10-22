@@ -618,6 +618,7 @@ function collectProject() {
 
 function resetProject() {
   areas.clearLayers(); keepouts.clearLayers(); editGroup.clearLayers();
+  window.plan?.clear();
   state.projectId = null;
   $("projectName").value = "Νέο έργο";
   $("clientName").value = "";

@@ -94,3 +94,23 @@
   #rail #btnHome .ic:first-child { display: none; }
   #rail #btnHome .ic:last-child { display: block; }
 }
+
+/* ---------- Floor plan on the map (plan.js) ---------- */
+.plan-img {
+  position: absolute; left: 0; top: 0; max-width: none !important; max-height: none !important;
+  user-select: none; -webkit-user-select: none; pointer-events: auto; cursor: move;
+  outline: 2px dashed rgba(255, 138, 61, 0.9); outline-offset: 0; image-rendering: auto;
+}
+.plan-img.dragging { cursor: grabbing; }
+.plan-img.locked, .plan-img.measuring { pointer-events: none; cursor: default; outline: 0; }
+.leaflet-container.plan-measuring, .leaflet-container.plan-measuring .leaflet-interactive { cursor: crosshair; }
+#planTools input[type=range] { margin-top: 2px; }
+#planTools button:disabled { cursor: not-allowed; opacity: 0.4; }
+#planTools button:disabled::before { display: none; }
+#planTools .row button { flex: 1; }
+#planTools .row button.ghost { flex: none; }
+.plan-scale { margin: 0 0 12px; padding: 10px 12px; border-radius: 12px; background: var(--warn-soft); border: 1px solid rgba(255, 138, 61, 0.3); }
+.plan-scale .small { margin: 0 0 8px; color: var(--text); }
+.plan-scale .row { margin-bottom: 6px; }
+.plan-scale .row input { flex: 1; }
+.plan-scale > button { height: 32px; padding: 0 10px; }
