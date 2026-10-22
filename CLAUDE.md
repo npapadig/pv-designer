@@ -76,6 +76,11 @@
   update HANDOFF.md, PLAN.md, KANE_ESY.txt, docs/TESTS_FOR_ME.txt and the stream files, commit + push, then ask me
   with an AskUserQuestion BUTTON ("Αλλαγή συντονιστή τώρα (Προτείνεται)" / "Αργότερα"). The new chat starts with:
   «Διάβασε CLAUDE.md και HANDOFF.md και συνέχισε».
+- On "yes", the OLD coordinator STARTS the new one itself (Νίκος, 2026-10-22): `start_session` with
+  initiation "user_asked", context "fresh", `use_worktree: false` (it works on `main` in `C:\pv-designer`), model
+  Sonnet, effort medium, prompt «Διάβασε CLAUDE.md και HANDOFF.md και συνέχισε. Είσαι ο νέος συντονιστής.»; then
+  `detach_session` it (so it lives on its own) and give me its link. If starting is impossible (e.g. phone), tell me
+  exactly which button to press / what to type. Then the old coordinator stops working (I may archive it).
 
 ## 7. Automations
 - When work may hit the 5-hour limit and scheduled tasks are available, create a one-time task (reset time + ~10 min)
