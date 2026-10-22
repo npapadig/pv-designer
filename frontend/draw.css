@@ -15,3 +15,30 @@
 .pv-edge.live span { color: #fff; background: var(--sun-2); border-color: transparent; }
 .pv-edge.keepout.live span { background: var(--sun-3); }
 .pv-edge.closing span { opacity: 0.7; }
+
+/* ---------- Lines and handles ---------- */
+.leaflet-overlay-pane path.pv-shape { filter: url(#pvHalo); transition: fill-opacity 0.15s; }
+.leaflet-overlay-pane path.pv-area:hover { fill-opacity: 0.2; }
+.leaflet-overlay-pane path.pv-keepout:hover { fill-opacity: 0.35; }
+
+/* Vertex handles while drawing and editing: white dots with a sun-coloured ring. */
+.leaflet-marker-icon.leaflet-editing-icon {
+  border-radius: 50%; border: 2px solid var(--sun-2); background: #fff;
+  box-shadow: 0 0 0 1.5px rgba(0, 0, 0, 0.45), 0 2px 6px rgba(0, 0, 0, 0.4);
+  transition: box-shadow 0.12s, background 0.12s;
+}
+/* No transform here: Leaflet positions markers with it. */
+.leaflet-marker-icon.leaflet-editing-icon:hover {
+  background: var(--sun-1); box-shadow: 0 0 0 4px rgba(255, 197, 61, 0.45), 0 2px 6px rgba(0, 0, 0, 0.4);
+}
+
+/* Leaflet.draw hints that follow the mouse. */
+.leaflet-draw-tooltip {
+  background: var(--glass-strong); color: var(--text); border: 1px solid var(--line-strong); border-radius: 10px;
+  box-shadow: var(--shadow); font: 500 12px/1.4 var(--font); padding: 6px 10px; margin-left: 22px;
+}
+.leaflet-draw-tooltip::before { border-right-color: var(--glass-strong); }
+.leaflet-draw-tooltip-subtext { color: var(--muted); }
+.leaflet-error-draw-tooltip { background: var(--danger); color: #fff; border-color: transparent; }
+.leaflet-error-draw-tooltip::before { border-right-color: var(--danger); }
+.leaflet-draw-guide-dash { width: 4px; height: 4px; border-radius: 50%; opacity: 0.9; }

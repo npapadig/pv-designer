@@ -98,8 +98,10 @@ const areas = new L.FeatureGroup().addTo(map);
 const keepouts = new L.FeatureGroup().addTo(map);
 const panelsLayer = new L.FeatureGroup().addTo(map);
 const shadowsLayer = new L.FeatureGroup().addTo(map);
-const AREA_STYLE = { color: "#f59e0b", weight: 2, fillOpacity: 0.08 };
-const KEEPOUT_STYLE = { color: "#ef4444", weight: 2, fillOpacity: 0.3 };
+// className hooks the shapes to draw.css (soft dark halo, hover); it applies when a shape is added to the map.
+const AREA_STYLE = { color: "#ff8a3d", weight: 2.5, opacity: 1, fillColor: "#ffc53d", fillOpacity: 0.12, lineJoin: "round", className: "pv-shape pv-area" };
+const KEEPOUT_STYLE = { color: "#ff4d6d", weight: 2, opacity: 1, fillColor: "#ff4d6d", fillOpacity: 0.25, lineJoin: "round", className: "pv-shape pv-keepout" };
+const DRAFT_STYLE = { color: "#ffc53d", weight: 2.5, opacity: 1, dashArray: "7 6", fillColor: "#ffc53d", fillOpacity: 0.1, lineJoin: "round", className: "pv-shape" };
 
 L.drawLocal.draw.toolbar.buttons.polygon = "Σχεδίαση πολυγώνου";
 L.drawLocal.draw.toolbar.buttons.rectangle = "Σχεδίαση ορθογωνίου";
@@ -112,8 +114,8 @@ L.drawLocal.draw.handlers.polygon.tooltip = {
 const editGroup = new L.FeatureGroup().addTo(map);
 const drawControl = new L.Control.Draw({
   draw: {
-    polygon: { allowIntersection: false, showArea: true, shapeOptions: AREA_STYLE },
-    rectangle: { shapeOptions: AREA_STYLE },
+    polygon: { allowIntersection: false, showArea: true, shapeOptions: DRAFT_STYLE },
+    rectangle: { shapeOptions: DRAFT_STYLE },
     polyline: false, circle: false, marker: false, circlemarker: false,
   },
   edit: { featureGroup: editGroup },

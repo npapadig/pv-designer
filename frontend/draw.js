@@ -82,6 +82,17 @@
     },
   });
 
+  // ---------- Look of lines and handles ----------
+  // A soft dark halo keeps the lines readable on bright roofs; an SVG filter, because CSS
+  // drop-shadow() is not applied to SVG shapes in every browser.
+  document.body.insertAdjacentHTML("afterbegin", `<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <filter id="pvHalo" x="-5%" y="-5%" width="110%" height="110%">
+      <feDropShadow dx="0" dy="0" stdDeviation="1.2" flood-color="#000" flood-opacity="0.75"/>
+    </filter></svg>`);
+  const HANDLE = L.divIcon({ className: "leaflet-div-icon leaflet-editing-icon pv-handle", iconSize: [14, 14] });
+  const DRAFT_AREA = { color: "#ffc53d", fillColor: "#ffc53d" };
+  const DRAFT_KEEPOUT = { color: "#ff4d6d", fillColor: "#ff4d6d" };
+
   // ---------- Live labels while drawing ----------
   let drawing = null; // the active Leaflet.draw handler
   let mouse = null;
@@ -108,6 +119,11 @@
   map.on("draw:drawstart", (e) => {
     const mode = drawControl._toolbars.draw._modes[e.layerType];
     drawing = mode ? mode.handler : null;
+    if (drawing) {
+      const keepout = document.querySelector("input[name=drawMode]:checked")?.value === "keepout";
+      Object.assign(drawing.options.shapeOptions, keepout ? DRAFT_KEEPOUT : DRAFT_AREA);
+      drawing.options.icon = drawing.options.touchIcon = HANDLE;
+    }
     mouse = null;
     drawDraft();
   });
