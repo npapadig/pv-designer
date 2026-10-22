@@ -10,8 +10,8 @@ goal, files it owns, numbered items, checks to run, and a status table. Max 2 st
 | faces | `faces.md` | engine + `backend/main.py` + υπόλοιπο `frontend/app.js`, `electrical.js` | ΤΕΛΟΣ (v0.8.0) |
 | home | `home.md` | `home.js`, `plan.js`, `home.css`, app.js «Projects», `storage.py` | ξεκίνησε 2026-10-22 |
 | pdf | `pdf.md` | `mapimage.py`, εικόνα στο `report.py` | ξεκίνησε 2026-10-22 |
-| draw | `draw.md` | `draw.js`, `draw.css`, app.js «Map» | σε αναμονή (2η σειρά) |
-| options | `options.md` | προτάσεις διάταξης, app.js «Layout» | σε αναμονή (αποφάσεις Νίκου) |
+| draw | `draw.md` | `draw.js`, `draw.css`, app.js «Map» | ξεκίνησε 2026-10-22 |
+| options | `options.md` | προτάσεις διάταξης, app.js «Layout» | ξεκίνησε 2026-10-22 (προσωρινές τιμές) |
 
 Suggested split by area (owned files), so streams do not collide:
 - **maps**: map layers and drawing in `frontend/app.js` (map section), `backend/settings.py`.
