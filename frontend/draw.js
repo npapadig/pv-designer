@@ -135,5 +135,45 @@
     drawDraft();
   });
 
+  // ---------- Panel cells ----------
+  // Thin lines over each panel: the gap of half-cut modules across the middle (zoom 19+) and
+  // six cell columns along the long side (zoom 21+). Kept in their own layers, so the panel
+  // layers (whose order the shading results follow) stay untouched.
+  map.createPane("pvCells").style.zIndex = 401;
+  map.getPane("pvCells").style.pointerEvents = "none";
+  const LINE = { pane: "pvCells", interactive: false, color: "#cbd5e1", lineCap: "butt" };
+  const gapLines = L.polyline([], { ...LINE, weight: 1, opacity: 0.7 });
+  const cellLines = L.polyline([], { ...LINE, weight: 0.6, opacity: 0.35 });
+  const COLS = 6;
+  const lerp = (a, b, t) => [a.lat + (b.lat - a.lat) * t, a.lng + (b.lng - a.lng) * t];
+
+  function rebuildCells() {
+    const gaps = [], cells = [];
+    for (const panel of panelsLayer.getLayers()) {
+      const c = panel.getLatLngs()[0];
+      if (!c || c.length !== 4) continue;
+      // Long sides: a→b and d→c (a, b, c, d in order around the panel).
+      let [a, b, cc, d] = c;
+      if (meters(a, b) < meters(b, cc)) [a, b, cc, d] = [b, cc, d, a];
+      gaps.push([lerp(a, b, 0.5), lerp(d, cc, 0.5)]);
+      for (let k = 1; k < COLS; k++) cells.push([lerp(a, d, k / COLS), lerp(b, cc, k / COLS)]);
+    }
+    gapLines.setLatLngs(gaps);
+    cellLines.setLatLngs(cells);
+    showCells();
+  }
+  function showCells() {
+    const z = map.getZoom(), n = panelsLayer.getLayers().length;
+    const toggle = (layer, on) => (on ? map.addLayer(layer) : map.removeLayer(layer));
+    toggle(gapLines, n && z >= 19);
+    toggle(cellLines, n && z >= 21);
+  }
+  let cellsTimer = 0; // one rebuild after a whole layout is added or cleared
+  panelsLayer.on("layeradd layerremove", () => {
+    clearTimeout(cellsTimer);
+    cellsTimer = setTimeout(rebuildCells, 0);
+  });
+  map.on("zoomend", showCells);
+
   window.drawTools = { meters, refresh, refreshAll };
 })();

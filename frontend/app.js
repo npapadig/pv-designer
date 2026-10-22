@@ -283,7 +283,9 @@ function clearLayout() {
   window.elec?.reset();
 }
 
-const PANEL_STYLE = { color: "#dbeafe", weight: 0.5, fillColor: "#2563eb", fillOpacity: 0.75 };
+// Deep blue modules with a thin light frame; draw.js adds the cell lines when zoomed in.
+const PANEL_FILL = "#1e3a8a";
+const PANEL_STYLE = { color: "#e2e8f0", weight: 0.8, opacity: 0.9, fillColor: PANEL_FILL, fillOpacity: 0.92, lineJoin: "miter" };
 const addPanel = (latlngs) => L.polygon(latlngs, PANEL_STYLE).addTo(panelsLayer);
 
 async function runLayout() {
@@ -346,7 +348,7 @@ function clearShading() {
 }
 
 function lossColor(pct) {
-  if (pct < 1) return "#2563eb";
+  if (pct < 1) return PANEL_FILL;
   if (pct < 5) return "#facc15";
   if (pct < 10) return "#f97316";
   return "#dc2626";
@@ -356,7 +358,7 @@ function colorPanels() {
   const losses = state.shading && state.shading.panel_loss_pct;
   panelsLayer.getLayers().forEach((l, i) => {
     const pct = losses ? losses[i] : null;
-    l.setStyle({ fillColor: pct == null ? "#2563eb" : lossColor(pct) });
+    l.setStyle({ fillColor: pct == null ? PANEL_FILL : lossColor(pct) });
     if (pct == null) l.unbindTooltip(); else l.bindTooltip(`Σκίαση: ${fmt(pct, 1)}% τον χρόνο`);
   });
   $("shadingLegend").hidden = !losses;
