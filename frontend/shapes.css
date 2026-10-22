@@ -1,0 +1,41 @@
+/* Shapes (shapes.js): the selected shape on the map, the buttons on the map and the lists of shapes
+   in the side panel. Uses the theme colours of style.css. */
+
+/* ---------- Selected shape ---------- */
+/* CSS wins over the SVG attributes Leaflet sets: a moving dashed outline ("marching ants"). */
+.leaflet-overlay-pane path.pv-shape.pv-selected {
+  stroke-dasharray: 9 6; stroke-width: 3.5px; cursor: move; animation: pv-ants 0.9s linear infinite;
+}
+.leaflet-overlay-pane path.pv-area.pv-selected { fill-opacity: 0.24; }
+.leaflet-overlay-pane path.pv-keepout.pv-selected { fill-opacity: 0.4; }
+@keyframes pv-ants { to { stroke-dashoffset: -15; } }
+@media (prefers-reduced-motion: reduce) { .leaflet-overlay-pane path.pv-shape.pv-selected { animation: none; } }
+
+/* Undo, redo, copy, paste and delete buttons under the drawing tools. */
+.pv-shape-tools a { display: flex !important; align-items: center; justify-content: center; }
+.pv-shape-tools .ic { width: 16px; height: 16px; }
+.pv-shape-tools a.pv-off .ic { opacity: 0.38; }
+
+/* ---------- Lists in the side panel ---------- */
+.shape-list h3 { margin-top: 16px; }
+.shape-list > p { margin: -2px 0 8px; }
+.shape-rows { display: grid; gap: 6px; margin-bottom: 12px; }
+.shape-row {
+  display: grid; grid-template-columns: 76px minmax(0, 1fr) auto 32px; gap: 6px; align-items: center;
+  padding: 5px 5px 5px 9px; border-radius: 12px; border: 1px solid var(--line); background: var(--soft);
+  cursor: pointer; transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+}
+.shape-row:hover { background: var(--field); }
+.shape-row.on { border-color: var(--sun-2); box-shadow: 0 0 0 3px var(--ring); }
+.shape-no {
+  display: flex; align-items: center; gap: 7px; min-width: 0;
+  font-size: 0.76rem; font-weight: 700; color: var(--text); white-space: nowrap;
+}
+.shape-no::before { content: ""; flex: none; width: 10px; height: 10px; border-radius: 3px; background: #ff4d6d; }
+.shape-row.area .shape-no::before { background: #ffc53d; }
+.shape-row input { height: 32px; margin: 0; padding: 0 8px; border-radius: 9px; font-size: 0.82rem; }
+.shape-num { display: flex; align-items: center; gap: 4px; margin: 0; font-size: 0.76rem; white-space: nowrap; }
+.shape-num input { width: 58px; padding-right: 2px; }
+.shape-row button.shape-del { width: 32px; height: 32px; border-radius: 9px; }
+.shape-row button.shape-del .ic { width: 15px; height: 15px; }
+.shape-row button.shape-del:hover { color: var(--danger); background: var(--danger-soft); }

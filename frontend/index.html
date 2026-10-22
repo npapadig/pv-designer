@@ -10,6 +10,7 @@
   <link rel="stylesheet" href="style.css?v=__VERSION__">
   <link rel="stylesheet" href="home.css?v=__VERSION__">
   <link rel="stylesheet" href="draw.css?v=__VERSION__">
+  <link rel="stylesheet" href="shapes.css?v=__VERSION__">
   <link rel="stylesheet" href="options.css?v=__VERSION__">
   <script>
     // Apply the saved light/dark choice before the page paints, so it does not flash.
@@ -157,10 +158,15 @@
         <label class="radio"><input type="radio" name="drawMode" value="area" checked> Περιοχή πάνελ</label>
         <label class="radio"><input type="radio" name="drawMode" value="keepout"> Εμπόδιο</label>
       </div>
-      <label>Ύψος νέου εμποδίου (m) <input id="obstacleHeight" type="number" value="1" step="0.5" min="0"></label>
-      <p class="muted small">Ύψος πάνω από την επιφάνεια όπου μπαίνουν τα πάνελ (καμινάδα, τοιχίο, δέντρο, γειτονικό κτίριο).
-        Με 0 το εμπόδιο απλώς εξαιρείται χωρίς να ρίχνει σκιά. Κάνε κλικ σε ένα εμπόδιο για να αλλάξεις το ύψος του.</p>
+      <p class="muted small">Πάτα ένα από τα δύο κουμπιά και κάνε κλικ γύρω γύρω στον χάρτη· κλικ στο πρώτο σημείο για να
+        κλείσει. Διπλό κλικ σε ένα σχήμα για να το επιλέξεις.</p>
       <p class="muted small" id="shapesInfo">Καμία περιοχή.</p>
+      <div id="keepoutList" class="shape-list" hidden>
+        <h3>Εμπόδια</h3>
+        <p class="muted small">Ύψος πάνω από την επιφάνεια των πάνελ (καμινάδα, τοιχίο, δέντρο, γειτονικό κτίριο). Με 0 το
+          εμπόδιο απλώς μένει έξω, χωρίς σκιά.</p>
+        <div class="shape-rows"></div>
+      </div>
       <details id="facesBox" open>
         <summary>Πλευρές στέγης</summary>
         <p class="muted small">Για στέγη με πολλές πλευρές (δίριχτη, τετράριχτη): σχεδίασε όλη τη στέγη ως μία περιοχή,

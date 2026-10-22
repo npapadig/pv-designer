@@ -134,28 +134,49 @@ function drawMode() {
   return document.querySelector("input[name=drawMode]:checked").value;
 }
 
+// The two mode buttons («Περιοχή πάνελ», «Εμπόδιο») start drawing a polygon of that kind at once.
+document.querySelectorAll("input[name=drawMode]").forEach((r) => r.addEventListener("click", () => {
+  const pen = drawControl._toolbars.draw._modes.polygon.handler;
+  if (pen.enabled()) pen.disable(); // again, in the colour of the new kind
+  pen.enable();
+}));
+
+const NEW_OBSTACLE_M = 1; // a new obstacle starts 1 m high; changed in the list or with a click on it
+
 function addShape(layer, kind, height) {
   layer.setStyle(kind === "keepout" ? KEEPOUT_STYLE : AREA_STYLE);
   layer.pvKind = kind;
-  if (kind === "keepout") setObstacleHeight(layer, height ?? +$("obstacleHeight").value);
+  if (kind === "keepout") setObstacleHeight(layer, height ?? NEW_OBSTACLE_M);
   (kind === "keepout" ? keepouts : areas).addLayer(layer);
   editGroup.addLayer(layer);
   updateShapesInfo();
 }
 
+// The name in the lists and tooltips: the one typed in, else «Εμπόδιο 2» by its place in the list.
+function shapeName(layer) {
+  if (layer.pvName) return layer.pvName;
+  return layer.pvKind === "keepout" ? `Εμπόδιο ${keepouts.getLayers().indexOf(layer) + 1}` : `Χώρος ${areas.getLayers().indexOf(layer) + 1}`;
+}
+
 // Obstacles carry a height (m above the panel surface) used by the shading analysis.
 function setObstacleHeight(layer, h) {
   layer.pvHeight = Math.max(0, +h || 0);
-  layer.bindTooltip(layer.pvHeight ? `Εμπόδιο ${fmt(layer.pvHeight, 1)} m` : "Εμπόδιο (χωρίς σκιά)");
+  // Worked out when shown, so a new name or place in the list shows at once; text, not HTML.
+  if (!layer.getTooltip()) {
+    layer.bindTooltip(() => document.createTextNode(
+      `${shapeName(layer)} · ${layer.pvHeight ? `${fmt(layer.pvHeight, 1)} m` : "χωρίς σκιά"}`));
+  }
   layer.off("click").on("click", () => {
     if (window.drawTools?.editing) return;
     const box = L.DomUtil.create("div");
-    box.innerHTML = `<label>Ύψος εμποδίου (m) <input type="number" min="0" step="0.5" value="${layer.pvHeight}"></label>`;
+    box.innerHTML = `<b></b><label>Ύψος (m) <input type="number" min="0" step="0.5" value="${layer.pvHeight}"></label>`;
+    box.querySelector("b").textContent = shapeName(layer);
     const input = box.querySelector("input");
     input.onchange = () => { setObstacleHeight(layer, input.value); clearShading(); window.shapes?.record(); };
     L.popup().setLatLng(layer.getBounds().getCenter()).setContent(box).openOn(map);
     setTimeout(() => input.focus(), 50);
   });
+  map.fire("pv:shapes"); // the lists in the side panel (shapes.js)
 }
 
 map.on(L.Draw.Event.CREATED, (e) => {
@@ -638,6 +659,7 @@ function collectProject() {
     area_faces: window.faces?.collect() || null,
     keepouts: keepouts.getLayers().map(latlngsOf),
     keepout_heights: keepouts.getLayers().map((l) => l.pvHeight || 0),
+    keepout_names: keepouts.getLayers().map((l) => l.pvName || ""),
     shading: state.shading,
     layout: state.layout ? { ...state.layout, panels: panelsLayer.getLayers().map(latlngsOf) } : null,
     energy: state.energy,
@@ -692,7 +714,11 @@ function loadProject(p) {
   (p.areas || []).forEach((a) => addShape(L.polygon(a), "area"));
   window.faces?.load(p.area_faces);
   // Projects saved before shading analysis have no heights: their obstacles cast no shadow.
-  (p.keepouts || []).forEach((k, i) => addShape(L.polygon(k), "keepout", (p.keepout_heights || [])[i] || 0));
+  (p.keepouts || []).forEach((k, i) => {
+    const layer = L.polygon(k);
+    layer.pvName = (p.keepout_names || [])[i] || undefined; // older projects: «Εμπόδιο N»
+    addShape(layer, "keepout", (p.keepout_heights || [])[i] || 0);
+  });
   if (p.layout) {
     p.layout.panels.forEach((pp) =>
       addPanel(pp)

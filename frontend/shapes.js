@@ -1,8 +1,9 @@
 // Shapes like in a drawing program: a double-click on an area or obstacle selects the whole shape
 // (dashed outline + corner handles). Then: drag = move, Delete = delete, Ctrl+C / Ctrl+V = copy and
 // paste, Esc = done; Ctrl+Z / Ctrl+Y undo and redo any change of the shapes. The same actions as
-// buttons on the map. Loaded after draw.js and uses app.js's map, areas, keepouts, panelsLayer,
-// editGroup, drawControl, addShape, setObstacleHeight, updateShapesInfo, clearLayout and toast.
+// buttons on the map; lists of the shapes, with names, in the side panel. Loaded after draw.js and uses
+// app.js's map, areas, keepouts, panelsLayer, editGroup, drawControl, addShape, setObstacleHeight,
+// updateShapesInfo, clearLayout, clearShading and toast.
 (() => {
   const PICK = "Διάλεξε πρώτα ένα σχήμα (διπλό κλικ).";
   const DBL_MS = 300; // a single click on a shape waits this long, in case it becomes a double-click
@@ -27,6 +28,7 @@
     bar.querySelector("b").textContent = kindOf(layer) === "keepout" ? "Επιλεγμένο εμπόδιο" : "Επιλεγμένη περιοχή πάνελ";
     bar.hidden = false;
     showButtons();
+    showLists();
   }
 
   function deselect() {
@@ -38,6 +40,7 @@
     if (layer.editing.enabled()) layer.editing.disable();
     bar.hidden = true;
     showButtons();
+    showLists();
   }
 
   // ---------- Copy, paste, delete ----------
@@ -266,6 +269,87 @@
   map.on("draw:drawstop", () => { drawingNow = false; });
   map.on("draw:editstart", deselect);
 
+  // ---------- Lists in the side panel ----------
+  // One row per obstacle: number, name, height. A click on a row selects the shape on the map, and
+  // a shape selected on the map lights up its row.
+  const LISTS = { keepout: { group: keepouts, box: document.getElementById("keepoutList"), title: "Εμπόδιο" } };
+
+  function makeRow(kind, layer) {
+    const row = document.createElement("div");
+    row.className = `shape-row ${kind}`;
+    row.pvLayer = layer;
+    row.innerHTML = `<span class="shape-no"></span>
+      <input name="name" maxlength="40" autocomplete="off" placeholder="π.χ. δέντρο, φράχτης">
+      <label class="shape-num"><input name="height" type="number" min="0" step="0.5" aria-label="Ύψος σε μέτρα"><span>m</span></label>
+      <button type="button" class="ghost icon-btn shape-del" title="Διαγραφή" aria-label="Διαγραφή">${ICONS.remove}</button>`;
+    return row;
+  }
+
+  // A field the user is typing in keeps its text.
+  const setValue = (input, v) => { if (input !== document.activeElement && input.value !== String(v)) input.value = v; };
+
+  function renderList(kind) {
+    const { group, box, title } = LISTS[kind];
+    const rowsBox = box.querySelector(".shape-rows");
+    const layers = group.getLayers();
+    let rows = [...rowsBox.children];
+    if (rows.length !== layers.length || rows.some((r, i) => r.pvLayer !== layers[i])) {
+      rowsBox.replaceChildren(...layers.map((l) => makeRow(kind, l)));
+      rows = [...rowsBox.children];
+    }
+    rows.forEach((row, i) => {
+      const l = row.pvLayer;
+      row.querySelector(".shape-no").textContent = `${title} ${i + 1}`;
+      row.querySelector("[name=name]").setAttribute("aria-label", `Όνομα: ${title} ${i + 1}`);
+      setValue(row.querySelector("[name=name]"), l.pvName || "");
+      setValue(row.querySelector("[name=height]"), l.pvHeight ?? 0);
+      row.classList.toggle("on", l === selected);
+    });
+    box.hidden = !layers.length;
+  }
+
+  let listsQueued = false;
+  function showLists() {
+    if (listsQueued) return;
+    listsQueued = true;
+    queueMicrotask(() => { listsQueued = false; for (const kind in LISTS) renderList(kind); });
+  }
+  keepouts.on("layeradd layerremove", showLists);
+  map.on("pv:shapes pv:restored", showLists);
+
+  for (const { box } of Object.values(LISTS)) {
+    const layerOf = (el) => el.closest(".shape-row")?.pvLayer;
+    box.addEventListener("click", (e) => {
+      const layer = layerOf(e.target);
+      if (!layer) return;
+      if (e.target.closest(".shape-del")) { select(layer); return remove(); }
+      if (e.target.closest("input, label")) return;
+      select(layer);
+      const c = layer.getBounds().getCenter();
+      if (!map.getBounds().contains(c)) map.panTo(c); // bring it into view
+    });
+    box.addEventListener("focusin", (e) => {
+      const layer = layerOf(e.target);
+      if (layer && e.target.matches("input") && !busy()) select(layer);
+    });
+    box.addEventListener("input", (e) => {
+      const layer = layerOf(e.target);
+      if (!layer || e.target.name !== "name") return;
+      layer.pvName = e.target.value.trim() || undefined;
+      const tip = layer.getTooltip();
+      if (tip?.isOpen()) tip.update();
+    });
+    box.addEventListener("change", (e) => {
+      const layer = layerOf(e.target);
+      if (!layer) return;
+      if (e.target.name === "height") {
+        setObstacleHeight(layer, e.target.value);
+        clearShading();
+      }
+      record();
+    });
+  }
+
   // ---------- Keyboard ----------
   // Not while typing in a field, and not while the home screen covers the map. The key's place
   // (e.code) as well as its letter, so that Ctrl+C / Ctrl+V also work with the Greek layout.
@@ -340,6 +424,7 @@
   L.DomEvent.disableScrollPropagation(bar);
   bar.querySelector("[data-a=done]").onclick = deselect;
   showButtons();
+  showLists();
 
   window.shapes = {
     select, deselect, copy, paste, remove, undo, redo, record, resetHistory,
