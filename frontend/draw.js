@@ -392,6 +392,30 @@
   });
   map.on("zoomend", showCells);
 
+  // ---------- Compass ----------
+  // The map is always north-up, so the rose is fixed: Β (north) on top, Α (east) right.
+  const Compass = L.Control.extend({
+    options: { position: "topright" },
+    onAdd() {
+      const box = L.DomUtil.create("div", "pv-compass");
+      box.title = "Βορράς πάνω";
+      box.setAttribute("aria-label", "Πυξίδα: Βορράς πάνω, Νότος κάτω, Ανατολή δεξιά, Δύση αριστερά");
+      box.innerHTML = `<svg viewBox="0 0 80 80" aria-hidden="true">
+        <defs><linearGradient id="pvNeedle" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#ffc53d"/><stop offset="1" stop-color="#ff4d6d"/></linearGradient></defs>
+        <circle class="ring" cx="40" cy="40" r="27"/>
+        <g class="ticks">${[...Array(8)].map((_, k) => `<line x1="40" y1="${k % 2 ? 15.5 : 14}" x2="40" y2="18" transform="rotate(${k * 45} 40 40)"/>`).join("")}</g>
+        <path class="north" d="M40 17 L46 40 L34 40 Z"/>
+        <path class="south" d="M40 63 L46 40 L34 40 Z"/>
+        <circle class="pin" cx="40" cy="40" r="2.6"/>
+        <text class="n" x="40" y="7.5">Β</text><text x="40" y="73">Ν</text>
+        <text x="73" y="40.5">Α</text><text x="7" y="40.5">Δ</text>
+      </svg>`;
+      return box;
+    },
+  });
+  map.addControl(new Compass());
+
   window.drawTools = {
     meters, refresh, refreshAll,
     get editing() { return editing; },
