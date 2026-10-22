@@ -17,6 +17,14 @@ from shapely.ops import split, unary_union
 # Sun elevation at solar noon on the winter solstice is 90 - lat - 23.44.
 WINTER_SOLSTICE_DECLINATION = 23.44
 
+# The three ready-made layout proposals (layout_options), as decided by Νίκος on 2026-10-22.
+# The tilt is not fixed: every whole degree from tilt_deg down to tilt_min_deg is tried and the one that fits
+# the most panels wins (a tie keeps the tilt closer to tilt_deg). row_gap_m None = automatic (no shade at
+# winter-solstice noon).
+OPTION_ECONOMIC = {"tilt_deg": 30.0, "tilt_min_deg": 20.0, "azimuth_deg": 180.0, "row_gap_m": None}  # south
+OPTION_EAST_WEST = {"tilt_deg": 10.0, "tilt_min_deg": 8.0, "row_gap_m": 0.10}  # back to back, rows almost touching
+OPTION_AESTHETIC = {"tilt_deg": 15.0, "tilt_min_deg": 10.0, "row_gap_m": None}  # parallel to the longest wall
+
 
 @dataclass
 class LayoutParams:
@@ -204,4 +212,132 @@ def split_area(area_latlngs: list, line_latlngs: list, extend_m: float = 1.5) ->
             nx, ny = -nx, -ny
         coords = [inv.transform(x, y) for x, y in list(piece.exterior.coords)[:-1]]
         out.append({"area": [[lat, lng] for lng, lat in coords], "azimuth_deg": round(_bearing(nx, ny))})
+    return out
+
+
+# ---------------------------------------------------------------- ready-made proposals
+def _ang_diff(a: float, b: float) -> float:
+    return abs((a - b + 540.0) % 360.0 - 180.0)
+
+
+def wall_azimuth(area_latlngs: list) -> int:
+    """Azimuth facing away from the longest edge (the wall), on the side that looks more to the south."""
+    if len(area_latlngs) < 3:
+        raise ValueError("Η περιοχή χρειάζεται τουλάχιστον 3 σημεία.")
+    lat0 = sum(pt[0] for pt in area_latlngs) / len(area_latlngs)
+    lon0 = sum(pt[1] for pt in area_latlngs) / len(area_latlngs)
+    fwd, _ = _transformers(lat0, lon0)
+    pts = [fwd.transform(lng, lat) for lat, lng in area_latlngs]
+    a, b = max(((pts[i], pts[(i + 1) % len(pts)]) for i in range(len(pts))),
+               key=lambda e: math.hypot(e[1][0] - e[0][0], e[1][1] - e[0][1]))
+    bearing = _bearing(b[0] - a[0], b[1] - a[1])
+    az = min(((bearing + 90.0) % 360.0, (bearing + 270.0) % 360.0), key=lambda x: _ang_diff(x, 180.0))
+    return round(az) % 360
+
+
+def compute_ew_layout(area_latlngs: list, p: LayoutParams, row_gap_m: float) -> dict:
+    """East-west racks "back to back": rows run north-south and face east and west in turn.
+
+    The grid is the one of compute_layout facing east; every second row is then turned to the west,
+    so each pair of rows meets at its high edge. The result has the shape of compute_faces_layout
+    with two faces: 0 = east (90°), 1 = west (270°).
+    """
+    q = replace(p, azimuth_deg=90.0, mounting="rack", row_spacing_m=row_gap_m)
+    res = compute_layout(area_latlngs, q)
+    along_slope = q.panel_width_m if q.orientation == "landscape" else q.panel_length_m
+    step = along_slope * math.cos(math.radians(q.tilt_deg)) + row_gap_m
+    fwd, _ = _transformers(*res["center"])
+    ys = []
+    for panel in res["panels"]:
+        c = Polygon([fwd.transform(lng, lat) for lat, lng in panel]).centroid
+        ys.append(affinity.rotate(c, q.azimuth_deg - 180.0, origin=(0, 0)).y)
+    top = max(ys, default=0.0)
+    # Row 0 is the westernmost (the back of an east-facing grid); it leans against row 1, so it faces west.
+    panel_face = [1 - round((top - y) / step) % 2 for y in ys]
+    per_face = []
+    for k, az in ((0, 90.0), (1, 270.0)):
+        n = panel_face.count(k)
+        per_face.append({"tilt_deg": q.tilt_deg, "azimuth_deg": az, "count": n,
+                         "kwp": round(n * q.panel_power_w / 1000.0, 3), "row_gap_m": res["row_gap_m"]})
+    return {**res, "panel_face": panel_face, "faces": per_face}
+
+
+def _merge(results: list[dict], p: LayoutParams) -> dict:
+    """Totals of several drawn areas laid out with the same settings (faces are added up by index)."""
+    out = {
+        "panels": [pn for r in results for pn in r["panels"]],
+        "area_m2": round(sum(r["area_m2"] for r in results), 1),
+        "usable_area_m2": round(sum(r["usable_area_m2"] for r in results), 1),
+        "row_gap_m": results[-1]["row_gap_m"],
+        "center": results[0]["center"],
+    }
+    out["count"] = len(out["panels"])
+    out["kwp"] = round(out["count"] * p.panel_power_w / 1000.0, 3)
+    out["module_area_m2"] = round(out["count"] * p.panel_width_m * p.panel_length_m, 1)
+    if results[0].get("faces"):
+        out["panel_face"] = [k for r in results for k in r["panel_face"]]
+        out["faces"] = [{**f, "count": out["panel_face"].count(k),
+                         "kwp": round(out["panel_face"].count(k) * p.panel_power_w / 1000.0, 3)}
+                        for k, f in enumerate(results[0]["faces"])]
+    return out
+
+
+def compute_ew_areas(areas: list, p: LayoutParams) -> dict:
+    """East-west layout of all drawn areas; the row gap is p.row_spacing_m, or the proposal's when None."""
+    if not areas:
+        raise ValueError("Σχεδίασε πρώτα μια περιοχή στον χάρτη.")
+    gap = OPTION_EAST_WEST["row_gap_m"] if p.row_spacing_m is None else p.row_spacing_m
+    q = replace(p, mounting="rack", row_spacing_m=gap)
+    return _merge([compute_ew_layout(a, q, gap) for a in areas], q)
+
+
+def best_tilt(layout_at, tilt_deg: float, tilt_min_deg: float) -> tuple[float, dict]:
+    """Try every whole degree from tilt_deg down to tilt_min_deg; keep the layout with the most panels.
+
+    layout_at(tilt) returns a layout dict. On a tie the tilt closer to tilt_deg (the nominal one) is kept.
+    """
+    best = None
+    tilt = tilt_deg
+    while tilt >= tilt_min_deg - 1e-9:
+        res = layout_at(tilt)
+        if best is None or res["count"] > best[1]["count"]:
+            best = (tilt, res)
+        tilt -= 1.0
+    return best
+
+
+def layout_options(areas: list, p: LayoutParams, east_west: bool = False) -> list[dict]:
+    """The ready-made proposals for the same drawn areas (panel size, setbacks, gaps from p), then "manual".
+
+    Each one: key, title, the settings it uses (tilt, azimuth, mounting, row_spacing_m: None = automatic)
+    and the merged layout of all areas. The east-west one also has panel_face and two faces. The manual one
+    uses p as it is (east-west racks when east_west is set).
+    """
+    if not areas:
+        raise ValueError("Σχεδίασε πρώτα μια περιοχή στον χάρτη.")
+    wall = float(wall_azimuth(areas[0]))
+    plans = [
+        ("economic", "Οικονομική", "Νότια, βέλτιστη απόδοση για το κόστος", OPTION_ECONOMIC,
+         OPTION_ECONOMIC["azimuth_deg"]),
+        ("east_west", "Μέγιστη ενέργεια", "Ανατολή-δύση πλάτη με πλάτη, τα περισσότερα πάνελ", OPTION_EAST_WEST, 90.0),
+        ("aesthetic", "Αισθητική", "Παράλληλα με τον τοίχο του κτιρίου", OPTION_AESTHETIC, wall),
+    ]
+    out = []
+    for key, title, note, opt, az in plans:
+        gap = opt["row_gap_m"]
+
+        def layout_at(tilt, key=key, az=az, gap=gap):
+            q = replace(p, tilt_deg=tilt, azimuth_deg=az, mounting="rack", row_spacing_m=gap)
+            if key == "east_west":
+                return _merge([compute_ew_layout(a, q, gap) for a in areas], q)
+            return _merge([compute_layout(a, q) for a in areas], q)
+
+        tilt, res = best_tilt(layout_at, opt["tilt_deg"], opt["tilt_min_deg"])
+        out.append({"key": key, "title": title, "note": note, "tilt_deg": tilt, "azimuth_deg": az,
+                    "mounting": "rack", "row_spacing_m": gap, **res})
+    ew = east_west and p.mounting == "rack"
+    manual = compute_ew_areas(areas, p) if ew else _merge([compute_layout(a, p) for a in areas], p)
+    out.append({"key": "manual", "title": "Χειροκίνητα", "note": "Οι ρυθμίσεις του βήματος «Πάνελ» όπως είναι",
+                "tilt_deg": p.tilt_deg, "azimuth_deg": 90.0 if ew else p.azimuth_deg, "mounting": p.mounting,
+                "row_spacing_m": p.row_spacing_m, "east_west": ew, **manual})
     return out

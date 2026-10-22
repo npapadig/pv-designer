@@ -1,0 +1,22 @@
+/* Layout proposals as cards in the "Πάνελ" step (options.js). */
+#layoutOptions h3 { margin: 14px 0 8px; }
+.opt-cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.opt-card {
+  display: flex; flex-direction: column; align-items: stretch; gap: 3px; padding: 9px 8px; margin: 0;
+  text-align: left; white-space: normal; height: auto; border-radius: 12px;
+  background: var(--field); border: 1px solid var(--line-strong); color: var(--text);
+}
+.opt-card:hover { background: var(--field-hover); }
+.opt-card:disabled { opacity: 0.5; cursor: default; }
+.opt-card.chosen { border-color: var(--sun-2); box-shadow: 0 0 0 2px var(--ring); }
+.opt-card b { font-size: 0.86rem; }
+.opt-note { font-size: 0.7rem; color: var(--muted); line-height: 1.25; min-height: 2.5em; }
+.opt-preview { display: block; height: 90px; margin: 4px 0; }
+.opt-preview svg { width: 100%; height: 100%; }
+.opt-area { fill: var(--soft); stroke: var(--muted); stroke-width: 0.8; }
+.opt-angles { font-size: 0.72rem; color: var(--muted); }
+.opt-angles em { font-style: normal; font-weight: 700; color: var(--text); }
+.opt-num { font-size: 0.76rem; color: var(--muted); }
+.opt-num em { font-style: normal; font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; }
+.opt-num.best em { color: var(--accent-text); }
+.opt-num.small { font-size: 0.7rem; }
