@@ -40,3 +40,9 @@ def test_index_loads_the_translator_before_the_other_scripts():
     scripts = re.findall(r'<script src="([^"?]+)', html)
     assert scripts[:2] == ["lang/en.js", "i18n.js"]
     assert html.index('src="i18n.js') < html.index("</head>")
+
+
+def test_every_greek_text_of_the_app_has_english():
+    """New Greek texts in frontend/*.js, index.html or the server messages need an entry in frontend/lang/en.js
+    (python -m tests.i18n_missing lists them)."""
+    assert m.missing(d) == []
