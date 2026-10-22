@@ -37,5 +37,5 @@ draw-obstacle). Τα υπάρχοντα `title=` μην τα σβήνεις — 
 | Βήμα | Κατάσταση |
 |---|---|
 | 1 | ΕΤΟΙΜΟ (2026-10-22): `help.js`/`help.css`, 4 πρώτα κείμενα· δοκιμή browser (ποντίκι, Tab, F1, Esc, θέματα) |
-| 2 | — |
+| 2 | ΕΤΟΙΜΟ (2026-10-22): 169 κείμενα (βήματα, αρχική, μενού χαρτών, εργαλεία χάρτη, όλα τα πεδία 1-7, αποτελέσματα)· `data-help` id για τη sxedio: draw-select, draw-move, draw-copy, draw-paste, draw-delete, draw-undo, draw-redo, draw-ruler, draw-tree, draw-area, draw-obstacle, draw-edit, draw-polygon, draw-rectangle |
 | 3 | — |
