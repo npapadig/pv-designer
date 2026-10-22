@@ -372,46 +372,23 @@ def plan_get(plan_id: str):
 
 
 # ---------- Ready-made layout proposals (stream "options") ----------
-from concurrent.futures import ThreadPoolExecutor  # noqa: E402
-
 from .layout import compute_ew_areas, layout_options  # noqa: E402
 
 
 class OptionsRequest(LayoutRequest):
     area: list[list[float]] = []  # unused; the areas carry the outlines
     areas: list[list[list[float]]] = Field(..., min_length=1)
-    loss_pct: float = Field(14, ge=0, le=60)
-    source: Literal["auto", "pvgis", "offline"] = "auto"
     east_west: bool = False  # the manual proposal uses east-west racks (the "Ανατολή-δύση" switch)
-
-
-def _option_energy(opt: dict, loss_pct: float, source: str) -> dict:
-    """Quick yearly estimate of one proposal (PVGIS, offline fallback), without shading."""
-    lat, lon = opt["center"]
-    if opt.get("faces"):
-        faces = [{"kwp": f["kwp"], "tilt_deg": f["tilt_deg"], "azimuth_deg": f["azimuth_deg"]} for f in opt["faces"]]
-        return energy.estimate_faces(lat, lon, faces, loss_pct, source)
-    return energy.estimate(lat, lon, opt["kwp"], opt["tilt_deg"], opt["azimuth_deg"], loss_pct, source)
 
 
 @app.post("/api/layout/options")
 def layout_options_route(req: OptionsRequest):
-    params = LayoutParams(**req.model_dump(exclude={"area", "areas", "loss_pct", "source", "east_west"}))
+    # The cards compare installed power only (Νίκος, 2026-10-22), so no energy estimate here.
+    params = LayoutParams(**req.model_dump(exclude={"area", "areas", "east_west"}))
     try:
-        options = layout_options(req.areas, params, req.east_west)
+        return {"options": layout_options(req.areas, params, req.east_west)}
     except ValueError as e:
         raise HTTPException(400, str(e))
-    todo = [o for o in options if o["count"]]
-    with ThreadPoolExecutor(max_workers=len(todo) or 1) as pool:
-        results = list(pool.map(lambda o: _option_energy(o, req.loss_pct, req.source), todo))
-    for o, r in zip(todo, results):
-        o["annual_kwh"], o["specific_yield"], o["energy_source"] = r["annual_kwh"], r["specific_yield"], r["source"]
-        if r.get("warning"):
-            o["warning"] = r["warning"]
-    for o in options:
-        o.setdefault("annual_kwh", None)
-        o.setdefault("specific_yield", None)
-    return {"options": options}
 
 
 class AreasLayoutRequest(LayoutRequest):

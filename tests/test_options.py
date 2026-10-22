@@ -100,21 +100,21 @@ def test_existing_layout_is_untouched():
     assert compute_ew_layout(ROOF, p, 0.1)["panels"] == compute_layout(ROOF, p)["panels"]
 
 
-def test_options_api_with_energy():
-    r = client.post("/api/layout/options", json={"areas": [ROOF], "source": "offline"})
+def test_options_api_power_only():
+    # The cards show installed power, not energy (Νίκος, 2026-10-22): no PVGIS call per proposal.
+    r = client.post("/api/layout/options", json={"areas": [ROOF]})
     assert r.status_code == 200
     opts = r.json()["options"]
     assert len(opts) == 4
     for o in opts:
-        assert o["annual_kwh"] > 0 and o["energy_source"] == "offline"
-        assert 900 < o["specific_yield"] < 2200
-    assert opts[1]["annual_kwh"] > opts[0]["annual_kwh"]  # more panels, more energy
+        assert o["kwp"] > 0 and "annual_kwh" not in o
+    assert opts[1]["kwp"] > opts[0]["kwp"]  # east-west fits more panels
 
 
 def test_options_api_empty_area():
-    r = client.post("/api/layout/options", json={"areas": [rect(0, 0, 1, 1)], "source": "offline"})
+    r = client.post("/api/layout/options", json={"areas": [rect(0, 0, 1, 1)]})
     assert r.status_code == 200
-    assert all(o["count"] == 0 and o["annual_kwh"] is None for o in r.json()["options"])
+    assert all(o["count"] == 0 for o in r.json()["options"])
     assert client.post("/api/layout/options", json={"areas": [[[0, 0], [0, 1]]]}).status_code == 400
 
 
@@ -207,6 +207,6 @@ def test_manual_proposal_uses_the_settings_as_they_are():
     assert m["panels"] == compute_layout(ROOF, p)["panels"] and not m["east_west"]
     ew = layout_options([ROOF], LayoutParams(tilt_deg=10, mounting="rack"), east_west=True)[3]
     assert ew["east_west"] and [f["azimuth_deg"] for f in ew["faces"]] == [90, 270]
-    r = client.post("/api/layout/options", json={"areas": [ROOF], "source": "offline", "mounting": "rack",
+    r = client.post("/api/layout/options", json={"areas": [ROOF], "mounting": "rack",
                                                  "tilt_deg": 10, "east_west": True}).json()["options"][3]
-    assert r["east_west"] and r["annual_kwh"] > 0
+    assert r["east_west"] and r["kwp"] > 0

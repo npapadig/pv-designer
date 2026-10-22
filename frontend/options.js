@@ -43,7 +43,7 @@
   }
 
   function render(outlines) {
-    const best = Math.max(...shown.map((o) => o.annual_kwh || 0));
+    const best = Math.max(...shown.map((o) => o.kwp || 0));
     const cards = shown.map((o, i) => `
       <button type="button" class="opt-card${chosen === o.key ? " chosen" : ""}" data-i="${i}" ${o.count ? "" : "disabled"}>
         <b>${o.title}</b>
@@ -51,17 +51,15 @@
         <span class="opt-preview">${preview(o, outlines)}</span>
         <span class="opt-angles">${angles(o)}</span>
         <span class="opt-num"><em>${fmt(o.count)}</em> πάνελ</span>
-        <span class="opt-num"><em>${fmt(o.kwp, 2)}</em> kWp</span>
-        <span class="opt-num${o.annual_kwh && o.annual_kwh === best ? " best" : ""}"><em>${o.annual_kwh ? fmt(o.annual_kwh) : "–"}</em> kWh/έτος</span>
-        <span class="opt-num small">${o.specific_yield ? fmt(o.specific_yield) + " kWh/kWp" : "δεν χωράει"}</span>
+        <span class="opt-num${o.kwp && o.kwp === best ? " best" : ""}"><em>${o.count ? fmt(o.kwp, 2) : "–"}</em> kWp</span>
+        ${o.count ? "" : `<span class="opt-num small">δεν χωράει</span>`}
       </button>`).join("");
-    const offline = shown.some((o) => o.energy_source && o.energy_source !== "PVGIS");
     box.innerHTML = `<h3>Προτάσεις διάταξης</h3>
       <div class="opt-cards">${cards}</div>
       <p class="muted small">Κάνε κλικ σε μία για να μπει στον χάρτη. Στις 3 πρώτες η κλίση είναι αυτή που χωράει
         τα περισσότερα πάνελ χωρίς σκίαση τον χειμώνα. Οι τιμές περνούν στις ρυθμίσεις παραπάνω, οπότε μπορείς
-        να τις αλλάξεις· η κάρτα «Χειροκίνητα» δείχνει τις ρυθμίσεις όπως είναι. Οι kWh είναι γρήγορη
-        εκτίμηση${offline ? " χωρίς internet (πρόχειρη)" : " από το PVGIS"}, χωρίς σκιές.</p>`;
+        να τις αλλάξεις· η κάρτα «Χειροκίνητα» δείχνει τις ρυθμίσεις όπως είναι. Η παραγωγή υπολογίζεται
+        στο βήμα «Παραγωγή», για την πρόταση που θα διαλέξεις.</p>`;
     box.querySelectorAll(".opt-card").forEach((b) => (b.onclick = () => apply(shown[+b.dataset.i])));
   }
 
@@ -73,7 +71,7 @@
     $("rowGap").value = o.row_spacing_m == null ? "" : o.row_spacing_m;
     $("ewMode").checked = ew;
     syncEw();
-    const { panels, key, title, note, annual_kwh, specific_yield, energy_source, warning, east_west, ...res } = o;
+    const { panels, key, title, note, east_west, ...res } = o;
     setLayout(panels, res);
     chosen = key;
     box.querySelectorAll(".opt-card").forEach((b) => b.classList.toggle("chosen", shown[+b.dataset.i].key === key));
@@ -92,11 +90,10 @@
     }
     const s = settings();
     const outlines = areaLayers.map(latlngsOf);
-    box.innerHTML = `<p class="muted small">Υπολογισμός των προτάσεων και της παραγωγής τους… (λίγα δευτερόλεπτα)</p>`;
+    box.innerHTML = `<p class="muted small">Υπολογισμός των προτάσεων…</p>`;
     try {
       const r = await api("/api/layout/options", "POST", {
-        ...s, areas: outlines, keepouts: keepouts.getLayers().map(latlngsOf), loss_pct: +$("loss").value || 14,
-        east_west: window.options.eastWest(),
+        ...s, areas: outlines, keepouts: keepouts.getLayers().map(latlngsOf), east_west: window.options.eastWest(),
       });
       shown = r.options;
     } catch (e) {
