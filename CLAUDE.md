@@ -5,7 +5,7 @@
 - Field: not stated (asked 2026-10-21, chose not to say; do not ask again). I am not an IT person: explain in plain words, no jargon without a one-line explanation.
 - Decide technical things yourself (libraries, file layout, code style). Ask me ONLY what only I can know: goals,
   engineering/PV choices that change results, priorities, money, privacy or my accounts.
-- Weekly usage limit I accept: 90 %.
+- Weekly usage limit I accept: 98 % (raised from 90 % on 2026-10-22).
 - **If a <<TBD>> above is still empty, ask me for it first (AskUserQuestion) and write my answer here.**
 
 ## 1. Basics (every session)
