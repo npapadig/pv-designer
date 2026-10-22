@@ -80,7 +80,7 @@
   }
   map.on("zoomend", refreshAll);
 
-  // Nudge, the side box and dragging a selected shape (shapes.js) move shapes with setLatLngs, which fires no event of its own. Leaflet.draw's
+  // The side box, undo and dragging a selected shape (shapes.js) move shapes with setLatLngs, which fires no event of its own. Leaflet.draw's
   // editor also keeps a reference to the old points, so point it at the new ones (and redraw its handles).
   const setLatLngs = L.Polyline.prototype.setLatLngs;
   L.Polyline.include({
@@ -233,10 +233,6 @@
   // Any change of a shape makes the panel layout out of date.
   const changed = () => clearLayout();
   for (const g of [areas, keepouts]) g.on("layeradd", (e) => e.layer.on("edit", changed));
-  // Moving all drawings (nudge.js) first ends editing, keeping the changes: "Ακύρωση" would undo the move too.
-  // draw.js loads before nudge.js, so these run before its own handlers.
-  document.querySelectorAll("[data-nudge], #btnNudgeReset").forEach((b) => b.addEventListener("click", () => stop(true)));
-  document.addEventListener("keydown", (e) => { if (e.shiftKey && e.key.startsWith("Arrow")) stop(true); }, true);
 
   // ---------- Side box: new length, push in/out, new corner ----------
   // Geometry in local metres (x east, y north) around the shape, as in meters() above.
