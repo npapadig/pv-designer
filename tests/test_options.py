@@ -1,10 +1,12 @@
 """Three ready-made layout proposals: economic (south), maximum energy (east-west), aesthetic (along the wall)."""
 import math
 
+import pytest
 from fastapi.testclient import TestClient
+from PIL import Image
 from pyproj import Transformer
 
-from backend import layout
+from backend import layout, mapimage, report
 from backend.layout import LayoutParams, auto_row_gap, compute_ew_layout, compute_layout, layout_options, wall_azimuth
 from backend.main import app
 from tests.test_layout import LAT0, LON0
@@ -120,3 +122,54 @@ def test_east_west_api_keeps_the_users_gap():
     assert auto["panels"] == by_key()["east_west"]["panels"]
     assert wide["row_gap_m"] == 0.5 and wide["count"] < auto["count"]
     assert [f["azimuth_deg"] for f in wide["faces"]] == [90, 270]
+
+
+@pytest.mark.parametrize("key", ["economic", "east_west", "aesthetic"])
+def test_every_proposal_works_in_the_next_steps(key, monkeypatch):
+    """Shading, shadows, inverter/strings, production and the PDF accept each proposal as it is applied."""
+    monkeypatch.setattr(mapimage, "_native_zoom", lambda c, lat, lon: 20)
+    monkeypatch.setattr(mapimage, "_fetch_tile", lambda c, z, x, y: Image.new("RGB", (256, 256), (80, 110, 70)))
+    o = by_key()[key]
+    obstacles = [{"polygon": rect(-2, -9, 2, -7), "height_m": 5}]
+    faces = [{"tilt_deg": f["tilt_deg"], "azimuth_deg": f["azimuth_deg"]} for f in o.get("faces", [])] or None
+    common = {"panels": o["panels"], "obstacles": obstacles, "tilt_deg": o["tilt_deg"],
+              "azimuth_deg": o["azimuth_deg"], "mounting": o["mounting"],
+              "faces": faces, "panel_face": o.get("panel_face")}
+    sh = client.post("/api/shading", json=common)
+    assert sh.status_code == 200
+    sh = sh.json()
+    assert sh["row_shading"] and 0 <= sh["annual_loss_pct"] < 20
+    assert client.post("/api/shadows", json={**common, "when": "2025-12-21T10:00:00Z"}).status_code == 200
+
+    el = client.post("/api/electrical", json={
+        "module": {"power_w": 410, "voc": 37.3, "isc": 13.9, "vmp": 31.0, "imp": 13.2},
+        "n_modules": o["count"], "mounting": "rack",
+        "face_modules": [f["count"] for f in o["faces"]] if faces else None})
+    assert el.status_code == 200
+    el = el.json()
+    assert bool(el.get("faces")) == bool(faces)
+
+    if faces:
+        en_req = {"faces": [{**f, "kwp": lf["kwp"], "shading_monthly_pct": sf["monthly_loss_pct"]}
+                            for f, lf, sf in zip(faces, o["faces"], sh["faces"])]}
+    else:
+        en_req = {"shading_monthly_pct": sh["monthly_loss_pct"]}
+    en = client.post("/api/energy", json={"lat": LAT0, "lon": LON0, "kwp": o["kwp"], "tilt_deg": o["tilt_deg"],
+                                          "azimuth_deg": o["azimuth_deg"], "source": "offline", **en_req})
+    assert en.status_code == 200
+    en = en.json()
+    assert en["annual_kwh"] > 0
+
+    lay = {k: o[k] for k in ("count", "kwp", "area_m2", "module_area_m2", "row_gap_m", "center", "panels")}
+    if faces:
+        lay.update(faces=o["faces"], panel_face=o["panel_face"])
+    project = {"name": key, "areas": [ROOF], "keepouts": [], "layout": lay, "shading": sh, "energy": en,
+               "settings": {"panel_power_w": 410, "panel_width_m": 1.134, "panel_length_m": 1.722,
+                            "tilt_deg": o["tilt_deg"], "azimuth_deg": o["azimuth_deg"], "mounting": "rack",
+                            "orientation": "portrait", "loss_pct": 14}}
+    pdf = client.post("/api/report", json=project)
+    assert pdf.status_code == 200 and pdf.content.startswith(b"%PDF")
+    rows = report.face_rows(project)
+    assert (rows is not None) == bool(faces)
+    if rows:
+        assert [r["azimuth_deg"] for r in rows] == [90, 270] and all(r["annual_kwh"] for r in rows)

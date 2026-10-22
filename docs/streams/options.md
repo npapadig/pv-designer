@@ -33,4 +33,12 @@
 |---|---|
 | 1 | έτοιμο: `layout.layout_options` + `/api/layout/options` (96 τεστ, baseline ίδιο) |
 | 2 | έτοιμο: κάρτες στο «Πάνελ» (`options.js/.css`), εφαρμογή επιλογής, διακόπτης «Ανατολή-δύση» + `/api/layout/ew` (97 τεστ) |
-| 3 | εκκρεμεί |
+| 3 | έτοιμο: τεστ «κάθε πρόταση → σκιές/inverter/παραγωγή/PDF» + δοκιμή στον browser (100 τεστ, baseline ίδιο) |
+
+**Για τον συντονιστή (merge):**
+- Τελικές κλίσεις/κενά: `OPTION_ECONOMIC`, `OPTION_EAST_WEST`, `OPTION_AESTHETIC` στην αρχή του `backend/layout.py`.
+- Νέα routes (πριν το `app.mount`, στο τέλος του `main.py`): `POST /api/layout/options` (`areas`, ρυθμίσεις πάνελ, `loss_pct`) → 3 λύσεις με `count`, `kwp`, `annual_kwh`, `specific_yield`· `POST /api/layout/ew` (`areas`) → διάταξη ανατολή-δύση με 2 «πλευρές» (0 = 90°, 1 = 270°), όπως το `/api/layout/faces`.
+- Frontend: `options.js`/`options.css`· στο app.js νέα `setLayout()` και 2ο κουμπί «Με τις ρυθμίσεις μου»· διακόπτης «Ανατολή-δύση» (φαίνεται μόνο με βάσεις).
+- Ανοιχτό: ο διακόπτης ανατολή-δύση δεν αποθηκεύεται στο έργο (η διάταξη όμως ναι, με τις 2 πλευρές)· θέλει 1 γραμμή στο `collectProject`/`loadProject` (τμήμα Projects, ροή home). Το PDF γράφει «σε 2 πλευρές στέγης» για ανατολή-δύση.
+- Το `docs/ARCHITECTURE.md` θέλει μια γραμμή για το `options.js`.
+- Στη δοκιμή (2026-10-22) το PVGIS απαντούσε 403, οπότε οι kWh βγήκαν από το offline μοντέλο.
