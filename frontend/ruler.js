@@ -38,7 +38,6 @@
     mouse = null;
     map.doubleClickZoom.disable(); // two quick clicks are two points
     L.DomUtil.addClass(map.getContainer(), "pv-ruling");
-    L.DomUtil.addClass(button, "active");
     bar.hidden = false;
     map.on("click", addPoint);
     map.on("mousemove", follow);
@@ -55,7 +54,6 @@
     drawn.clearLayers();
     map.doubleClickZoom.enable();
     L.DomUtil.removeClass(map.getContainer(), "pv-ruling");
-    L.DomUtil.removeClass(button, "active");
     bar.hidden = true;
     map.off("click", addPoint);
     map.off("mousemove", follow);
@@ -81,26 +79,16 @@
   });
 
   // ---------- Button and bar ----------
-  const ICON = `<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M21.3 15.3a2.4 2.4 0 0 1 0 3.4l-2.6 2.6a2.4 2.4 0 0 1-3.4 0L2.7 8.7a2.41 2.41 0 0 1 0-3.4l2.6-2.6a2.41 2.41 0 0 1 3.4 0Z"/><path d="m14.5 12.5 2-2"/><path d="m11.5 9.5 2-2"/><path d="m8.5 6.5 2-2"/><path d="m17.5 15.5 2-2"/></svg>`;
-  let button = null;
-  const Control = L.Control.extend({
-    options: { position: "topleft" },
-    onAdd() {
-      const box = L.DomUtil.create("div", "leaflet-bar pv-edit-control pv-ruler-control");
-      button = L.DomUtil.create("a", "", box);
-      button.href = "#";
-      button.setAttribute("role", "button");
-      button.title = "Χάρακας: μέτρησε αποστάσεις πάνω στον χάρτη";
-      button.innerHTML = `${ICON}<span>Χάρακας</span>`;
-      L.DomEvent.disableClickPropagation(box);
-      L.DomEvent.on(button, "click", (e) => { L.DomEvent.preventDefault(e); on ? stop() : start(); });
-      return box;
-    },
+  // The button is in the toolbar of draw.js, which also lights it up while the ruler is on.
+  drawTools.addTool({
+    group: "edit", help: "map-ruler", layerType: "ruler", onClick: start,
+    title: "Χάρακας: μέτρησε αποστάσεις πάνω στον χάρτη",
+    icon: `<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M21.3 15.3a2.4 2.4 0 0 1 0 3.4l-2.6 2.6a2.4 2.4 0 0 1-3.4 0L2.7 8.7a2.41 2.41 0 0 1 0-3.4l2.6-2.6a2.41 2.41 0 0 1 3.4 0Z"/><path d="m14.5 12.5 2-2"/><path d="m11.5 9.5 2-2"/><path d="m8.5 6.5 2-2"/><path d="m17.5 15.5 2-2"/></svg>`,
   });
-  map.addControl(new Control());
 
   const bar = L.DomUtil.create("div", "pv-editbar pv-rulerbar", map.getContainer());
   bar.hidden = true;
+  bar.dataset.help = "bar-ruler";
   bar.innerHTML = `<div class="pv-editbar-text"><b>Χάρακας · <span data-total></span></b>
       <span>Κλικ σε σημεία του χάρτη, π.χ. στις άκρες ενός μήκους που ξέρεις · Backspace = σβήσε το τελευταίο ·
       Esc = τέλος. Δεν αποθηκεύεται στο έργο.</span></div>

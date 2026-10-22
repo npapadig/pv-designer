@@ -46,14 +46,42 @@
 .leaflet-error-draw-tooltip::before { border-right-color: var(--danger); }
 .leaflet-draw-guide-dash { width: 4px; height: 4px; border-radius: 50%; opacity: 0.9; }
 
-/* ---------- Editing ---------- */
-.pv-edit-control a {
-  display: flex !important; align-items: center; gap: 6px; width: auto !important; padding: 0 12px;
-  font: 600 12.5px/30px var(--font); white-space: nowrap; text-decoration: none;
+/* ---------- Toolbar ---------- */
+/* One white bar like the zoom buttons; groups split by a thin line. Leaflet.draw's own buttons are hidden,
+   its Τέλος / Ακύρωση bar sits beside the tool in use (draw.js). */
+.leaflet-control.leaflet-draw { display: none; }
+.pv-toolbar {
+  position: relative; display: flex; flex-direction: column; border-radius: 12px;
+  background: rgba(255, 255, 255, 0.94); box-shadow: var(--shadow);
 }
-.pv-edit-control .ic { width: 15px; height: 15px; }
-.pv-edit-control a.active, .pv-edit-control a.active:hover { color: #fff; background: var(--sun-2); }
+.pv-tb-group + .pv-tb-group { border-top: 1px solid #e5e7eb; }
+.pv-toolbar a.pv-tb {
+  display: flex; align-items: center; justify-content: center; width: 34px; height: 34px;
+  color: #111827; text-decoration: none; transition: background 0.12s, color 0.12s;
+}
+.pv-tb-group:first-of-type a.pv-tb:first-child { border-radius: 12px 12px 0 0; }
+.pv-tb-group:last-of-type a.pv-tb:last-child { border-radius: 0 0 12px 12px; }
+.pv-toolbar a.pv-tb .ic { width: 18px; height: 18px; }
+.pv-toolbar a.pv-tb:hover { background: #f1f5f9; }
+.pv-toolbar a.pv-tb:focus-visible { outline: none; box-shadow: inset 0 0 0 2px var(--sun-2); }
+.pv-toolbar a.pv-tb.area { color: #e8730c; }
+.pv-toolbar a.pv-tb.keepout { color: #e11d48; }
+.pv-toolbar a.pv-tb.tree { color: #16a34a; }
+.pv-toolbar a.pv-tb.active, .pv-toolbar a.pv-tb.active:hover { color: #fff; background: var(--sun); }
+.pv-toolbar a.pv-tb.keepout.active { background: linear-gradient(135deg, #ff6b81, #e11d48); }
+.pv-toolbar a.pv-tb.tree.active { background: linear-gradient(135deg, #4ade80, #16a34a); }
+.pv-toolbar a.pv-tb.pv-off .ic { opacity: 0.38; }
+.pv-toolbar .leaflet-draw-actions { left: calc(100% + 8px); margin: 0; filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.35)); }
+.pv-toolbar .leaflet-draw-actions a {
+  display: block; height: 34px; padding: 0 12px; text-decoration: none; border-left: 1px solid var(--line-strong);
+  background: var(--glass-strong); color: var(--text); font: 600 12.5px/34px var(--font);
+}
+.pv-toolbar .leaflet-draw-actions a:hover { background: var(--sun-2); color: #fff; }
+.pv-toolbar .leaflet-draw-actions li:first-child a { border-left: 0; border-radius: 10px 0 0 10px; }
+.pv-toolbar .leaflet-draw-actions li:last-child a { border-radius: 0 10px 10px 0; }
+.pv-toolbar .leaflet-draw-actions li:only-child a { border-radius: 10px; }
 
+/* ---------- Editing ---------- */
 /* The bar with the hints and Τέλος / Ακύρωση, centred over the visible map. */
 .pv-editbar {
   position: absolute; z-index: 1000; top: 12px; left: calc((100% + var(--left)) / 2); transform: translateX(-50%);
