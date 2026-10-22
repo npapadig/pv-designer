@@ -147,6 +147,11 @@ BACKEND = ["main.py", "layout.py", "energy.py", "simulation.py", "shading.py", "
 PDF_ONLY = ("report_block", "_report_block")
 
 
+def joined(src: str) -> str:
+    """"a" + "b" (as in helptexts.js) is one text."""
+    return re.sub(r'"\s*\+\s*"', "", src)
+
+
 def greek_texts() -> list[tuple[str, str]]:
     """(file, normalised text) for every Greek text of the frontend and of the server messages it shows."""
     found = []
@@ -155,14 +160,14 @@ def greek_texts() -> list[tuple[str, str]]:
     found += [("index.html", t) for t in html.texts]
     for f in sorted(FRONTEND.glob("*.js")):
         if f.name not in SKIP:
-            found += [(f.name, p) for s in js_strings(f.read_text(encoding="utf-8")) for p in pieces(s)]
+            found += [(f.name, p) for s in js_strings(joined(f.read_text(encoding="utf-8"))) for p in pieces(s)]
     for name in BACKEND:
         if (ROOT / "backend" / name).exists():
             found += [(f"backend/{name}", s) for s in py_strings(ROOT / "backend" / name, PDF_ONLY)]
     seen, out = set(), []
     for name, t in found:
         t = norm(t)
-        if GREEK.search(t) and (name, t) not in seen:
+        if GREEK.search(t) and not t.startswith("helptexts.js:") and (name, t) not in seen:  # not a console message
             seen.add((name, t))
             out.append((name, t))
     return out
