@@ -36,5 +36,5 @@ VERSION/CHANGELOG/HANDOFF ή line endings. Ενημέρωνε τον πίνακ�
 | Βήμα | Κατάσταση |
 |---|---|
 | 1 | ΕΤΟΙΜΟ (2026-10-22): `backend/i18n.py` (λεξικό + κανόνες), `report.py` με `tr()`, `build_pdf(..., lang)`, `lang` στο `POST /api/report` (σώμα) και `GET /api/projects/{id}/report?lang=en`, app.js στέλνει `window.I18N?.lang`. Ελληνικό PDF byte-ίδιο με πριν (`tests/report_text_el.json`, `tests/test_report_lang.py`). Το όνομα αρχείου στο «Λήψεις» το βάζει το app.js (ελληνικό) — θα το αλλάξει το `i18n.js` στο βήμα 2. |
-| 2 | — |
+| 2 | ΕΤΟΙΜΟ (2026-10-22): `frontend/i18n.js` (μεταφραστής με MutationObserver, κουμπί ΕΛ/EN στην αρχική και στο header, localStorage `pv-designer.lang`, αριθμοί/ημερομηνίες el-GR→en-GB, confirm/alert/prompt, ετικέτες γραφημάτων, όνομα PDF στο «Λήψεις», όνομα «Νέο έργο»), `frontend/lang/en.js` (λεξικό: 462 κείμενα frontend + μηνύματα server), `frontend/i18n.css`, 3 γραμμές στο `index.html`. Στα ελληνικά δεν αγγίζεται τίποτα (μόνο το κουμπί). `python -m tests.i18n_missing` δείχνει ελληνικά χωρίς μετάφραση (τώρα 0). Δοκιμή browser (θύρα 8064, κενό data/): όλη η ροή στα αγγλικά χωρίς ελληνικά, εναλλαγή EN→ΕΛ επαναφέρει τα κείμενα. Όριο: αριθμοί που γράφτηκαν στα αγγλικά μένουν με αγγλική μορφή μέχρι να ξαναϋπολογιστούν (ή reload). |
 | 3 | — |
