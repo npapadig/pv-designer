@@ -7,7 +7,7 @@
     radial-gradient(1200px 600px at 85% -10%, rgba(255, 138, 61, 0.16), transparent 60%),
     radial-gradient(900px 500px at -10% 110%, rgba(45, 212, 191, 0.1), transparent 60%),
     #0a0d16;
-  animation: homeIn 0.3s ease-out;
+
 }
 :root[data-theme="light"] #home {
   background:
@@ -16,6 +16,7 @@
     #f4f6fb;
 }
 @keyframes homeIn { from { opacity: 0; } }
+#home.again { animation: homeIn 0.3s ease-out; }
 .home-wrap { max-width: 980px; margin: 0 auto; padding: 48px 24px 40px; }
 .home-head { display: flex; align-items: center; gap: 16px; margin-bottom: 36px; }
 .home-head .logo { margin: 0; width: 54px; height: 54px; border-radius: 17px; }
@@ -78,27 +79,25 @@
 #btnHome:hover { background: var(--sun); filter: brightness(1.08); }
 #btnHome .ic:last-child, #btnHome:hover .ic:first-child { display: none; }
 #btnHome:hover .ic:last-child { display: block; }
+/* Phones have no logo on the rail (no room): the house sits in the head of the panel instead. */
+#btnHomeSheet { display: none; }
 
 @media (max-width: 760px) {
   .home-wrap { padding: 24px 16px 32px; }
   .home-head { margin-bottom: 22px; }
   .home-title h1 { font-size: 1.35rem; }
   .home-cards, .home-grid { grid-template-columns: 1fr; gap: 12px; }
-  .home-card { min-height: 0; padding: 18px 18px 18px 78px; justify-content: center; }
+  .home-card, #homeChoose .home-card { min-height: 0; padding: 18px 18px 18px 78px; justify-content: center; }
   .home-ic { top: 50%; transform: translateY(-50%); left: 18px; }
   .home-sub { margin-top: 28px; }
   .proj-open { min-height: 0; }
-  /* style.css hides the logo on phones; keep it small as the way back to the start screen. */
-  #rail #btnHome { display: grid; width: 36px; height: 36px; border-radius: 12px; margin: 0; flex: none; }
-  #rail #btnHome .ic { width: 19px; height: 19px; }
-  #rail #btnHome .ic:first-child { display: none; }
-  #rail #btnHome .ic:last-child { display: block; }
+  #btnHomeSheet { display: inline-flex; margin-left: auto; }
 }
 
 /* ---------- Floor plan on the map (plan.js) ---------- */
 .plan-img {
   position: absolute; left: 0; top: 0; max-width: none !important; max-height: none !important;
-  user-select: none; -webkit-user-select: none; pointer-events: auto; cursor: move;
+  user-select: none; -webkit-user-select: none; pointer-events: auto; cursor: move; touch-action: none;
   outline: 2px dashed rgba(255, 138, 61, 0.9); outline-offset: 0; image-rendering: auto;
 }
 .plan-img.dragging { cursor: grabbing; }

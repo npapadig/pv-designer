@@ -30,6 +30,7 @@
     if (a && !a.classList.contains("active")) a.click();
   }
 
+  let shown = false; // no fade-in when the app opens, so the map does not flash through
   function hide() { $("home").hidden = true; }
 
   // "Νέο έργο" first asks where the panels go; the start cards come back with "Πίσω".
@@ -43,6 +44,8 @@
     const open = !!state.projectId || areas.getLayers().length > 0;
     $("homeContinue").hidden = !open;
     $("homeContinueName").textContent = $("projectName").value;
+    $("home").classList.toggle("again", shown);
+    shown = true;
     $("home").hidden = false;
     $("home").scrollTop = 0;
     await renderProjects();
@@ -129,6 +132,7 @@
   $("homeBack").onclick = () => choosing(false);
   $("homeContinue").onclick = hide;
   $("btnHome").onclick = show;
+  $("btnHomeSheet").onclick = show;
   $("homeTheme").onclick = () => $("btnTheme").click();
   document.addEventListener("keydown", (e) => {
     if (e.key !== "Escape" || $("home").hidden) return;

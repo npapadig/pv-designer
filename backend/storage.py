@@ -55,4 +55,40 @@ def delete_project(project_id: str) -> None:
     p = _path(project_id)
     if not p.exists():
         raise KeyError(project_id)
+    try:
+        image = (json.loads(p.read_text(encoding="utf-8")).get("plan") or {}).get("image")
+    except (OSError, json.JSONDecodeError, AttributeError):
+        image = None
     p.unlink()
+    if image:
+        try:
+            plan_path(image).unlink()
+        except (KeyError, OSError):
+            pass
+
+
+# ---------- Floor plans: the uploaded images, one file each under data/plans/ ----------
+PLANS_DIR = Path(__file__).resolve().parent.parent / "data" / "plans"
+MAX_PLAN_BYTES = 25 * 1024 * 1024
+_PLAN_RE = re.compile(r"^[a-f0-9]{32}\.(png|jpg)$")
+_PLAN_TYPES = {b"\x89PNG\r\n\x1a\n": "png", b"\xff\xd8\xff": "jpg"}
+
+
+def save_plan(data: bytes) -> str:
+    """Store a PNG or JPG and return its id (the file name)."""
+    ext = next((e for magic, e in _PLAN_TYPES.items() if data.startswith(magic)), None)
+    if not ext or len(data) > MAX_PLAN_BYTES:
+        raise ValueError("not a png/jpg image")
+    PLANS_DIR.mkdir(parents=True, exist_ok=True)
+    plan_id = f"{uuid.uuid4().hex}.{ext}"
+    (PLANS_DIR / plan_id).write_bytes(data)
+    return plan_id
+
+
+def plan_path(plan_id: str) -> Path:
+    if not _PLAN_RE.match(plan_id):
+        raise KeyError(plan_id)
+    p = PLANS_DIR / plan_id
+    if not p.exists():
+        raise KeyError(plan_id)
+    return p

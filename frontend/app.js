@@ -612,6 +612,7 @@ function collectProject() {
     finance_settings: financeSettings(),
     finance: state.finance,
     electrical: window.elec?.collect(),
+    plan: window.plan?.collect() || null,
     view: { center: map.getCenter(), zoom: map.getZoom() },
   };
 }
@@ -636,7 +637,8 @@ function projectSnapshot() {
 }
 function markSaved() { savedSnapshot = projectSnapshot(); }
 function hasUnsavedWork() {
-  return (areas.getLayers().length > 0 || !!state.projectId) && projectSnapshot() !== savedSnapshot;
+  const started = areas.getLayers().length > 0 || !!state.projectId || !!window.plan?.active();
+  return started && projectSnapshot() !== savedSnapshot;
 }
 
 function loadProject(p) {
@@ -675,6 +677,7 @@ function loadProject(p) {
   state.finance = p.finance || null;
   colorPanels();
   window.elec?.load(p.electrical);
+  window.plan?.load(p.plan);
   renderResults();
   if (p.view) map.setView(p.view.center, p.view.zoom);
   markSaved();

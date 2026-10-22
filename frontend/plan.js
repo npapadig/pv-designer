@@ -6,7 +6,7 @@
   const PANE_EDIT = "450", PANE_LOCKED = "350"; // above the drawings while editing, under them when locked
   const MAX_MB = 25;
 
-  const p = { src: "", natW: 0, natH: 0, center: null, widthM: 20, rot: 0, opacity: 0.6, locked: false };
+  const p = { image: "", natW: 0, natH: 0, center: null, widthM: 20, rot: 0, opacity: 0.6, locked: false };
 
   const pane = map.createPane("planPane");
   const img = document.createElement("img");
@@ -26,12 +26,12 @@
     img.style.transform = `translate(${pt.x}px, ${pt.y}px) rotate(${p.rot}deg) scale(${scale}) translate(-50%, -50%)`;
   }
   function update() {
-    if (!p.src) return;
+    if (!p.image || !p.natW) return;
     place(map.latLngToLayerPoint(p.center), map.getZoom());
   }
   map.on("zoom viewreset zoomend", update);
   // Follow Leaflet's zoom animation like its own image overlays do.
-  map.on("zoomanim", (e) => { if (p.src) place(map._latLngToNewLayerPoint(p.center, e.zoom, e.center), e.zoom); });
+  map.on("zoomanim", (e) => { if (p.image && p.natW) place(map._latLngToNewLayerPoint(p.center, e.zoom, e.center), e.zoom); });
 
   function applyStyle() {
     img.style.opacity = p.opacity;
@@ -43,8 +43,8 @@
   }
 
   function syncControls() {
-    $("planEmpty").hidden = !!p.src;
-    $("planTools").hidden = !p.src;
+    $("planEmpty").hidden = !!p.image;
+    $("planTools").hidden = !p.image;
     $("planRot").value = p.rot;
     $("planRotNum").value = Math.round(p.rot * 10) / 10;
     $("planWidth").value = Math.round(p.widthM * 10) / 10;
@@ -53,7 +53,7 @@
   }
 
   function refresh() {
-    img.hidden = !p.src;
+    img.hidden = !p.image;
     applyStyle();
     syncControls();
     update();
@@ -93,15 +93,28 @@
     return px * metresPerPixel(map.getCenter().lat, map.getZoom());
   }
 
-  async function setImage(file, keepPlace) {
-    checkFile(file);
-    const src = URL.createObjectURL(file);
-    const probe = await readImage(src);
-    if (p.src.startsWith("blob:")) URL.revokeObjectURL(p.src);
-    p.src = src;
+  const imageUrl = (id) => `/api/plans/${encodeURIComponent(id)}`;
+
+  // The picture is kept on this computer (data/plans/) and the project stores only its id.
+  async function upload(file) {
+    const r = await fetch("/api/plans", { method: "POST", headers: { "Content-Type": file.type }, body: file });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(typeof d.detail === "string" ? d.detail : "Η κάτοψη δεν ανέβηκε.");
+    return d.id;
+  }
+
+  function show(id, probe) {
+    p.image = id;
     p.natW = probe.naturalWidth;
     p.natH = probe.naturalHeight;
-    img.src = src;
+    img.src = probe.src;
+  }
+
+  async function setImage(file, keepPlace) {
+    checkFile(file);
+    loading++;
+    const id = await upload(file);
+    show(id, await readImage(imageUrl(id)));
     if (!keepPlace) {
       p.center = visibleCenter();
       p.widthM = Math.max(5, Math.round(startWidthM()));
@@ -134,12 +147,43 @@
     } catch (e) { toast(e.message, 6000); }
   }
 
+  let loading = 0; // a newer load or clear makes an older, still loading picture stale
   function clear() {
+    loading++;
     cancelScale();
-    if (p.src.startsWith("blob:")) URL.revokeObjectURL(p.src);
-    Object.assign(p, { src: "", natW: 0, natH: 0, center: null, widthM: 20, rot: 0, opacity: 0.6, locked: false });
+    Object.assign(p, { image: "", natW: 0, natH: 0, center: null, widthM: 20, rot: 0, opacity: 0.6, locked: false });
     img.removeAttribute("src");
     refresh();
+  }
+
+  // ---------- Saved with the project ----------
+  function collect() {
+    if (!p.image) return null;
+    return {
+      image: p.image, center: [p.center.lat, p.center.lng], width_m: Math.round(p.widthM * 1000) / 1000,
+      rotation_deg: Math.round(p.rot * 10) / 10, opacity: p.opacity, locked: p.locked,
+    };
+  }
+
+  // Values are set at once (so the project counts as unchanged); the picture follows when it arrives.
+  async function load(saved) {
+    clear();
+    if (!saved || !saved.image) return;
+    const ticket = loading;
+    Object.assign(p, {
+      image: saved.image, center: L.latLng(saved.center), widthM: +saved.width_m || 20,
+      rot: +saved.rotation_deg || 0, opacity: saved.opacity ?? 0.6, locked: !!saved.locked,
+    });
+    syncControls();
+    applyStyle();
+    try {
+      const probe = await readImage(imageUrl(saved.image));
+      if (ticket !== loading) return;
+      show(saved.image, probe);
+      refresh();
+    } catch {
+      if (ticket === loading) toast("Η εικόνα της κάτοψης δεν βρέθηκε σε αυτόν τον υπολογιστή.", 6000);
+    }
   }
 
   // ---------- Moving with the mouse ----------
@@ -247,6 +291,6 @@
   $("planOpacity").addEventListener("input", () => { p.opacity = +$("planOpacity").value / 100; applyStyle(); });
   $("planLock").addEventListener("change", () => { p.locked = $("planLock").checked; applyStyle(); });
 
-  window.plan = { pickFile, start, clear, active: () => !!p.src };
+  window.plan = { pickFile, start, clear, collect, load, active: () => !!p.image };
   refresh();
 })();

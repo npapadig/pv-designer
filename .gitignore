@@ -7,4 +7,5 @@ data/projects/*.json
 .updated
 data/weather/
 data/settings.json
+data/plans/
 _inputs/
