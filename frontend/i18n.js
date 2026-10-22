@@ -196,6 +196,18 @@
   }
 
   // ---------------------------------------------------------------- the ΕΛ / EN switch
+  const FLAGS = {
+    el: `<svg class="flag" viewBox="0 0 27 18" aria-hidden="true"><rect width="27" height="18" fill="#0d5eaf"/>` +
+      `<path d="M10 3h17M10 7h17M0 11h27M0 15h27" stroke="#fff" stroke-width="2"/>` +
+      `<path d="M0 5h10M5 0v10" stroke="#fff" stroke-width="2"/></svg>`,
+    en: `<svg class="flag" viewBox="0 0 60 30" aria-hidden="true"><clipPath id="flagUk"><path d="M0 0v30h60V0z"/></clipPath>` +
+      `<g clip-path="url(#flagUk)"><path d="M0 0v30h60V0z" fill="#012169"/>` +
+      `<path d="M0 0l60 30m0-30L0 30" stroke="#fff" stroke-width="6"/>` +
+      `<path d="M0 0l60 30m0-30L0 30" stroke="#c8102e" stroke-width="2"/>` +
+      `<path d="M30 0v30M0 15h60" stroke="#fff" stroke-width="10"/>` +
+      `<path d="M30 0v30M0 15h60" stroke="#c8102e" stroke-width="6"/></g></svg>`,
+  };
+
   function switcher() {
     const box = document.createElement("div");
     box.className = "lang-switch";
@@ -205,7 +217,9 @@
     for (const [code, label, title] of [["el", "ΕΛ", "Ελληνικά"], ["en", "EN", "English"]]) {
       const b = document.createElement("button");
       b.type = "button";
-      b.textContent = label;
+      // Drawn flags: Windows shows emoji flags as plain letters.
+      b.innerHTML = FLAGS[code];
+      b.append(label);
       b.title = title;
       b.dataset.lang = code;
       b.setAttribute("aria-pressed", String(code === lang));
