@@ -1,4 +1,7 @@
-"""Client-ready PDF report of a project, in Greek.
+"""Client-ready PDF report of a project, in Greek or English.
+
+The texts are written here in Greek; tr() gives them in the language of the report being built
+(the English ones are in backend/i18n.py, with the Greek text as the key).
 
 The report is a cover page followed by sections. Each section is a function
 registered with @section(order); it gets a ReportContext and returns a list of
@@ -29,6 +32,7 @@ from __future__ import annotations
 
 import io
 import re
+from contextvars import ContextVar
 from dataclasses import dataclass, field
 from datetime import date
 from pathlib import Path
@@ -49,7 +53,7 @@ from reportlab.platypus import (
     PageTemplate, Paragraph, Spacer, Table, TableStyle,
 )
 
-from . import mapimage, settings
+from . import i18n, mapimage, settings
 
 FONT_DIR = Path(__file__).resolve().parent / "fonts"
 pdfmetrics.registerFont(TTFont("DejaVu", str(FONT_DIR / "DejaVuSans.ttf")))
@@ -83,18 +87,29 @@ PLUGIN_SECTIONS = [
 ]
 
 
+# Language of the report being built ("el" or "en"); build_pdf sets it.
+_LANG: ContextVar[str] = ContextVar("report_lang", default="el")
+
+
+def tr(text, context: str = ""):
+    """The (Greek) text in the language of the report."""
+    return i18n.tr(text, _LANG.get(), context)
+
+
 def num(v, d: int = 0) -> str:
-    """Greek number format: 12.345,6"""
+    """Greek number format: 12.345,6 (English report: 12,345.6)"""
     if v is None:
         return "–"
     s = f"{float(v):,.{d}f}"
+    if _LANG.get() == "en":
+        return s
     return s.replace(",", "§").replace(".", ",").replace("§", ".")
 
 
 def compass(az: float) -> str:
     names = ["Βόρειος", "Βορειοανατολικός", "Ανατολικός", "Νοτιοανατολικός",
              "Νότιος", "Νοτιοδυτικός", "Δυτικός", "Βορειοδυτικός"]
-    return names[int(((az % 360) + 22.5) // 45) % 8]
+    return tr(names[int(((az % 360) + 22.5) // 45) % 8])
 
 
 def _styles() -> dict[str, ParagraphStyle]:
@@ -163,10 +178,10 @@ class ReportContext:
 
     # --- building blocks for sections ---
     def heading(self, text: str) -> Paragraph:
-        return Paragraph(_esc(text), self.styles["h1"])
+        return Paragraph(_esc(tr(text)), self.styles["h1"])
 
     def subheading(self, text: str) -> Paragraph:
-        return Paragraph(_esc(text), self.styles["h2"])
+        return Paragraph(_esc(tr(text)), self.styles["h2"])
 
     def para(self, text: str, style: str = "body") -> Paragraph:
         return Paragraph(text, self.styles[style])
@@ -220,13 +235,14 @@ class ReportContext:
         """Render a plugin "report" block (summary / tables / notes)."""
         out = []
         if data.get("summary"):
-            out.append(self.kv_table(data["summary"]))
+            out.append(self.kv_table([(tr(k), tr(v)) for k, v in data["summary"]]))
         for tbl in data.get("tables") or []:
             if tbl.get("title"):
                 out.append(self.subheading(tbl["title"]))
-            out.append(self.data_table(tbl.get("columns") or [], tbl.get("rows") or []))
+            out.append(self.data_table([tr(c) for c in tbl.get("columns") or []],
+                                       [[tr(v) for v in r] for r in tbl.get("rows") or []]))
         for note in data.get("notes") or []:
-            out += [Spacer(1, 4), self.para(_esc(note), "small")]
+            out += [Spacer(1, 4), self.para(_esc(tr(note)), "small")]
         return out
 
     # --- derived numbers ---
@@ -258,9 +274,9 @@ def section(order: int):
 def headline_kpis(ctx: ReportContext) -> list[tuple[str, str]]:
     e = ctx.energy
     pr = ctx.performance_ratio()
-    items = [(num(ctx.kwp(), 2), "kWp ισχύς"), (num(ctx.layout.get("count")), "πάνελ")]
+    items = [(num(ctx.kwp(), 2), tr("kWp ισχύς")), (num(ctx.layout.get("count")), tr("πάνελ"))]
     if e:
-        items += [(num(e.get("annual_kwh")), "kWh / έτος"), (num(e.get("specific_yield")), "kWh / kWp")]
+        items += [(num(e.get("annual_kwh")), tr("kWh / έτος")), (num(e.get("specific_yield")), "kWh / kWp")]
     if pr:
         items.append((f"{num(pr * 100, 1)}%", "Performance ratio"))
     return items
@@ -294,10 +310,10 @@ def _faces_table(ctx: "ReportContext", rows: list[dict]):
               num(r["specific_yield"]) if r["specific_yield"] is not None else "–"] for r in rows]
     kwh = [r["annual_kwh"] for r in rows if r["annual_kwh"] is not None]
     kwp = sum(r["kwp"] for r in rows)
-    table.append(["Σύνολο", num(sum(r["count"] for r in rows)), num(kwp, 2), "", "", "",
+    table.append([tr("Σύνολο"), num(sum(r["count"] for r in rows)), num(kwp, 2), "", "", "",
                   num(sum(kwh)) if kwh else "–", num(sum(kwh) / kwp) if kwh and kwp else "–"])
-    return ctx.data_table(["Πλευρά", "Πάνελ", "kWp", "Κλίση", "Αζιμούθιο", "Σκίαση", "kWh/έτος", "kWh/kWp"],
-                          table, total_row=True,
+    columns = ["Πλευρά", "Πάνελ", "kWp", "Κλίση", "Αζιμούθιο", "Σκίαση", "kWh/έτος", "kWh/kWp"]
+    return ctx.data_table([tr(c) for c in columns], table, total_row=True,
                           widths=[CONTENT_W * w for w in (0.1, 0.09, 0.1, 0.1, 0.19, 0.12, 0.15, 0.15)])
 
 
@@ -306,8 +322,8 @@ def cover(ctx: ReportContext) -> list:
     p, info, st = ctx.project, ctx.info, ctx.styles
     out = [
         Spacer(1, 0.6 * cm),
-        Paragraph("ΜΕΛΕΤΗ ΦΩΤΟΒΟΛΤΑΪΚΟΥ ΣΥΣΤΗΜΑΤΟΣ", st["cover_kicker"]),
-        Paragraph(_esc(p.get("name") or "Έργο"), st["cover_title"]),
+        Paragraph(tr("ΜΕΛΕΤΗ ΦΩΤΟΒΟΛΤΑΪΚΟΥ ΣΥΣΤΗΜΑΤΟΣ"), st["cover_kicker"]),
+        Paragraph(_esc(p.get("name") or tr("Έργο")), st["cover_title"]),
     ]
     if info.get("address"):
         out.append(Paragraph(_esc(info["address"]), st["cover_sub"]))
@@ -320,7 +336,7 @@ def cover(ctx: ReportContext) -> list:
         out += [ctx.kpis(headline_kpis(ctx)), Spacer(1, 0.8 * cm)]
     rows = [("Πελάτης", info.get("client")), ("Συντάκτης", info.get("author")),
             ("Ημερομηνία", date.today().strftime("%d/%m/%Y"))]
-    out.append(ctx.kv_table([(k, v) for k, v in rows if v], col1=0.3))
+    out.append(ctx.kv_table([(tr(k), v) for k, v in rows if v], col1=0.3))
     return out
 
 
@@ -330,16 +346,18 @@ def summary_section(ctx: ReportContext):
     s, l, e, info = ctx.settings, ctx.layout, ctx.energy, ctx.info
     out = [ctx.heading("Σύνοψη έργου")]
     if l:
-        text = (f"Προτείνεται φωτοβολταϊκό σύστημα ισχύος <b>{num(ctx.kwp(), 2)} kWp</b> με "
-                f"<b>{num(l.get('count'))}</b> πάνελ, με κλίση {num(s.get('tilt_deg'))}° και "
-                f"{compass(s.get('azimuth_deg', 180)).lower()} προσανατολισμό ({num(s.get('azimuth_deg'))}°).")
+        text = tr("Προτείνεται φωτοβολταϊκό σύστημα ισχύος <b>{kwp} kWp</b> με <b>{count}</b> πάνελ, με κλίση "
+                  "{tilt}° και {compass} προσανατολισμό ({azimuth}°).").format(
+            kwp=num(ctx.kwp(), 2), count=num(l.get("count")), tilt=num(s.get("tilt_deg")),
+            compass=compass(s.get("azimuth_deg", 180)).lower(), azimuth=num(s.get("azimuth_deg")))
         if l.get("faces"):
-            text = (f"Προτείνεται φωτοβολταϊκό σύστημα ισχύος <b>{num(ctx.kwp(), 2)} kWp</b> με "
-                    f"<b>{num(l.get('count'))}</b> πάνελ σε {len(l['faces'])} πλευρές στέγης, η καθεμία με "
-                    "τη δική της κλίση και προσανατολισμό.")
+            text = tr("Προτείνεται φωτοβολταϊκό σύστημα ισχύος <b>{kwp} kWp</b> με <b>{count}</b> πάνελ σε {faces} "
+                      "πλευρές στέγης, η καθεμία με τη δική της κλίση και προσανατολισμό.").format(
+                kwp=num(ctx.kwp(), 2), count=num(l.get("count")), faces=len(l["faces"]))
         if e:
-            text += (f" Η αναμενόμενη ετήσια παραγωγή είναι <b>{num(e.get('annual_kwh'))} kWh</b>, "
-                     f"δηλαδή {num(e.get('specific_yield'))} kWh ανά εγκατεστημένο kWp.")
+            text += " " + tr("Η αναμενόμενη ετήσια παραγωγή είναι <b>{kwh} kWh</b>, δηλαδή {specific} kWh ανά "
+                             "εγκατεστημένο kWp.").format(kwh=num(e.get("annual_kwh")),
+                                                         specific=num(e.get("specific_yield")))
         out += [ctx.para(text), Spacer(1, 10), ctx.kpis(headline_kpis(ctx)), Spacer(1, 12)]
     center = l.get("center")
     rows = [
@@ -351,7 +369,7 @@ def summary_section(ctx: ReportContext):
         ("Ημερομηνία αναφοράς", date.today().strftime("%d/%m/%Y")),
     ]
     out.append(ctx.subheading("Στοιχεία έργου"))
-    out.append(ctx.kv_table([(k, v) for k, v in rows if v]))
+    out.append(ctx.kv_table([(tr(k), v) for k, v in rows if v]))
     return out
 
 
@@ -364,40 +382,41 @@ def layout_section(ctx: ReportContext):
     m = ctx.map_image()
     if m:
         out.append(Image(io.BytesIO(m[0]), CONTENT_W, CONTENT_W * 0.625))
-        legend = ("<font color='#f59e0b'>■</font> Περιοχή εγκατάστασης &nbsp;&nbsp; "
-                  "<font color='#ef4444'>■</font> Εμπόδια &nbsp;&nbsp; <font color='#2563eb'>■</font> Πάνελ")
+        legend = (f"<font color='#f59e0b'>■</font> {tr('Περιοχή εγκατάστασης')} &nbsp;&nbsp; "
+                  f"<font color='#ef4444'>■</font> {tr('Εμπόδια')} &nbsp;&nbsp; "
+                  f"<font color='#2563eb'>■</font> {tr('Πάνελ')}")
         if not m[1]:
-            legend += " &nbsp;&nbsp; (χωρίς δορυφορική εικόνα: δεν υπήρχε σύνδεση στο internet)"
+            legend += " &nbsp;&nbsp; " + tr("(χωρίς δορυφορική εικόνα: δεν υπήρχε σύνδεση στο internet)")
         out += [Spacer(1, 4), ctx.para(legend, "small"), Spacer(1, 8)]
     power = s.get("panel_power_w")
     panel = s.get("panel_name") or (f"{num(power)} W" if power else "–")
     row_gap = l.get("row_gap_m")
     rows = [
-        ("Εγκατεστημένη ισχύς (DC)", f"{num(ctx.kwp(), 2)} kWp"),
-        ("Αριθμός πάνελ", num(l.get("count"))),
-        ("Πάνελ", panel),
-        ("Ισχύς πάνελ", f"{num(power)} W"),
-        ("Διαστάσεις πάνελ", f"{num((s.get('panel_length_m') or 0) * 1000)} × "
-                             f"{num((s.get('panel_width_m') or 0) * 1000)} mm"),
-        ("Τοποθέτηση", MOUNTING.get(s.get("mounting"), "–")),
-        ("Προσανατολισμός πάνελ", ORIENTATION.get(s.get("orientation"), "–")),
-        ("Κλίση", f"{num(s.get('tilt_deg'))}°"),
-        ("Αζιμούθιο", f"{num(s.get('azimuth_deg'))}° ({compass(s.get('azimuth_deg', 180))})"),
-        ("Επιφάνεια περιοχής", f"{num(l.get('area_m2'), 1)} m²"),
-        ("Επιφάνεια πάνελ", f"{num(l.get('module_area_m2'), 1)} m²"),
-        ("Απόσταση από τα άκρα", f"{num(s.get('setback_m'), 2)} m"),
-        ("Κενό μεταξύ σειρών", f"{num(row_gap, 2)} m" if row_gap is not None else "–"),
-        ("Αριθμός εμποδίων", num(len(ctx.project.get("keepouts") or []))),
+        (tr("Εγκατεστημένη ισχύς (DC)"), f"{num(ctx.kwp(), 2)} kWp"),
+        (tr("Αριθμός πάνελ"), num(l.get("count"))),
+        (tr("Πάνελ", context="model"), panel),
+        (tr("Ισχύς πάνελ"), f"{num(power)} W"),
+        (tr("Διαστάσεις πάνελ"), f"{num((s.get('panel_length_m') or 0) * 1000)} × "
+                                 f"{num((s.get('panel_width_m') or 0) * 1000)} mm"),
+        (tr("Τοποθέτηση"), tr(MOUNTING.get(s.get("mounting"), "–"))),
+        (tr("Προσανατολισμός πάνελ"), tr(ORIENTATION.get(s.get("orientation"), "–"))),
+        (tr("Κλίση"), f"{num(s.get('tilt_deg'))}°"),
+        (tr("Αζιμούθιο"), f"{num(s.get('azimuth_deg'))}° ({compass(s.get('azimuth_deg', 180))})"),
+        (tr("Επιφάνεια περιοχής"), f"{num(l.get('area_m2'), 1)} m²"),
+        (tr("Επιφάνεια πάνελ"), f"{num(l.get('module_area_m2'), 1)} m²"),
+        (tr("Απόσταση από τα άκρα"), f"{num(s.get('setback_m'), 2)} m"),
+        (tr("Κενό μεταξύ σειρών"), f"{num(row_gap, 2)} m" if row_gap is not None else "–"),
+        (tr("Αριθμός εμποδίων"), num(len(ctx.project.get("keepouts") or []))),
     ]
     faces = face_rows(ctx.project)
     if faces:
-        rows = [r for r in rows if r[0] not in ("Κλίση", "Αζιμούθιο")]
-        rows.insert(7, ("Πλευρές στέγης", f"{len(faces)} (δες τον πίνακα)"))
+        rows = [r for r in rows if r[0] not in (tr("Κλίση"), tr("Αζιμούθιο"))]
+        rows.insert(7, (tr("Πλευρές στέγης"), tr("{faces} (δες τον πίνακα)").format(faces=len(faces))))
     out += [CondPageBreak(8 * cm), ctx.subheading("Στοιχεία συστήματος"), ctx.kv_table(rows)]
     if faces:
         out += [CondPageBreak(5 * cm), ctx.subheading("Πλευρές στέγης"), _faces_table(ctx, faces), Spacer(1, 4),
-                ctx.para("Κάθε πλευρά υπολογίζεται με τη δική της κλίση, προσανατολισμό και σκίαση. "
-                         "Αζιμούθιο: 0° Βορράς, 90° Ανατολή, 180° Νότος, 270° Δύση.", "small")]
+                ctx.para(tr("Κάθε πλευρά υπολογίζεται με τη δική της κλίση, προσανατολισμό και σκίαση. "
+                            "Αζιμούθιο: 0° Βορράς, 90° Ανατολή, 180° Νότος, 270° Δύση."), "small")]
     return out
 
 
@@ -407,7 +426,7 @@ def _monthly_chart(monthly: list[dict]) -> Drawing:
     c = VerticalBarChart()
     c.x, c.y, c.width, c.height = 1.4 * cm, 0.8 * cm, w - 1.8 * cm, h - 1.3 * cm
     c.data = [[m["kwh"] for m in monthly]]
-    c.categoryAxis.categoryNames = [MONTHS_SHORT[m["month"] - 1] for m in monthly]
+    c.categoryAxis.categoryNames = [tr(MONTHS_SHORT[m["month"] - 1]) for m in monthly]
     c.bars[0].fillColor = ACCENT
     c.bars[0].strokeColor = None
     c.barSpacing = 2
@@ -438,21 +457,21 @@ def production_section(ctx: ReportContext):
     if not monthly:
         return None
     total = sum(m["kwh"] for m in monthly) or 1
-    source = ("PVGIS (Κοινό Κέντρο Ερευνών της Ευρωπαϊκής Επιτροπής), με δορυφορικά δεδομένα ακτινοβολίας "
-              "για τη συγκεκριμένη τοποθεσία." if e.get("source") == "PVGIS"
-              else "Πρόχειρο μοντέλο καθαρού ουρανού (pvlib) χωρίς σύνδεση στο internet. "
-                   "Η εκτίμηση είναι λιγότερο ακριβής.")
+    source = (tr("PVGIS (Κοινό Κέντρο Ερευνών της Ευρωπαϊκής Επιτροπής), με δορυφορικά δεδομένα ακτινοβολίας "
+                 "για τη συγκεκριμένη τοποθεσία.") if e.get("source") == "PVGIS"
+              else tr("Πρόχειρο μοντέλο καθαρού ουρανού (pvlib) χωρίς σύνδεση στο internet. "
+                      "Η εκτίμηση είναι λιγότερο ακριβής."))
     out = [PageBreak(), ctx.heading("Παραγωγή ενέργειας"),
-           ctx.kpis([(num(e.get("annual_kwh")), "kWh / έτος"),
+           ctx.kpis([(num(e.get("annual_kwh")), tr("kWh / έτος")),
                      (num(e.get("specific_yield")), "kWh / kWp"),
-                     (num(e.get("annual_irradiation")), "kWh/m² ακτινοβολία στα πάνελ")]),
+                     (num(e.get("annual_irradiation")), tr("kWh/m² ακτινοβολία στα πάνελ"))]),
            ctx.subheading("Μηνιαία παραγωγή"), _monthly_chart(monthly), Spacer(1, 6)]
-    rows = [[MONTHS[m["month"] - 1], num(m.get("irradiation"), 1), num(m["kwh"]),
+    rows = [[tr(MONTHS[m["month"] - 1]), num(m.get("irradiation"), 1), num(m["kwh"]),
              f"{num(m['kwh'] / total * 100, 1)}%"] for m in monthly]
-    rows.append(["Σύνολο έτους", num(sum(m.get("irradiation") or 0 for m in monthly)), num(total), "100%"])
-    out.append(ctx.data_table(["Μήνας", "Ακτινοβολία (kWh/m²)", "Παραγωγή (kWh)", "Ποσοστό έτους"], rows,
-                              total_row=True))
-    out += [Spacer(1, 6), ctx.para(f"Πηγή δεδομένων: {source}", "small")]
+    rows.append([tr("Σύνολο έτους"), num(sum(m.get("irradiation") or 0 for m in monthly)), num(total), "100%"])
+    columns = ["Μήνας", "Ακτινοβολία (kWh/m²)", "Παραγωγή (kWh)", "Ποσοστό έτους"]
+    out.append(ctx.data_table([tr(c) for c in columns], rows, total_row=True))
+    out += [Spacer(1, 6), ctx.para(tr("Πηγή δεδομένων: {source}").format(source=source), "small")]
     return out
 
 
@@ -466,7 +485,7 @@ def loss_steps(ctx: ReportContext) -> tuple[float, list[tuple[str, float, float]
     e = ctx.energy
     if e.get("loss_steps") and e.get("nominal_kwh") and e.get("annual_kwh"):
         # Detailed simulation: every step is already computed hour by hour.
-        steps = [(l["label"], l["pct"], l["kwh"]) for l in e["loss_steps"]]
+        steps = [(tr(l["label"]), l["pct"], l["kwh"]) for l in e["loss_steps"]]
         return e["nominal_kwh"], steps, e["annual_kwh"]
     e = ctx.energy
     h, kwp, final = e.get("annual_irradiation"), ctx.kwp(), e.get("annual_kwh")
@@ -483,19 +502,19 @@ def loss_steps(ctx: ReportContext) -> tuple[float, list[tuple[str, float, float]
         if pct is None:
             continue
         nxt = cur * (1 - pct / 100)
-        steps.append((label, pct, cur - nxt))
+        steps.append((tr(label), pct, cur - nxt))
         cur = nxt
     label = ("Απώλειες συστήματος (καλώδια, inverter κ.ά.)" if steps
              else "Συνολικές απώλειες (θερμοκρασία, inverter κ.ά.)")
-    steps.append((label, (cur - final) / cur * 100, cur - final))
+    steps.append((tr(label), (cur - final) / cur * 100, cur - final))
     return nominal, steps, final
 
 
 def _loss_chart(nominal, steps, final) -> Drawing:
     row_h, label_w, value_w = 0.75 * cm, 6.6 * cm, 3.3 * cm
     bar_w = CONTENT_W - label_w - value_w
-    rows = [("Ονομαστική ενέργεια (ακτινοβολία × kWp)", None, nominal)] + \
-           [(lbl, pct, kwh) for lbl, pct, kwh in steps] + [("Τελική παραγωγή (AC)", None, final)]
+    rows = [(tr("Ονομαστική ενέργεια (ακτινοβολία × kWp)"), None, nominal)] + \
+           [(lbl, pct, kwh) for lbl, pct, kwh in steps] + [(tr("Τελική παραγωγή (AC)"), None, final)]
     d = Drawing(CONTENT_W, row_h * len(rows))
     cur = nominal
     for i, (lbl, pct, kwh) in enumerate(rows):
@@ -527,16 +546,16 @@ def losses_section(ctx: ReportContext):
     nominal, steps, final = res
     pr = final / nominal
     out = [CondPageBreak(10 * cm), ctx.heading("Απώλειες ενέργειας"),
-           ctx.para("Από την ηλιακή ενέργεια που φτάνει στα πάνελ μέχρι την ηλεκτρική ενέργεια που αποδίδει το "
-                    "σύστημα χάνεται ένα μέρος σε κάθε στάδιο. Το διάγραμμα δείχνει πόση ενέργεια χάνεται σε "
-                    "κάθε στάδιο μέσα στο έτος."),
+           ctx.para(tr("Από την ηλιακή ενέργεια που φτάνει στα πάνελ μέχρι την ηλεκτρική ενέργεια που αποδίδει "
+                       "το σύστημα χάνεται ένα μέρος σε κάθε στάδιο. Το διάγραμμα δείχνει πόση ενέργεια χάνεται "
+                       "σε κάθε στάδιο μέσα στο έτος.")),
            Spacer(1, 8), _loss_chart(nominal, steps, final), Spacer(1, 10)]
     rows = [(lbl, signed_pct(pct)) for lbl, pct, _ in steps]
-    rows += [("Συνολικές απώλειες", signed_pct((1 - pr) * 100)),
+    rows += [(tr("Συνολικές απώλειες"), signed_pct((1 - pr) * 100)),
              ("Performance ratio (PR)", f"{num(pr * 100, 1)}%")]
     out.append(ctx.kv_table(rows, col1=0.7))
-    out += [Spacer(1, 6), ctx.para("Performance ratio: ο λόγος της πραγματικής παραγωγής προς τη θεωρητική "
-                                   "παραγωγή χωρίς καμία απώλεια. Τιμές 75–85% θεωρούνται καλές.", "small")]
+    out += [Spacer(1, 6), ctx.para(tr("Performance ratio: ο λόγος της πραγματικής παραγωγής προς τη θεωρητική "
+                                      "παραγωγή χωρίς καμία απώλεια. Τιμές 75–85% θεωρούνται καλές."), "small")]
     return out
 
 
@@ -566,7 +585,7 @@ def notes_section(ctx: ReportContext):
         notes.append("Δεν έχουν ληφθεί υπόψη σκιάσεις από γειτονικά κτίρια, δέντρα ή εμπόδια.")
     out = [CondPageBreak(5 * cm), ctx.subheading("Παραδοχές και σημειώσεις")]
     for n in notes:
-        out.append(ctx.para(f"• {n}", "small"))
+        out.append(ctx.para(f"• {tr(n)}", "small"))
     return out
 
 
@@ -600,9 +619,10 @@ class _NumberedCanvas(rl_canvas.Canvas):
         self.setFont("DejaVu", 8)
         self.setFillColor(MUTED)
         self.drawString(MARGIN, PAGE_H - MARGIN + 0.7 * cm, self._title)
-        self.drawRightString(PAGE_W - MARGIN, PAGE_H - MARGIN + 0.7 * cm, "Μελέτη φωτοβολταϊκού συστήματος")
+        self.drawRightString(PAGE_W - MARGIN, PAGE_H - MARGIN + 0.7 * cm, tr("Μελέτη φωτοβολταϊκού συστήματος"))
         self.drawString(MARGIN, MARGIN - 0.9 * cm, date.today().strftime("%d/%m/%Y"))
-        self.drawRightString(PAGE_W - MARGIN, MARGIN - 0.9 * cm, f"Σελίδα {self._pageNumber} από {total}")
+        self.drawRightString(PAGE_W - MARGIN, MARGIN - 0.9 * cm,
+                             tr("Σελίδα {page} από {total}").format(page=self._pageNumber, total=total))
         self.restoreState()
 
 
@@ -614,13 +634,23 @@ def _cover_band(canvas, doc):
     canvas.restoreState()
 
 
-def build_pdf(project: dict, imagery: bool = True) -> bytes:
+def build_pdf(project: dict, imagery: bool = True, lang: str = "el") -> bytes:
+    """The report in Greek (lang="el", the default) or English (lang="en")."""
+    token = _LANG.set(lang if lang in i18n.LANGS else "el")
+    try:
+        return _build_pdf(project, imagery)
+    finally:
+        _LANG.reset(token)
+
+
+def _build_pdf(project: dict, imagery: bool) -> bytes:
     ctx = ReportContext(project, imagery=imagery)
     buf = io.BytesIO()
-    name = project.get("name") or "Έργο"
+    name = project.get("name") or tr("Έργο")
     doc = BaseDocTemplate(buf, pagesize=A4, leftMargin=MARGIN, rightMargin=MARGIN,
                           topMargin=MARGIN, bottomMargin=MARGIN,
-                          title=f"Μελέτη φωτοβολταϊκού – {name}", author=ctx.info.get("author") or "PV Designer")
+                          title=tr("Μελέτη φωτοβολταϊκού – {name}").format(name=name),
+                          author=ctx.info.get("author") or "PV Designer")
     frame = Frame(MARGIN, MARGIN, CONTENT_W, PAGE_H - 2 * MARGIN, id="main")
     doc.addPageTemplates([PageTemplate("cover", [frame], onPage=_cover_band), PageTemplate("body", [frame])])
 
@@ -638,6 +668,6 @@ def build_pdf(project: dict, imagery: bool = True) -> bytes:
     return buf.getvalue()
 
 
-def filename(project: dict) -> str:
-    name = re.sub(r'[\\/:*?"<>|]+', "", project.get("name") or "").strip() or "ergo"
-    return f"Μελέτη ΦΒ - {name}.pdf"
+def filename(project: dict, lang: str = "el") -> str:
+    name = re.sub(r'[\\/:*?"<>|]+', "", project.get("name") or "").strip() or ("project" if lang == "en" else "ergo")
+    return i18n.tr("Μελέτη ΦΒ - {name}.pdf", lang).format(name=name)
