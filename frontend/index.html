@@ -8,6 +8,7 @@
   <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
   <link rel="stylesheet" href="vendor/leaflet-draw/leaflet.draw.css">
   <link rel="stylesheet" href="style.css?v=__VERSION__">
+  <link rel="stylesheet" href="home.css?v=__VERSION__">
   <script>
     // Apply the saved light/dark choice before the page paints, so it does not flash.
     try { const t = localStorage.getItem("pv-designer.theme"); if (t) document.documentElement.dataset.theme = t; } catch {}
@@ -36,10 +37,42 @@
     <symbol id="i-left" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></symbol>
     <symbol id="i-right" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
     <symbol id="i-up" viewBox="0 0 24 24"><path d="m18 15-6-6-6 6"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M12 5v14"/></symbol>
+    <symbol id="i-house" viewBox="0 0 24 24"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></symbol>
+    <symbol id="i-image" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></symbol>
   </svg>
+  <div id="home" role="dialog" aria-label="Αρχική οθόνη">
+    <div class="home-wrap">
+      <header class="home-head">
+        <div class="logo"><svg class="ic"><use href="#i-sun"/></svg></div>
+        <div class="home-title"><h1>PV Designer <small id="homeVersion" class="version"></small></h1>
+          <p class="muted">Σχεδιασμός φωτοβολταϊκών συστημάτων</p></div>
+        <button id="homeTheme" class="icon-btn ghost" type="button" title="Σκούρο / φωτεινό θέμα" aria-label="Σκούρο / φωτεινό θέμα"><svg class="ic"><use href="#i-moon"/></svg><svg class="ic"><use href="#i-sun"/></svg></button>
+      </header>
+      <div id="homeStart" class="home-cards">
+        <button id="homeNew" class="home-card new" type="button"><span class="home-ic"><svg class="ic"><use href="#i-plus"/></svg></span>
+          <b>Νέο έργο</b><small>Ξεκίνα μια νέα μελέτη</small></button>
+        <button id="homeContinue" class="home-card" type="button" hidden><span class="home-ic"><svg class="ic"><use href="#i-right"/></svg></span>
+          <b>Συνέχεια</b><small id="homeContinueName"></small></button>
+      </div>
+      <div id="homeChoose" hidden>
+        <p class="home-ask">Πού θα μπουν τα πάνελ;</p>
+        <div class="home-cards">
+          <button id="homeBuilding" class="home-card" type="button"><span class="home-ic"><svg class="ic"><use href="#i-house"/></svg></span>
+            <b>Σε υπάρχον κτίριο</b><small>Βρίσκεις το κτίριο στον δορυφορικό χάρτη και σχεδιάζεις τη στέγη πάνω του.</small></button>
+          <button id="homePlan" class="home-card" type="button"><span class="home-ic"><svg class="ic"><use href="#i-image"/></svg></span>
+            <b>Σε σχέδιο κάτοψης</b><small>Ανεβάζεις μια εικόνα της κάτοψης (PNG ή JPG), τη βάζεις στη θέση της στον χάρτη και σχεδιάζεις πάνω της.</small></button>
+        </div>
+        <button id="homeBack" class="ghost home-back" type="button"><svg class="ic"><use href="#i-left"/></svg>Πίσω</button>
+      </div>
+      <h3 class="home-sub">Αποθηκευμένα έργα</h3>
+      <div id="homeProjects" class="home-grid"></div>
+      <p id="homeEmpty" class="muted small" hidden>Δεν υπάρχουν ακόμα αποθηκευμένα έργα. Πάτα «Νέο έργο» για να ξεκινήσεις.</p>
+    </div>
+  </div>
   <main id="map"></main>
   <nav id="rail" aria-label="Βήματα">
-    <div class="logo" title="PV Designer"><svg class="ic"><use href="#i-sun"/></svg></div>
+    <button id="btnHome" class="logo" type="button" title="Αρχική οθόνη" aria-label="Αρχική οθόνη"><svg class="ic"><use href="#i-sun"/></svg><svg class="ic"><use href="#i-house"/></svg></button>
     <a href="#secProject" data-step="secProject"><b><svg class="ic"><use href="#i-folder"/></svg><i>1</i></b><span>Έργο</span></a>
     <a href="#secSite" data-step="secSite"><b><svg class="ic"><use href="#i-pin"/></svg><i>2</i></b><span>Χώρος</span></a>
     <a href="#secPanels" data-step="secPanels"><b><svg class="ic"><use href="#i-grid"/></svg><i>3</i></b><span>Πάνελ</span></a>
@@ -52,7 +85,8 @@
   <aside id="sidebar">
     <header class="panel-head">
       <div><span id="stepKicker" class="kicker"></span><span class="brandname">PV Designer <small id="appVersion" class="version"></small></span></div>
-      <button id="btnCollapse" class="icon-btn ghost" type="button" title="Απόκρυψη" aria-label="Απόκρυψη"><svg class="ic"><use href="#i-left"/></svg></button>
+      <button id="btnHomeSheet" class="icon-btn ghost" type="button" title="Αρχική οθόνη" aria-label="Αρχική οθόνη"><svg class="ic"><use href="#i-house"/></svg></button>
+      <button id="btnCollapse"class="icon-btn ghost" type="button" title="Απόκρυψη" aria-label="Απόκρυψη"><svg class="ic"><use href="#i-left"/></svg></button>
     </header>
     <div class="panel-body">
     <section id="secProject" class="step">
@@ -81,6 +115,42 @@
         <button id="btnSearch" class="icon-btn" title="Αναζήτηση" aria-label="Αναζήτηση"><svg class="ic"><use href="#i-search"/></svg></button>
       </div>
       <p class="muted small">Μετά σχεδίασε την περιοχή με το εργαλείο πολυγώνου πάνω αριστερά στον χάρτη.</p>
+      <details id="planBox">
+        <summary>Κάτοψη κτιρίου</summary>
+        <div id="planEmpty">
+          <p class="muted small">Αν έχεις σχέδιο κάτοψης (εικόνα PNG ή JPG), βάλ' το πάνω στον χάρτη και σχεδίασε τη στέγη πάνω του.</p>
+          <div class="row"><button type="button" id="btnPlanUpload" class="secondary"><svg class="ic"><use href="#i-image"/></svg>Ανέβασμα κάτοψης</button></div>
+        </div>
+        <div id="planTools" hidden>
+          <p class="muted small" id="planHelp">Σύρε την κάτοψη με το ποντίκι για να τη μετακινήσεις. Για σωστό μέγεθος πάτα
+            «Κλίμακα» και κάνε κλικ σε δύο σημεία με γνωστή απόσταση (π.χ. τις άκρες ενός τοίχου).</p>
+          <div class="row">
+            <button type="button" id="btnPlanCenter" class="secondary">Στο κέντρο του χάρτη</button>
+            <button type="button" id="btnPlanScale" class="secondary">Κλίμακα (2 σημεία)</button>
+          </div>
+          <div id="planScaleRow" class="plan-scale" hidden>
+            <p class="muted small" id="planScaleInfo"></p>
+            <div class="row" id="planScaleSet" hidden>
+              <input id="planDist" type="number" min="0.01" step="0.01" aria-label="Πραγματική απόσταση σε μέτρα">
+              <span class="muted">m</span>
+              <button type="button" id="btnPlanScaleOk">Εφαρμογή</button>
+            </div>
+            <button type="button" id="btnPlanScaleCancel" class="ghost">Ακύρωση</button>
+          </div>
+          <label>Περιστροφή <input id="planRot" type="range" min="-180" max="180" step="0.5" value="0"></label>
+          <div class="grid2">
+            <label>Γωνία (°) <input id="planRotNum" type="number" step="0.1" value="0"></label>
+            <label>Πλάτος κάτοψης (m) <input id="planWidth" type="number" step="0.1" min="1"></label>
+          </div>
+          <label>Διαφάνεια <input id="planOpacity" type="range" min="10" max="100" step="5" value="60"></label>
+          <label class="radio switch"><input type="checkbox" id="planLock"> Κλείδωμα (για να σχεδιάσεις πάνω της)</label>
+          <div class="row">
+            <button type="button" id="btnPlanReplace" class="ghost">Άλλη εικόνα</button>
+            <button type="button" id="btnPlanRemove" class="ghost danger">Αφαίρεση κάτοψης</button>
+          </div>
+        </div>
+        <input type="file" id="planFile" accept="image/png,image/jpeg" hidden>
+      </details>
       <div class="row segmented">
         <label class="radio"><input type="radio" name="drawMode" value="area" checked> Περιοχή πάνελ</label>
         <label class="radio"><input type="radio" name="drawMode" value="keepout"> Εμπόδιο</label>
@@ -370,5 +440,7 @@
   <script src="faces.js?v=__VERSION__"></script>
   <script src="electrical.js?v=__VERSION__"></script>
   <script src="ui.js?v=__VERSION__"></script>
+  <script src="plan.js?v=__VERSION__"></script>
+  <script src="home.js?v=__VERSION__"></script>
 </body>
 </html>

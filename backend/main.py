@@ -344,6 +344,33 @@ def project_report(project_id: str):
         raise HTTPException(404, "Το έργο δεν βρέθηκε.")
 
 
+# ---------- Floor plans (start screen / plan.js) ----------
+from fastapi import Request  # noqa: E402  (kept with the plan routes)
+from fastapi.responses import FileResponse  # noqa: E402
+
+
+@app.post("/api/plans")
+async def plan_upload(request: Request):
+    """The image arrives as the raw request body (no form upload library needed)."""
+    data = await request.body()
+    if len(data) > storage.MAX_PLAN_BYTES:
+        raise HTTPException(413, "Η εικόνα είναι πολύ μεγάλη (πάνω από 25 MB).")
+    try:
+        return {"id": storage.save_plan(data)}
+    except ValueError:
+        raise HTTPException(400, "Η κάτοψη πρέπει να είναι εικόνα PNG ή JPG.")
+
+
+@app.get("/api/plans/{plan_id}")
+def plan_get(plan_id: str):
+    try:
+        path = storage.plan_path(plan_id)
+    except KeyError:
+        raise HTTPException(404, "Η κάτοψη δεν βρέθηκε.")
+    media = "image/png" if path.suffix == ".png" else "image/jpeg"
+    return FileResponse(path, media_type=media, headers={"Cache-Control": "max-age=86400"})
+
+
 # The page links its own CSS and JS with ?v=<version>, so a browser that cached the files of
 # an older version fetches the new ones after an update. no-cache makes it check every time.
 @app.get("/", include_in_schema=False)

@@ -621,18 +621,33 @@ function collectProject() {
     finance_settings: financeSettings(),
     finance: state.finance,
     electrical: window.elec?.collect(),
+    plan: window.plan?.collect() || null,
     view: { center: map.getCenter(), zoom: map.getZoom() },
   };
 }
 
 function resetProject() {
   areas.clearLayers(); keepouts.clearLayers(); editGroup.clearLayers();
+  window.plan?.clear();
   state.projectId = null;
   $("projectName").value = "Νέο έργο";
   $("clientName").value = "";
   $("projectAddress").value = "";
   clearLayout();
   updateShapesInfo();
+  markSaved();
+}
+
+// What the project looked like when it was last saved or opened, to warn before unsaved work is lost.
+let savedSnapshot = "";
+function projectSnapshot() {
+  const { view, ...rest } = collectProject();
+  return JSON.stringify(rest);
+}
+function markSaved() { savedSnapshot = projectSnapshot(); }
+function hasUnsavedWork() {
+  const started = areas.getLayers().length > 0 || !!state.projectId || !!window.plan?.active();
+  return started && projectSnapshot() !== savedSnapshot;
 }
 
 function loadProject(p) {
@@ -671,8 +686,10 @@ function loadProject(p) {
   state.finance = p.finance || null;
   colorPanels();
   window.elec?.load(p.electrical);
+  window.plan?.load(p.plan);
   renderResults();
   if (p.view) map.setView(p.view.center, p.view.zoom);
+  markSaved();
 }
 
 async function refreshProjectList() {
@@ -689,6 +706,7 @@ $("btnSave").onclick = () => withBusy($("btnSave"), async () => {
     ? await api(`/api/projects/${state.projectId}`, "PUT", data)
     : await api("/api/projects", "POST", data);
   state.projectId = saved.id;
+  markSaved();
   await refreshProjectList();
   toast("Το έργο αποθηκεύτηκε.");
 });
