@@ -631,6 +631,7 @@ function collectProject() {
   return {
     name: $("projectName").value || "Χωρίς όνομα",
     project_type: state.projectType || "existing",
+    roof_type: state.roofType || "pitched",
     settings: {
       ...settings(), loss_pct: +$("loss").value, preset: $("panelPreset").value,
       panel_name: PANEL_PRESETS[$("panelPreset").value].power ? PANEL_PRESETS[$("panelPreset").value].name : null,
@@ -659,6 +660,8 @@ function resetProject() {
   $("clientName").value = "";
   $("projectAddress").value = "";
   state.projectType = "existing";
+  state.roofType = "pitched";
+  window.faces?.syncRoof();
   clearLayout();
   updateShapesInfo();
   markSaved();
@@ -695,6 +698,9 @@ function loadProject(p) {
   if (info.author) $("reportAuthor").value = info.author;
   (p.areas || []).forEach((a) => addShape(L.polygon(a), "area"));
   window.faces?.load(p.area_faces);
+  // Older projects have no roof type: pitched if the roof was split into faces.
+  state.roofType = p.roof_type || (p.area_faces && p.project_type !== "park" ? "pitched" : "flat");
+  window.faces?.syncRoof();
   // Projects saved before shading analysis have no heights: their obstacles cast no shadow.
   (p.keepouts || []).forEach((k, i) => addShape(L.polygon(k), "keepout", (p.keepout_heights || [])[i] || 0));
   if (p.layout) {

@@ -69,6 +69,16 @@
         </div>
         <button id="homeBack" class="ghost home-back" type="button"><svg class="ic"><use href="#i-left"/></svg>Πίσω</button>
       </div>
+      <div id="homeRoof" hidden>
+        <p class="home-ask" id="homeRoofAsk">Τι στέγη έχει το κτίριο;</p>
+        <div class="home-cards">
+          <button id="homeFlat" class="home-card" type="button"><span class="home-ic"><svg class="ic" viewBox="0 0 24 24"><path d="M2 8h20"/><path d="M4 8v13h16V8"/><path d="M10 21v-5h4v5"/></svg></span>
+            <b>Επίπεδη ταράτσα (0°)</b><small>Τα πάνελ μπαίνουν σε βάσεις, με την κλίση που θέλεις.</small></button>
+          <button id="homePitched" class="home-card" type="button"><span class="home-ic"><svg class="ic" viewBox="0 0 24 24"><path d="M2 12 12 3l10 9"/><path d="M5 9.5V21h14V9.5"/><path d="M10 21v-6h4v6"/></svg></span>
+            <b>Κεκλιμένη στέγη</b><small>Κεραμοσκεπή ή λαμαρίνα: τα πάνελ μπαίνουν παράλληλα στη στέγη, που μπορείς να τη χωρίσεις σε πλευρές.</small></button>
+        </div>
+        <button id="homeRoofBack" class="ghost home-back" type="button"><svg class="ic"><use href="#i-left"/></svg>Πίσω</button>
+      </div>
       <h3 class="home-sub">Αποθηκευμένα έργα</h3>
       <div id="homeProjects" class="home-grid"></div>
       <p id="homeEmpty" class="muted small" hidden>Δεν υπάρχουν ακόμα αποθηκευμένα έργα. Πάτα «Νέο έργο» για να ξεκινήσεις.</p>
@@ -117,6 +127,10 @@
       <div class="row">
         <input id="searchBox" placeholder="Διεύθυνση ή πόλη…">
         <button id="btnSearch" class="icon-btn" title="Αναζήτηση" aria-label="Αναζήτηση"><svg class="ic"><use href="#i-search"/></svg></button>
+      </div>
+      <div class="row segmented" id="roofRow">
+        <label class="radio"><input type="radio" name="roofType" value="flat"> Επίπεδη ταράτσα</label>
+        <label class="radio"><input type="radio" name="roofType" value="pitched" checked> Κεκλιμένη στέγη</label>
       </div>
       <p class="muted small">Μετά σχεδίασε την περιοχή με το εργαλείο πολυγώνου πάνω αριστερά στον χάρτη.</p>
       <div id="planAsk" class="plan-ask" hidden>

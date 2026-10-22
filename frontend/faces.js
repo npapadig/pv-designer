@@ -123,12 +123,41 @@
     toast(`Η στέγη χωρίστηκε σε ${made} πλευρές. Κάνε κλικ σε κάθε πλευρά για να ελέγξεις κλίση και αζιμούθιο.`, 7000);
   }
 
+  // ---------- Roof type: a flat roof has no faces (the box hides), a park counts as flat ----------
+  function syncRoof() {
+    const park = state.projectType === "park";
+    const flat = park || state.roofType === "flat";
+    $("roofRow").hidden = park;
+    $("facesBox").hidden = flat;
+    document.querySelectorAll("input[name=roofType]").forEach((r) => { r.checked = r.value === (flat ? "flat" : "pitched"); });
+  }
+
+  // Choosing the roof also picks the mounting: racks on a flat roof, parallel on a pitched one.
+  function setRoof(type) {
+    if (type === "flat" && areas.getLayers().some((l) => l.pvFace)) {
+      if (!confirm("Σε επίπεδη ταράτσα δεν χρειάζονται πλευρές στέγης: όλες οι περιοχές θα πάρουν την κοινή κλίση και το αζιμούθιο του βήματος «Πάνελ». Να συνεχίσω;")) {
+        syncRoof();
+        return;
+      }
+      areas.getLayers().forEach((l) => { l.pvFace = null; });
+      refresh();
+      clearLayout();
+    }
+    if (type === "flat") cutter?.disable();
+    state.roofType = type;
+    $("mounting").value = type === "flat" ? "rack" : "flush";
+    $("mounting").dispatchEvent(new Event("change"));
+    syncRoof();
+  }
+  document.querySelectorAll("input[name=roofType]").forEach((r) => r.addEventListener("change", () => setRoof(r.value)));
+
   $("btnSplit").onclick = startCut;
   $("btnSplitDone").onclick = () => cutter?.completeShape();
   $("btnSplitCancel").onclick = () => cutter?.disable();
 
   // ---------- Used by app.js and electrical.js ----------
   window.faces = {
+    setRoof, syncRoof,
     // True when any area has its own tilt/azimuth: then layout, shading and production go per face.
     active: () => areas.getLayers().some((l) => l.pvFace),
     list: () => areas.getLayers().map((l) => ({ area: latlngsOf(l), ...(l.pvFace || {}) })),
