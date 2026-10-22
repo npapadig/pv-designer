@@ -80,7 +80,8 @@
   initiation "user_asked", context "fresh", `use_worktree: false` (it works on `main` in `C:\pv-designer`), model
   Sonnet, effort medium, prompt «Διάβασε CLAUDE.md και HANDOFF.md και συνέχισε. Είσαι ο νέος συντονιστής.»; then
   `detach_session` it (so it lives on its own) and give me its link. If starting is impossible (e.g. phone), tell me
-  exactly which button to press / what to type. Then the old coordinator stops working (I may archive it).
+  exactly which button to press / what to type. Then, if nothing is pending (all committed and pushed, no stream still reporting to it), the old
+  coordinator ARCHIVES ITSELF automatically (`archive_session` "self") — Νίκος, 2026-10-22.
 
 ## 7. Automations
 - When work may hit the 5-hour limit and scheduled tasks are available, create a one-time task (reset time + ~10 min)
