@@ -1,9 +1,9 @@
 // Shapes like in a drawing program: a double-click on an area or obstacle selects the whole shape
 // (dashed outline + corner handles). Then: drag = move, Delete = delete, Ctrl+C / Ctrl+V = copy and
-// paste, Esc = done; Ctrl+Z / Ctrl+Y undo and redo any change of the shapes. The same actions as
-// buttons on the map; lists of the shapes, with names, in the side panel. Loaded after draw.js and uses
-// app.js's map, areas, keepouts, panelsLayer, editGroup, drawControl, addShape, setObstacleHeight,
-// updateShapesInfo, clearLayout, clearShading and toast.
+// paste, Esc = done; Ctrl+Z / Ctrl+Y undo and redo any change of the shapes. Also the tree tool, the
+// same actions as buttons on the map, and lists of the shapes, with names, in the side panel. Loaded
+// after draw.js and uses app.js's map, areas, keepouts, panelsLayer, editGroup, drawControl, addShape,
+// setObstacleHeight, updateShapesInfo, clearLayout, clearShading, fmt and toast.
 (() => {
   const PICK = "Διάλεξε πρώτα ένα σχήμα (διπλό κλικ).";
   const DBL_MS = 300; // a single click on a shape waits this long, in case it becomes a double-click
@@ -53,6 +53,7 @@
       height: selected.pvHeight,
       face: selected.pvFace ? { ...selected.pvFace } : null,
       suggest: selected.pvSuggest,
+      tree: !!selected.pvTree,
     };
     showButtons();
     toast("Αντιγράφηκε. Πάτα Ctrl+V (ή «Επικόλληση») για να βάλεις ένα αντίγραφο.");
@@ -68,6 +69,7 @@
     const layer = L.polygon(clip.pts);
     if (clip.face) layer.pvFace = { ...clip.face };
     if (clip.suggest != null) layer.pvSuggest = clip.suggest;
+    if (clip.tree) { layer.pvTree = true; layer.pvName = treeName(); }
     addShape(layer, clip.kind, clip.height);
     clearLayout();
     select(layer);
@@ -97,7 +99,7 @@
   function snapshot() {
     const one = (l) => ({
       kind: kindOf(l), pts: ring(l).map((p) => [p.lat, p.lng]), height: l.pvHeight ?? null, name: l.pvName ?? null,
-      face: l.pvFace || null, suggest: l.pvSuggest ?? null,
+      face: l.pvFace || null, suggest: l.pvSuggest ?? null, tree: !!l.pvTree,
     });
     return JSON.stringify([...areas.getLayers(), ...keepouts.getLayers()].map(one));
   }
@@ -129,7 +131,7 @@
     const layers = [...areas.getLayers(), ...keepouts.getLayers()];
     restoring = true;
     map.closePopup();
-    if (layers.length === list.length && list.every((s, i) => kindOf(layers[i]) === s.kind)) {
+    if (layers.length === list.length && list.every((s, i) => kindOf(layers[i]) === s.kind && !!layers[i].pvTree === !!s.tree)) {
       list.forEach((s, i) => {
         const l = layers[i];
         l.pvName = s.name ?? undefined;
@@ -142,6 +144,7 @@
       for (const s of list) {
         const l = L.polygon(s.pts);
         if (s.name != null) l.pvName = s.name;
+        if (s.tree) l.pvTree = true;
         addShape(l, s.kind, s.height);
       }
     }
@@ -214,6 +217,93 @@
     d.layer.fire("edit"); // draw.js: lengths again and the panel layout is out of date
   }
 
+  // ---------- Tree ----------
+  // Press on the centre of the tree and drag out to the edge of its crown (a click alone makes one
+  // 4 m wide). It is kept as an ordinary obstacle polygon of 24 points, so shading and layout need
+  // nothing new; on the map it looks like a tree (shapes.css).
+  const TREE_POINTS = 24, TREE_M = 6, TREE_R = 2;
+  let tree = null; // the tool while it is on: { center, circle, tip }
+
+  // The look: a crown darker in the middle, with a ruffled edge like leaves.
+  document.body.insertAdjacentHTML("afterbegin", `<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <radialGradient id="pvTreeFill"><stop offset="0" stop-color="#166534"/><stop offset="0.65" stop-color="#22c55e"/>
+      <stop offset="1" stop-color="#4ade80"/></radialGradient>
+    <filter id="pvTree" x="-15%" y="-15%" width="130%" height="130%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.09" numOctaves="2" seed="7" result="noise"/>
+      <feDisplacementMap in="SourceGraphic" in2="noise" scale="7" xChannelSelector="R" yChannelSelector="G"/>
+      <feDropShadow dx="0" dy="1" stdDeviation="1.2" flood-color="#000" flood-opacity="0.6"/>
+    </filter></svg>`);
+
+  function treeName() {
+    const used = new Set(keepouts.getLayers().map((l) => l.pvName));
+    let n = 1;
+    while (used.has(`Δέντρο ${n}`)) n++;
+    return `Δέντρο ${n}`;
+  }
+
+  const treeTip = (r) => (r ? `Ακτίνα ${fmt(r, 1)} m · Ø ${fmt(2 * r, 1)} m`
+    : "Πάτα στο κέντρο του δέντρου και σύρε ως την άκρη του φυλλώματος. Esc = ακύρωση.");
+
+  function startTree() {
+    if (tree) return;
+    map.fire("draw:drawstart", { layerType: "tree" }); // ends other tools, editing and the selection
+    tree = { center: null, circle: null, tip: L.tooltip({ direction: "right", offset: [16, 0], className: "pv-tree-tip" }) };
+    map.dragging.disable();
+    L.DomUtil.addClass(container, "pv-tree-drawing");
+    map.on("mousemove", treeMove);
+    map.on("mousedown", treeDown);
+  }
+
+  function stopTree() {
+    if (!tree) return;
+    map.off("mousemove", treeMove);
+    map.off("mousedown", treeDown);
+    L.DomEvent.off(document, "mouseup", treeUp);
+    if (tree.circle) tree.circle.remove();
+    tree.tip.remove();
+    tree = null;
+    map.dragging.enable();
+    L.DomUtil.removeClass(container, "pv-tree-drawing");
+    map.fire("draw:drawstop", { layerType: "tree" });
+  }
+
+  function treeMove(e) {
+    const r = tree.center ? map.distance(tree.center, e.latlng) : 0;
+    if (tree.circle) tree.circle.setRadius(Math.max(r, 0.1));
+    tree.tip.setLatLng(e.latlng).setContent(treeTip(r));
+    if (!tree.tip.isOpen()) tree.tip.openOn(map);
+  }
+
+  function treeDown(e) {
+    if (e.originalEvent.button !== 0) return;
+    L.DomEvent.preventDefault(e.originalEvent);
+    tree.center = e.latlng;
+    tree.circle = L.circle(e.latlng, { radius: 0.1, interactive: false, color: "#22c55e", weight: 2, dashArray: "6 5", fillColor: "#22c55e", fillOpacity: 0.25 }).addTo(map);
+    L.DomEvent.on(document, "mouseup", treeUp);
+  }
+
+  function treeUp() {
+    const center = tree.center, r = tree.circle.getRadius();
+    stopTree();
+    justDragged = true; // the click that follows must not open a box under the tree
+    const radius = r < 0.3 ? TREE_R : r;
+    // 24 points around the centre, in local metres as in draw.js.
+    const north = map.distance(center, L.latLng(center.lat + 0.001, center.lng)) / 0.001;
+    const east = map.distance(center, L.latLng(center.lat, center.lng + 0.001)) / 0.001;
+    const pts = [...Array(TREE_POINTS)].map((_, k) => {
+      const a = (2 * Math.PI * k) / TREE_POINTS;
+      return L.latLng(center.lat + (radius * Math.sin(a)) / north, center.lng + (radius * Math.cos(a)) / east);
+    });
+    const layer = L.polygon(pts);
+    layer.pvTree = true;
+    layer.pvName = treeName();
+    addShape(layer, "keepout", TREE_M);
+    clearLayout();
+  }
+
+  // Another drawing tool ends this one.
+  map.on("draw:drawstart", (e) => { if (e.layerType !== "tree") stopTree(); });
+
   // ---------- Mouse on the shapes ----------
   function onDblclick(e) {
     if (busy()) return;
@@ -276,7 +366,7 @@
 
   function makeRow(kind, layer) {
     const row = document.createElement("div");
-    row.className = `shape-row ${kind}`;
+    row.className = `shape-row ${kind}${layer.pvTree ? " tree" : ""}`;
     row.pvLayer = layer;
     row.innerHTML = `<span class="shape-no"></span>
       <input name="name" maxlength="40" autocomplete="off" placeholder="π.χ. δέντρο, φράχτης">
@@ -360,7 +450,8 @@
     if (typing(e.target) || homeOpen() || e.altKey) return;
     const ctrl = e.ctrlKey || e.metaKey;
     let act = null;
-    if (!ctrl && e.key === "Escape" && selected) act = deselect;
+    if (!ctrl && e.key === "Escape" && tree) act = stopTree;
+    else if (!ctrl && e.key === "Escape" && selected) act = deselect;
     else if (!ctrl && (e.key === "Delete" || e.key === "Backspace") && selected && !busy()) act = remove;
     else if (ctrl && !e.shiftKey && letter(e, "c") && selected && String(window.getSelection()) === "") act = copy;
     else if (ctrl && !e.shiftKey && letter(e, "v") && clip && !busy()) act = paste;
@@ -427,7 +518,7 @@
   showLists();
 
   window.shapes = {
-    select, deselect, copy, paste, remove, undo, redo, record, resetHistory,
+    select, deselect, copy, paste, remove, undo, redo, record, resetHistory, startTree,
     get selected() { return selected; },
   };
 })();

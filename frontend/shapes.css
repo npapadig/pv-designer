@@ -39,3 +39,22 @@
 .shape-row button.shape-del { width: 32px; height: 32px; border-radius: 9px; }
 .shape-row button.shape-del .ic { width: 15px; height: 15px; }
 .shape-row button.shape-del:hover { color: var(--danger); background: var(--danger-soft); }
+
+/* ---------- Trees ---------- */
+/* A crown darker in the middle with a ruffled edge like leaves (#pvTreeFill, #pvTree in shapes.js). */
+.leaflet-overlay-pane path.pv-tree { fill: url(#pvTreeFill); filter: url(#pvTree); }
+.leaflet-overlay-pane path.pv-tree:hover { fill-opacity: 0.62; }
+.leaflet-overlay-pane path.pv-tree.pv-selected { filter: url(#pvHalo); fill-opacity: 0.6; }
+.pv-tree-drawing, .pv-tree-drawing .leaflet-interactive { cursor: crosshair !important; }
+.leaflet-tooltip.pv-tree-tip {
+  background: var(--glass-strong); color: var(--text); border: 1px solid var(--line-strong); border-radius: 10px;
+  box-shadow: var(--shadow); font: 500 12px/1.4 var(--font); padding: 6px 10px; max-width: 260px; white-space: normal;
+}
+.leaflet-tooltip.pv-tree-tip::before { border-right-color: var(--glass-strong); }
+.segmented label.radio:has(input[value=tree]:checked) {
+  background: linear-gradient(135deg, #4ade80, #16a34a); box-shadow: 0 4px 14px rgba(22, 163, 74, 0.35);
+}
+.shape-row.tree .shape-no::before { background: #22c55e; border-radius: 50%; }
+
+/* Three mode buttons side by side: keep «Περιοχή πάνελ» on one line. */
+#drawModes label.radio { padding: 9px 4px; font-size: 0.8rem; white-space: nowrap; }

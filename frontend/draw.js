@@ -55,6 +55,7 @@
     let group = labels.get(layer);
     if (!group) labels.set(layer, (group = L.layerGroup().addTo(map)));
     group.clearLayers();
+    if (layer.pvTree) return; // a tree's 24 short sides would only hide it (its size is in its tooltip)
     const pts = ring(layer), n = pts.length;
     for (let i = 0; i < n; i++) {
       const m = label(pts[i], pts[(i + 1) % n], kindClass(layer), editing ? () => sideBox(layer, i) : null);
@@ -113,7 +114,7 @@
   function drawDraft() {
     draft.clearLayers();
     if (!drawing) return;
-    const cls = document.querySelector("input[name=drawMode]:checked")?.value === "keepout" ? "keepout draft" : "area draft";
+    const cls = document.querySelector("input[name=drawMode]:checked")?.value !== "area" ? "keepout draft" : "area draft";
     if (drawing.type === "rectangle") {
       if (drawing._shape) sideLabels(drawing._shape.getLatLngs()[0], true, cls, draft);
       return;
@@ -134,7 +135,7 @@
     const mode = drawControl._toolbars.draw._modes[e.layerType];
     drawing = mode ? mode.handler : null;
     if (drawing) {
-      const keepout = document.querySelector("input[name=drawMode]:checked")?.value === "keepout";
+      const keepout = document.querySelector("input[name=drawMode]:checked")?.value !== "area"; // also «Δέντρο»
       Object.assign(drawing.options.shapeOptions, keepout ? DRAFT_KEEPOUT : DRAFT_AREA);
       drawing.options.icon = drawing.options.touchIcon = HANDLE;
     }

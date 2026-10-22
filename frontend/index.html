@@ -154,12 +154,13 @@
         </div>
         <input type="file" id="planFile" accept="image/png,image/jpeg" hidden>
       </details>
-      <div class="row segmented">
+      <div class="row segmented" id="drawModes">
         <label class="radio"><input type="radio" name="drawMode" value="area" checked> Περιοχή πάνελ</label>
         <label class="radio"><input type="radio" name="drawMode" value="keepout"> Εμπόδιο</label>
+        <label class="radio"><input type="radio" name="drawMode" value="tree"> Δέντρο</label>
       </div>
-      <p class="muted small">Πάτα ένα από τα δύο κουμπιά και κάνε κλικ γύρω γύρω στον χάρτη· κλικ στο πρώτο σημείο για να
-        κλείσει. Διπλό κλικ σε ένα σχήμα για να το επιλέξεις.</p>
+      <p class="muted small">Πάτα «Περιοχή πάνελ» ή «Εμπόδιο» και κάνε κλικ γύρω γύρω στον χάρτη· κλικ στο πρώτο σημείο για
+        να κλείσει. Για «Δέντρο» πάτα στο κέντρο του και σύρε ως την άκρη του. Διπλό κλικ σε ένα σχήμα για να το επιλέξεις.</p>
       <p class="muted small" id="shapesInfo">Καμία περιοχή.</p>
       <div id="keepoutList" class="shape-list" hidden>
         <h3>Εμπόδια</h3>

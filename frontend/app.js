@@ -101,6 +101,8 @@ const shadowsLayer = new L.FeatureGroup().addTo(map);
 // className hooks the shapes to draw.css (soft dark halo, hover); it applies when a shape is added to the map.
 const AREA_STYLE = { color: "#ff8a3d", weight: 2.5, opacity: 1, fillColor: "#ffc53d", fillOpacity: 0.12, lineJoin: "round", className: "pv-shape pv-area" };
 const KEEPOUT_STYLE = { color: "#ff4d6d", weight: 2, opacity: 1, fillColor: "#ff4d6d", fillOpacity: 0.25, lineJoin: "round", className: "pv-shape pv-keepout" };
+// A tree is an obstacle too; shapes.css gives it a leafy edge.
+const TREE_STYLE = { color: "#166534", weight: 2, opacity: 1, fillColor: "#22c55e", fillOpacity: 0.5, lineJoin: "round", className: "pv-shape pv-keepout pv-tree" };
 const DRAFT_STYLE = { color: "#ffc53d", weight: 2.5, opacity: 1, dashArray: "7 6", fillColor: "#ffc53d", fillOpacity: 0.1, lineJoin: "round", className: "pv-shape" };
 
 // Greek texts of Leaflet.draw; set before the control is made, which reads some of them once.
@@ -134,17 +136,19 @@ function drawMode() {
   return document.querySelector("input[name=drawMode]:checked").value;
 }
 
-// The two mode buttons («Περιοχή πάνελ», «Εμπόδιο») start drawing a polygon of that kind at once.
+// The mode buttons start drawing at once: a polygon for «Περιοχή πάνελ» and «Εμπόδιο», a circle
+// for «Δέντρο» (shapes.js).
 document.querySelectorAll("input[name=drawMode]").forEach((r) => r.addEventListener("click", () => {
   const pen = drawControl._toolbars.draw._modes.polygon.handler;
   if (pen.enabled()) pen.disable(); // again, in the colour of the new kind
-  pen.enable();
+  if (r.value === "tree") window.shapes?.startTree();
+  else pen.enable();
 }));
 
 const NEW_OBSTACLE_M = 1; // a new obstacle starts 1 m high; changed in the list or with a click on it
 
 function addShape(layer, kind, height) {
-  layer.setStyle(kind === "keepout" ? KEEPOUT_STYLE : AREA_STYLE);
+  layer.setStyle(kind === "keepout" ? (layer.pvTree ? TREE_STYLE : KEEPOUT_STYLE) : AREA_STYLE);
   layer.pvKind = kind;
   if (kind === "keepout") setObstacleHeight(layer, height ?? NEW_OBSTACLE_M);
   (kind === "keepout" ? keepouts : areas).addLayer(layer);
@@ -163,8 +167,14 @@ function setObstacleHeight(layer, h) {
   layer.pvHeight = Math.max(0, +h || 0);
   // Worked out when shown, so a new name or place in the list shows at once; text, not HTML.
   if (!layer.getTooltip()) {
-    layer.bindTooltip(() => document.createTextNode(
-      `${shapeName(layer)} · ${layer.pvHeight ? `${fmt(layer.pvHeight, 1)} m` : "χωρίς σκιά"}`));
+    layer.bindTooltip(() => {
+      let text = `${shapeName(layer)} · ${layer.pvHeight ? `${fmt(layer.pvHeight, 1)} m` : "χωρίς σκιά"}`;
+      if (layer.pvTree) {
+        const b = layer.getBounds();
+        text += ` · Ø ${fmt(map.distance(b.getSouthWest(), b.getSouthEast()), 1)} m`;
+      }
+      return document.createTextNode(text);
+    });
   }
   layer.off("click").on("click", () => {
     if (window.drawTools?.editing) return;
@@ -182,7 +192,7 @@ function setObstacleHeight(layer, h) {
 map.on(L.Draw.Event.CREATED, (e) => {
   // A drawn rectangle becomes a plain polygon, so its corners can be edited one by one.
   const layer = e.layer instanceof L.Rectangle ? L.polygon(e.layer.getLatLngs(), e.layer.options) : e.layer;
-  addShape(layer, drawMode());
+  addShape(layer, drawMode() === "area" ? "area" : "keepout");
   clearLayout();
 });
 
@@ -660,6 +670,7 @@ function collectProject() {
     keepouts: keepouts.getLayers().map(latlngsOf),
     keepout_heights: keepouts.getLayers().map((l) => l.pvHeight || 0),
     keepout_names: keepouts.getLayers().map((l) => l.pvName || ""),
+    keepout_shapes: keepouts.getLayers().map((l) => (l.pvTree ? "tree" : "")), // only the look on the map
     shading: state.shading,
     layout: state.layout ? { ...state.layout, panels: panelsLayer.getLayers().map(latlngsOf) } : null,
     energy: state.energy,
@@ -717,6 +728,7 @@ function loadProject(p) {
   (p.keepouts || []).forEach((k, i) => {
     const layer = L.polygon(k);
     layer.pvName = (p.keepout_names || [])[i] || undefined; // older projects: «Εμπόδιο N»
+    layer.pvTree = (p.keepout_shapes || [])[i] === "tree" || undefined;
     addShape(layer, "keepout", (p.keepout_heights || [])[i] || 0);
   });
   if (p.layout) {
