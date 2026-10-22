@@ -421,7 +421,7 @@
   map.addControl(new Compass());
 
   window.drawTools = {
-    meters, area, refresh, refreshAll,
+    meters, area, refresh, refreshAll, edgeLabel: label,
     get editing() { return editing; },
   };
 })();

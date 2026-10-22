@@ -250,6 +250,7 @@
 
   function startTree() {
     if (tree) return;
+    Object.values(drawControl._toolbars.draw._modes).forEach((m) => m.handler.disable());
     map.fire("draw:drawstart", { layerType: "tree" }); // ends other tools, editing and the selection
     tree = { center: null, circle: null, tip: L.tooltip({ direction: "right", offset: [16, 0], className: "pv-tree-tip" }) };
     map.dragging.disable();
@@ -258,7 +259,8 @@
     map.on("mousedown", treeDown);
   }
 
-  function stopTree() {
+  // handover: another tool has just started, so drawing goes on (no "draw:drawstop").
+  function stopTree(handover) {
     if (!tree) return;
     map.off("mousemove", treeMove);
     map.off("mousedown", treeDown);
@@ -268,7 +270,7 @@
     tree = null;
     map.dragging.enable();
     L.DomUtil.removeClass(container, "pv-tree-drawing");
-    map.fire("draw:drawstop", { layerType: "tree" });
+    if (handover !== true) map.fire("draw:drawstop", { layerType: "tree" });
   }
 
   function treeMove(e) {
@@ -306,7 +308,7 @@
   }
 
   // Another drawing tool ends this one.
-  map.on("draw:drawstart", (e) => { if (e.layerType !== "tree") stopTree(); });
+  map.on("draw:drawstart", (e) => { if (e.layerType !== "tree") stopTree(true); });
 
   // ---------- Mouse on the shapes ----------
   function onDblclick(e) {
@@ -467,7 +469,7 @@
     if (typing(e.target) || homeOpen() || e.altKey) return;
     const ctrl = e.ctrlKey || e.metaKey;
     let act = null;
-    if (!ctrl && e.key === "Escape" && tree) act = stopTree;
+    if (!ctrl && e.key === "Escape" && tree) act = () => stopTree();
     else if (!ctrl && e.key === "Escape" && selected) act = deselect;
     else if (!ctrl && (e.key === "Delete" || e.key === "Backspace") && selected && !busy()) act = remove;
     else if (ctrl && !e.shiftKey && letter(e, "c") && selected && String(window.getSelection()) === "") act = copy;
