@@ -601,7 +601,7 @@ async function downloadReport() {
   const r = await fetch("/api/report", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ ...collectProject(), basemap: activeBasemap() }),
+    body: JSON.stringify({ ...collectProject(), basemap: activeBasemap(), lang: window.I18N?.lang || "el" }),
   });
   if (!r.ok) {
     const data = await r.json().catch(() => ({}));

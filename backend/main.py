@@ -321,25 +321,25 @@ def project_delete(project_id: str):
     return {"ok": True}
 
 
-def _pdf_response(project: dict) -> Response:
+def _pdf_response(project: dict, lang: str = "el") -> Response:
     if not project.get("areas") and not (project.get("layout") or {}).get("panels"):
         raise HTTPException(400, "Σχεδίασε πρώτα μια περιοχή και τοποθέτησε πάνελ.")
-    pdf = report.build_pdf(project)
-    name = quote(report.filename(project))
+    pdf = report.build_pdf(project, lang=lang)
+    name = quote(report.filename(project, lang))
     return Response(pdf, media_type="application/pdf",
                     headers={"Content-Disposition": f"attachment; filename=report.pdf; filename*=UTF-8''{name}"})
 
 
 @app.post("/api/report")
 def report_from_data(data: dict):
-    """PDF report of the project as currently shown (saved or not)."""
-    return _pdf_response(data)
+    """PDF report of the project as currently shown (saved or not); "lang": "en" for English."""
+    return _pdf_response(data, data.get("lang") or "el")
 
 
 @app.get("/api/projects/{project_id}/report")
-def project_report(project_id: str):
+def project_report(project_id: str, lang: str = "el"):
     try:
-        return _pdf_response(storage.get_project(project_id))
+        return _pdf_response(storage.get_project(project_id), lang)
     except KeyError:
         raise HTTPException(404, "Το έργο δεν βρέθηκε.")
 

@@ -35,6 +35,6 @@ VERSION/CHANGELOG/HANDOFF ή line endings. Ενημέρωνε τον πίνακ�
 
 | Βήμα | Κατάσταση |
 |---|---|
-| 1 | — |
+| 1 | ΕΤΟΙΜΟ (2026-10-22): `backend/i18n.py` (λεξικό + κανόνες), `report.py` με `tr()`, `build_pdf(..., lang)`, `lang` στο `POST /api/report` (σώμα) και `GET /api/projects/{id}/report?lang=en`, app.js στέλνει `window.I18N?.lang`. Ελληνικό PDF byte-ίδιο με πριν (`tests/report_text_el.json`, `tests/test_report_lang.py`). Το όνομα αρχείου στο «Λήψεις» το βάζει το app.js (ελληνικό) — θα το αλλάξει το `i18n.js` στο βήμα 2. |
 | 2 | — |
 | 3 | — |
