@@ -41,8 +41,9 @@ def test_economic_is_south_with_automatic_row_gap():
     o = by_key()["economic"]
     assert o["azimuth_deg"] == 180
     assert layout.OPTION_ECONOMIC["tilt_min_deg"] <= o["tilt_deg"] <= layout.OPTION_ECONOMIC["tilt_deg"]
-    p = LayoutParams(tilt_deg=o["tilt_deg"], mounting="rack")
-    assert o["row_gap_m"] == round(auto_row_gap(p.panel_length_m, p.tilt_deg, LAT0), 2)
+    p = LayoutParams(tilt_deg=o["tilt_deg"], mounting="rack", orientation=o["orientation"])
+    along_slope = p.panel_width_m if p.orientation == "landscape" else p.panel_length_m
+    assert o["row_gap_m"] == round(auto_row_gap(along_slope, p.tilt_deg, LAT0), 2)
     assert o["panels"] == compute_layout(ROOF, p)["panels"]
 
 
@@ -130,7 +131,8 @@ def test_options_api_empty_area():
 
 
 def test_east_west_api_keeps_the_users_gap():
-    base = {"areas": [ROOF], "tilt_deg": by_key()["east_west"]["tilt_deg"]}
+    ew = by_key()["east_west"]
+    base = {"areas": [ROOF], "tilt_deg": ew["tilt_deg"], "orientation": ew["orientation"]}
     auto = client.post("/api/layout/ew", json=base).json()
     wide = client.post("/api/layout/ew", json={**base, "row_spacing_m": 0.5}).json()
     assert auto["row_gap_m"] == layout.OPTION_EAST_WEST["row_gap_m"]
@@ -221,3 +223,20 @@ def test_manual_proposal_uses_the_settings_as_they_are():
     r = client.post("/api/layout/options", json={"areas": [ROOF], "mounting": "rack",
                                                  "tilt_deg": 10, "east_west": True}).json()["options"][3]
     assert r["east_west"] and r["kwp"] > 0
+
+
+@pytest.mark.parametrize("roof", [ROOF, rect(-8, -1.2, 8, 1.2), rect(-1.5, -6, 1.5, 6)])
+def test_proposals_try_both_panel_orientations(roof):
+    # Νίκος, 2026-10-22: the proposals also choose upright or lying panels, whichever fits more.
+    for opt in layout_options([roof], LayoutParams())[:3]:
+        assert opt["orientation"] in ("portrait", "landscape")
+        for orient in ("portrait", "landscape"):
+            def layout_at(tilt, orient=orient, opt=opt):
+                p = LayoutParams(tilt_deg=tilt, azimuth_deg=opt["azimuth_deg"], mounting="rack",
+                                 row_spacing_m=opt["row_spacing_m"], orientation=orient)
+                if opt["key"] == "east_west":
+                    return compute_ew_layout(roof, p, opt["row_spacing_m"])
+                return compute_layout(roof, p)
+            nominal = {"economic": 30, "east_west": 10, "aesthetic": 15}[opt["key"]]
+            low = {"economic": 20, "east_west": 8, "aesthetic": 10}[opt["key"]]
+            assert opt["count"] >= layout.best_tilt(layout_at, nominal, low)[1]["count"]

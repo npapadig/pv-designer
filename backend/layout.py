@@ -18,8 +18,9 @@ from shapely.ops import split, unary_union
 WINTER_SOLSTICE_DECLINATION = 23.44
 
 # The three ready-made layout proposals (layout_options), as decided by Νίκος on 2026-10-22.
-# The tilt is not fixed: every whole degree from tilt_deg down to tilt_min_deg is tried and the one that fits
-# the most panels wins (a tie keeps the tilt closer to tilt_deg). row_gap_m None = automatic (no shade at
+# The tilt is not fixed: every whole degree from tilt_deg down to tilt_min_deg is tried, with the panels both
+# upright and lying (portrait / landscape), and the one that fits the most panels wins (a tie keeps the tilt
+# closer to tilt_deg, then the user's own panel orientation). row_gap_m None = automatic (no shade at
 # winter-solstice noon).
 OPTION_ECONOMIC = {"tilt_deg": 30.0, "tilt_min_deg": 20.0, "azimuth_deg": 180.0, "row_gap_m": None}  # south
 OPTION_EAST_WEST = {"tilt_deg": 10.0, "tilt_min_deg": 8.0, "row_gap_m": 0.10}  # back to back, rows almost touching
@@ -323,21 +324,28 @@ def layout_options(areas: list, p: LayoutParams, east_west: bool = False) -> lis
         ("aesthetic", "Αισθητική", "Παράλληλα με τον τοίχο του κτιρίου", OPTION_AESTHETIC, wall),
     ]
     out = []
+    # The user's orientation first, so it wins a tie.
+    orientations = [p.orientation] + [o for o in ("portrait", "landscape") if o != p.orientation]
     for key, title, note, opt, az in plans:
         gap = opt["row_gap_m"]
+        best = None
+        for orient in orientations:
+            def layout_at(tilt, key=key, az=az, gap=gap, orient=orient):
+                q = replace(p, tilt_deg=tilt, azimuth_deg=az, mounting="rack", row_spacing_m=gap, orientation=orient)
+                if key == "east_west":
+                    return _merge([compute_ew_layout(a, q, gap) for a in areas], q)
+                return _merge([compute_layout(a, q) for a in areas], q)
 
-        def layout_at(tilt, key=key, az=az, gap=gap):
-            q = replace(p, tilt_deg=tilt, azimuth_deg=az, mounting="rack", row_spacing_m=gap)
-            if key == "east_west":
-                return _merge([compute_ew_layout(a, q, gap) for a in areas], q)
-            return _merge([compute_layout(a, q) for a in areas], q)
-
-        tilt, res = best_tilt(layout_at, opt["tilt_deg"], opt["tilt_min_deg"])
+            tilt, res = best_tilt(layout_at, opt["tilt_deg"], opt["tilt_min_deg"])
+            if best is None or (res["count"], tilt) > (best[2]["count"], best[1]):
+                best = (orient, tilt, res)
+        orient, tilt, res = best
         out.append({"key": key, "title": title, "note": note, "tilt_deg": tilt, "azimuth_deg": az,
-                    "mounting": "rack", "row_spacing_m": gap, **res})
+                    "mounting": "rack", "row_spacing_m": gap, "orientation": orient, **res})
     ew = east_west and p.mounting == "rack"
     manual = compute_ew_areas(areas, p) if ew else _merge([compute_layout(a, p) for a in areas], p)
     out.append({"key": "manual", "title": "Χειροκίνητα", "note": "Οι ρυθμίσεις του βήματος «Πάνελ» όπως είναι",
                 "tilt_deg": p.tilt_deg, "azimuth_deg": 90.0 if ew else p.azimuth_deg, "mounting": p.mounting,
+                "orientation": p.orientation,
                 "row_spacing_m": p.row_spacing_m, "east_west": ew, **manual})
     return out

@@ -39,7 +39,8 @@
 
   function angles(o) {
     const dir = o.key === "east_west" || o.east_west ? "Α/Δ" : `${fmt(o.azimuth_deg)}°`;
-    return `<em>Κλίση ${fmt(o.tilt_deg)}°</em> · ${dir}`;
+    const orient = o.orientation === "landscape" ? "οριζόντια" : "κατακόρυφα";
+    return `<em>Κλίση ${fmt(o.tilt_deg)}°</em> · ${dir} · ${orient}`;
   }
 
   function render(outlines) {
@@ -57,8 +58,8 @@
       </button>`).join("");
     box.innerHTML = `<h3>Προτάσεις διάταξης</h3>
       <div class="opt-cards">${cards}</div>
-      <p class="muted small">Κάνε κλικ σε μία για να μπει στον χάρτη. Στις 3 πρώτες η κλίση είναι αυτή που χωράει
-        τα περισσότερα πάνελ χωρίς σκίαση τον χειμώνα. Οι τιμές περνούν στις ρυθμίσεις παραπάνω, οπότε μπορείς
+      <p class="muted small">Κάνε κλικ σε μία για να μπει στον χάρτη. Στις 3 πρώτες η κλίση και η θέση των πάνελ
+        (κατακόρυφα ή οριζόντια) είναι αυτές που χωράνε τα περισσότερα πάνελ χωρίς σκίαση τον χειμώνα. Οι τιμές περνούν στις ρυθμίσεις παραπάνω, οπότε μπορείς
         να τις αλλάξεις· η κάρτα «Χειροκίνητα» δείχνει τις ρυθμίσεις όπως είναι. «Απόδοση» = πόσο φως πιάνει κάθε
         πάνελ με αυτή την τοποθέτηση, σε σχέση με την ιδανική (νότια, στην καλύτερη κλίση για το σημείο) = 100 %.
         Η παραγωγή υπολογίζεται στο βήμα «Παραγωγή», για την πρόταση που θα διαλέξεις.</p>`;
@@ -70,6 +71,7 @@
     $("tilt").value = o.tilt_deg;
     if (!ew) $("azimuth").value = Math.round(o.azimuth_deg);
     $("mounting").value = o.mounting;
+    $("orientation").value = o.orientation;
     $("rowGap").value = o.row_spacing_m == null ? "" : o.row_spacing_m;
     $("ewMode").checked = ew;
     syncEw();
