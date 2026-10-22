@@ -1,5 +1,5 @@
-// Three ready-made layout proposals (economic / maximum energy / aesthetic) shown as cards in the
-// "Πάνελ" step; a click applies one to the map and copies its values into the settings above, so it
+// Ready-made layout proposals (economic / maximum energy / aesthetic, each with the tilt that fits the
+// most panels) and a "manual" card with the settings as they are, shown as cards in the "Πάνελ" step; a click applies one to the map and copies its values into the settings above, so it
 // stays editable. Loaded after app.js and faces.js; uses their areas, keepouts, latlngsOf, settings,
 // setLayout, api, fmt and state.
 (() => {
@@ -38,7 +38,8 @@
   }
 
   function angles(o) {
-    return o.key === "east_west" ? `${fmt(o.tilt_deg)}° · Α/Δ` : `${fmt(o.tilt_deg)}° · ${fmt(o.azimuth_deg)}°`;
+    const dir = o.key === "east_west" || o.east_west ? "Α/Δ" : `${fmt(o.azimuth_deg)}°`;
+    return `<em>Κλίση ${fmt(o.tilt_deg)}°</em> · ${dir}`;
   }
 
   function render(outlines) {
@@ -57,20 +58,22 @@
     const offline = shown.some((o) => o.energy_source && o.energy_source !== "PVGIS");
     box.innerHTML = `<h3>Προτάσεις διάταξης</h3>
       <div class="opt-cards">${cards}</div>
-      <p class="muted small">Κάνε κλικ σε μία για να μπει στον χάρτη. Οι τιμές της περνούν στις ρυθμίσεις
-        παραπάνω, οπότε μπορείς να την αλλάξεις και να πατήσεις «Με τις ρυθμίσεις μου». Οι kWh είναι γρήγορη
+      <p class="muted small">Κάνε κλικ σε μία για να μπει στον χάρτη. Στις 3 πρώτες η κλίση είναι αυτή που χωράει
+        τα περισσότερα πάνελ χωρίς σκίαση τον χειμώνα. Οι τιμές περνούν στις ρυθμίσεις παραπάνω, οπότε μπορείς
+        να τις αλλάξεις· η κάρτα «Χειροκίνητα» δείχνει τις ρυθμίσεις όπως είναι. Οι kWh είναι γρήγορη
         εκτίμηση${offline ? " χωρίς internet (πρόχειρη)" : " από το PVGIS"}, χωρίς σκιές.</p>`;
     box.querySelectorAll(".opt-card").forEach((b) => (b.onclick = () => apply(shown[+b.dataset.i])));
   }
 
   function apply(o) {
+    const ew = o.key === "east_west" || !!o.east_west;
     $("tilt").value = o.tilt_deg;
-    $("azimuth").value = Math.round(o.azimuth_deg);
-    $("mounting").value = "rack";
+    if (!ew) $("azimuth").value = Math.round(o.azimuth_deg);
+    $("mounting").value = o.mounting;
     $("rowGap").value = o.row_spacing_m == null ? "" : o.row_spacing_m;
-    $("ewMode").checked = o.key === "east_west";
+    $("ewMode").checked = ew;
     syncEw();
-    const { panels, key, title, note, annual_kwh, specific_yield, energy_source, warning, ...res } = o;
+    const { panels, key, title, note, annual_kwh, specific_yield, energy_source, warning, east_west, ...res } = o;
     setLayout(panels, res);
     chosen = key;
     box.querySelectorAll(".opt-card").forEach((b) => b.classList.toggle("chosen", shown[+b.dataset.i].key === key));
@@ -83,16 +86,17 @@
     // A pitched roof already split into faces: panels lie on each face, the proposals do not apply.
     if (window.faces?.active()) {
       box.innerHTML = `<p class="muted small">Η στέγη είναι χωρισμένη σε πλευρές, οπότε τα πάνελ μπαίνουν
-        παράλληλα πάνω σε κάθε πλευρά, με τη δική της κλίση και προσανατολισμό. Οι 3 έτοιμες προτάσεις
+        παράλληλα πάνω σε κάθε πλευρά, με τη δική της κλίση και προσανατολισμό. Οι έτοιμες προτάσεις
         (βάσεις νότια, ανατολή-δύση, παράλληλα με τον τοίχο) είναι για επίπεδες ταράτσες και έδαφος.</p>`;
       return runLayout();
     }
     const s = settings();
     const outlines = areaLayers.map(latlngsOf);
-    box.innerHTML = `<p class="muted small">Υπολογισμός 3 προτάσεων και της παραγωγής τους… (λίγα δευτερόλεπτα)</p>`;
+    box.innerHTML = `<p class="muted small">Υπολογισμός των προτάσεων και της παραγωγής τους… (λίγα δευτερόλεπτα)</p>`;
     try {
       const r = await api("/api/layout/options", "POST", {
         ...s, areas: outlines, keepouts: keepouts.getLayers().map(latlngsOf), loss_pct: +$("loss").value || 14,
+        east_west: window.options.eastWest(),
       });
       shown = r.options;
     } catch (e) {

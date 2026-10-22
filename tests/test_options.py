@@ -32,13 +32,15 @@ def by_key():
 
 def test_three_options_in_order():
     opts = layout_options([ROOF], LayoutParams())
-    assert [o["key"] for o in opts] == ["economic", "east_west", "aesthetic"]
-    assert all(o["count"] > 0 and o["mounting"] == "rack" for o in opts)
+    assert [o["key"] for o in opts] == ["economic", "east_west", "aesthetic", "manual"]
+    assert all(o["count"] > 0 for o in opts)
+    assert all(o["mounting"] == "rack" for o in opts[:3])
 
 
 def test_economic_is_south_with_automatic_row_gap():
     o = by_key()["economic"]
-    assert o["azimuth_deg"] == 180 and o["tilt_deg"] == layout.OPTION_ECONOMIC["tilt_deg"]
+    assert o["azimuth_deg"] == 180
+    assert layout.OPTION_ECONOMIC["tilt_min_deg"] <= o["tilt_deg"] <= layout.OPTION_ECONOMIC["tilt_deg"]
     p = LayoutParams(tilt_deg=o["tilt_deg"], mounting="rack")
     assert o["row_gap_m"] == round(auto_row_gap(p.panel_length_m, p.tilt_deg, LAT0), 2)
     assert o["panels"] == compute_layout(ROOF, p)["panels"]
@@ -77,7 +79,9 @@ def test_wall_azimuth_follows_the_building():
 
 def test_values_come_from_one_place(monkeypatch):
     monkeypatch.setitem(layout.OPTION_EAST_WEST, "tilt_deg", 15.0)
+    monkeypatch.setitem(layout.OPTION_EAST_WEST, "tilt_min_deg", 15.0)
     monkeypatch.setitem(layout.OPTION_AESTHETIC, "tilt_deg", 5.0)
+    monkeypatch.setitem(layout.OPTION_AESTHETIC, "tilt_min_deg", 5.0)
     o = by_key()
     assert all(f["tilt_deg"] == 15 for f in o["east_west"]["faces"])
     assert o["aesthetic"]["tilt_deg"] == 5
@@ -100,7 +104,7 @@ def test_options_api_with_energy():
     r = client.post("/api/layout/options", json={"areas": [ROOF], "source": "offline"})
     assert r.status_code == 200
     opts = r.json()["options"]
-    assert len(opts) == 3
+    assert len(opts) == 4
     for o in opts:
         assert o["annual_kwh"] > 0 and o["energy_source"] == "offline"
         assert 900 < o["specific_yield"] < 2200
@@ -115,7 +119,7 @@ def test_options_api_empty_area():
 
 
 def test_east_west_api_keeps_the_users_gap():
-    base = {"areas": [ROOF], "tilt_deg": layout.OPTION_EAST_WEST["tilt_deg"]}
+    base = {"areas": [ROOF], "tilt_deg": by_key()["east_west"]["tilt_deg"]}
     auto = client.post("/api/layout/ew", json=base).json()
     wide = client.post("/api/layout/ew", json={**base, "row_spacing_m": 0.5}).json()
     assert auto["row_gap_m"] == layout.OPTION_EAST_WEST["row_gap_m"]
@@ -173,3 +177,36 @@ def test_every_proposal_works_in_the_next_steps(key, monkeypatch):
     assert (rows is not None) == bool(faces)
     if rows:
         assert [r["azimuth_deg"] for r in rows] == [90, 270] and all(r["annual_kwh"] for r in rows)
+
+
+def test_lower_tilt_is_chosen_when_it_fits_one_more_row():
+    """10 x 10 m south-facing roof, no setback: at 30° three rows fit, at 22° (and lower) four."""
+    roof = rect(-5, -5, 5, 5)
+    p = LayoutParams(setback_m=0)
+
+    def rows(tilt):
+        return compute_layout(roof, LayoutParams(setback_m=0, tilt_deg=tilt, mounting="rack"))["count"] // 8
+
+    assert rows(30) == 3 and rows(23) == 3 and rows(22) == 4 and rows(20) == 4
+    eco = layout_options([roof], p)[0]
+    assert eco["key"] == "economic" and eco["tilt_deg"] == 22  # the most panels, closest to 30°
+    assert eco["count"] == 4 * 8
+
+
+def test_tie_keeps_the_nominal_tilt():
+    tilt, res = layout.best_tilt(lambda t: {"count": 10}, 30, 20)
+    assert tilt == 30
+    tilt, _ = layout.best_tilt(lambda t: {"count": 10 if t > 25 else 12}, 30, 20)
+    assert tilt == 25
+
+
+def test_manual_proposal_uses_the_settings_as_they_are():
+    p = LayoutParams(tilt_deg=25, azimuth_deg=170, mounting="flush")
+    m = layout_options([ROOF], p)[3]
+    assert m["key"] == "manual" and m["tilt_deg"] == 25 and m["azimuth_deg"] == 170 and m["mounting"] == "flush"
+    assert m["panels"] == compute_layout(ROOF, p)["panels"] and not m["east_west"]
+    ew = layout_options([ROOF], LayoutParams(tilt_deg=10, mounting="rack"), east_west=True)[3]
+    assert ew["east_west"] and [f["azimuth_deg"] for f in ew["faces"]] == [90, 270]
+    r = client.post("/api/layout/options", json={"areas": [ROOF], "source": "offline", "mounting": "rack",
+                                                 "tilt_deg": 10, "east_west": True}).json()["options"][3]
+    assert r["east_west"] and r["annual_kwh"] > 0

@@ -355,6 +355,7 @@ class OptionsRequest(LayoutRequest):
     areas: list[list[list[float]]] = Field(..., min_length=1)
     loss_pct: float = Field(14, ge=0, le=60)
     source: Literal["auto", "pvgis", "offline"] = "auto"
+    east_west: bool = False  # the manual proposal uses east-west racks (the "Ανατολή-δύση" switch)
 
 
 def _option_energy(opt: dict, loss_pct: float, source: str) -> dict:
@@ -368,9 +369,9 @@ def _option_energy(opt: dict, loss_pct: float, source: str) -> dict:
 
 @app.post("/api/layout/options")
 def layout_options_route(req: OptionsRequest):
-    params = LayoutParams(**req.model_dump(exclude={"area", "areas", "loss_pct", "source"}))
+    params = LayoutParams(**req.model_dump(exclude={"area", "areas", "loss_pct", "source", "east_west"}))
     try:
-        options = layout_options(req.areas, params)
+        options = layout_options(req.areas, params, req.east_west)
     except ValueError as e:
         raise HTTPException(400, str(e))
     todo = [o for o in options if o["count"]]

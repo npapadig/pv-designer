@@ -17,11 +17,13 @@ from shapely.ops import split, unary_union
 # Sun elevation at solar noon on the winter solstice is 90 - lat - 23.44.
 WINTER_SOLSTICE_DECLINATION = 23.44
 
-# The three ready-made layout proposals (layout_options). TEMPORARY values until Νίκος confirms them:
-# change a tilt or gap here and nothing else. row_gap_m None = automatic (no shade at winter-solstice noon).
-OPTION_ECONOMIC = {"tilt_deg": 30.0, "azimuth_deg": 180.0, "row_gap_m": None}  # south, racks
-OPTION_EAST_WEST = {"tilt_deg": 10.0, "row_gap_m": 0.10}                        # back to back, rows almost touching
-OPTION_AESTHETIC = {"tilt_deg": 15.0, "row_gap_m": None}                        # parallel to the longest wall
+# The three ready-made layout proposals (layout_options), as decided by Νίκος on 2026-10-22.
+# The tilt is not fixed: every whole degree from tilt_deg down to tilt_min_deg is tried and the one that fits
+# the most panels wins (a tie keeps the tilt closer to tilt_deg). row_gap_m None = automatic (no shade at
+# winter-solstice noon).
+OPTION_ECONOMIC = {"tilt_deg": 30.0, "tilt_min_deg": 20.0, "azimuth_deg": 180.0, "row_gap_m": None}  # south
+OPTION_EAST_WEST = {"tilt_deg": 10.0, "tilt_min_deg": 8.0, "row_gap_m": 0.10}  # back to back, rows almost touching
+OPTION_AESTHETIC = {"tilt_deg": 15.0, "tilt_min_deg": 10.0, "row_gap_m": None}  # parallel to the longest wall
 
 
 @dataclass
@@ -289,30 +291,53 @@ def compute_ew_areas(areas: list, p: LayoutParams) -> dict:
     return _merge([compute_ew_layout(a, q, gap) for a in areas], q)
 
 
-def layout_options(areas: list, p: LayoutParams) -> list[dict]:
-    """The three ready-made proposals for the same drawn areas (panel size, setbacks, gaps from p).
+def best_tilt(layout_at, tilt_deg: float, tilt_min_deg: float) -> tuple[float, dict]:
+    """Try every whole degree from tilt_deg down to tilt_min_deg; keep the layout with the most panels.
+
+    layout_at(tilt) returns a layout dict. On a tie the tilt closer to tilt_deg (the nominal one) is kept.
+    """
+    best = None
+    tilt = tilt_deg
+    while tilt >= tilt_min_deg - 1e-9:
+        res = layout_at(tilt)
+        if best is None or res["count"] > best[1]["count"]:
+            best = (tilt, res)
+        tilt -= 1.0
+    return best
+
+
+def layout_options(areas: list, p: LayoutParams, east_west: bool = False) -> list[dict]:
+    """The ready-made proposals for the same drawn areas (panel size, setbacks, gaps from p), then "manual".
 
     Each one: key, title, the settings it uses (tilt, azimuth, mounting, row_spacing_m: None = automatic)
-    and the merged layout of all areas. The east-west one also has panel_face and two faces.
+    and the merged layout of all areas. The east-west one also has panel_face and two faces. The manual one
+    uses p as it is (east-west racks when east_west is set).
     """
     if not areas:
         raise ValueError("Σχεδίασε πρώτα μια περιοχή στον χάρτη.")
-    wall = wall_azimuth(areas[0])
+    wall = float(wall_azimuth(areas[0]))
     plans = [
-        ("economic", "Οικονομική", "Νότια, βέλτιστη απόδοση για το κόστος",
-         OPTION_ECONOMIC["tilt_deg"], OPTION_ECONOMIC["azimuth_deg"], OPTION_ECONOMIC["row_gap_m"]),
-        ("east_west", "Μέγιστη ενέργεια", "Ανατολή-δύση πλάτη με πλάτη, τα περισσότερα πάνελ",
-         OPTION_EAST_WEST["tilt_deg"], 90.0, OPTION_EAST_WEST["row_gap_m"]),
-        ("aesthetic", "Αισθητική", "Παράλληλα με τον τοίχο του κτιρίου",
-         OPTION_AESTHETIC["tilt_deg"], float(wall), OPTION_AESTHETIC["row_gap_m"]),
+        ("economic", "Οικονομική", "Νότια, βέλτιστη απόδοση για το κόστος", OPTION_ECONOMIC,
+         OPTION_ECONOMIC["azimuth_deg"]),
+        ("east_west", "Μέγιστη ενέργεια", "Ανατολή-δύση πλάτη με πλάτη, τα περισσότερα πάνελ", OPTION_EAST_WEST, 90.0),
+        ("aesthetic", "Αισθητική", "Παράλληλα με τον τοίχο του κτιρίου", OPTION_AESTHETIC, wall),
     ]
     out = []
-    for key, title, note, tilt, az, gap in plans:
-        q = replace(p, tilt_deg=tilt, azimuth_deg=az, mounting="rack", row_spacing_m=gap)
-        if key == "east_west":
-            results = [compute_ew_layout(a, q, gap) for a in areas]
-        else:
-            results = [compute_layout(a, q) for a in areas]
+    for key, title, note, opt, az in plans:
+        gap = opt["row_gap_m"]
+
+        def layout_at(tilt, key=key, az=az, gap=gap):
+            q = replace(p, tilt_deg=tilt, azimuth_deg=az, mounting="rack", row_spacing_m=gap)
+            if key == "east_west":
+                return _merge([compute_ew_layout(a, q, gap) for a in areas], q)
+            return _merge([compute_layout(a, q) for a in areas], q)
+
+        tilt, res = best_tilt(layout_at, opt["tilt_deg"], opt["tilt_min_deg"])
         out.append({"key": key, "title": title, "note": note, "tilt_deg": tilt, "azimuth_deg": az,
-                    "mounting": "rack", "row_spacing_m": gap, **_merge(results, q)})
+                    "mounting": "rack", "row_spacing_m": gap, **res})
+    ew = east_west and p.mounting == "rack"
+    manual = compute_ew_areas(areas, p) if ew else _merge([compute_layout(a, p) for a in areas], p)
+    out.append({"key": "manual", "title": "Χειροκίνητα", "note": "Οι ρυθμίσεις του βήματος «Πάνελ» όπως είναι",
+                "tilt_deg": p.tilt_deg, "azimuth_deg": 90.0 if ew else p.azimuth_deg, "mounting": p.mounting,
+                "row_spacing_m": p.row_spacing_m, "east_west": ew, **manual})
     return out
