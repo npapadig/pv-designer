@@ -49,7 +49,7 @@ from reportlab.platypus import (
     PageTemplate, Paragraph, Spacer, Table, TableStyle,
 )
 
-from . import mapimage
+from . import mapimage, settings
 
 FONT_DIR = Path(__file__).resolve().parent / "fonts"
 pdfmetrics.registerFont(TTFont("DejaVu", str(FONT_DIR / "DejaVuSans.ttf")))
@@ -150,9 +150,13 @@ class ReportContext:
         if self._map is None:
             areas = self.project.get("areas") or []
             panels = self.layout.get("panels") or []
+            # Same base map as on screen (the app sends which one); Google uses the owner's saved key.
+            basemap = self.project.get("basemap") or "esri"
+            key = settings.load().get("google_maps_key", "") if basemap == "google" and self.imagery else ""
             try:
                 self._map = mapimage.render_layout(
-                    areas, self.project.get("keepouts") or [], panels, imagery=self.imagery)
+                    areas, self.project.get("keepouts") or [], panels, imagery=self.imagery,
+                    basemap=basemap, google_key=key)
             except ValueError:
                 self._map = ()
         return self._map or None

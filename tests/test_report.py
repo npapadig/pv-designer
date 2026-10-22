@@ -14,8 +14,8 @@ client = TestClient(app)
 @pytest.fixture(autouse=True)
 def fake_tiles(monkeypatch):
     """No network in tests: every satellite tile is plain green."""
-    monkeypatch.setattr(mapimage, "_native_zoom", lambda c, lat, lon: 20)
-    monkeypatch.setattr(mapimage, "_fetch_tile", lambda c, z, x, y: Image.new("RGB", (256, 256), (80, 110, 70)))
+    monkeypatch.setattr(mapimage, "_native_zoom", lambda c, src, lat, lon: 20)
+    monkeypatch.setattr(mapimage, "_fetch_tile", lambda c, src, z, x, y: Image.new("RGB", (256, 256), (80, 110, 70)))
 
 
 def make_project(**extra):
@@ -75,6 +75,88 @@ def test_map_image_without_imagery():
     p = make_project()
     img, has_imagery = mapimage.render_layout(p["areas"], [], p["layout"]["panels"], imagery=False)
     assert img[:2] == b"\xff\xd8" and not has_imagery
+
+
+def _marked_tiles(monkeypatch, lat, lon, z=20, used=None):
+    """Grey tiles with a red 6x6 mark at (lat, lon); records which base map was asked for."""
+    mx, my = mapimage._world_px(lat, lon, z)
+
+    def fetch(c, src, tz, x, y):
+        if used is not None:
+            used.add(src.key)
+        t = Image.new("RGB", (256, 256), (120, 120, 120))
+        if int(mx // 256) == x and int(my // 256) == y:
+            px, py = int(mx - x * 256), int(my - y * 256)
+            t.paste((255, 0, 0), (px - 3, py - 3, px + 3, py + 3))
+        return t
+    monkeypatch.setattr(mapimage, "_fetch_tile", fetch)
+
+
+def test_map_image_frames_the_roof_and_lines_up_with_the_imagery(monkeypatch):
+    """The picture keeps its 16:10 shape, the roof fills a good part of it (not a speck in a
+    wide view), and a spot on the satellite tiles lands exactly under the same spot of the drawing."""
+    import io
+    area = square(12, 9)
+    lat_c = sum(p[0] for p in area) / 4
+    lon_c = sum(p[1] for p in area) / 4
+    _marked_tiles(monkeypatch, lat_c, lon_c)
+    jpeg, has_imagery = mapimage.render_layout([area], [], [], width=1600, height=1000)
+    img = Image.open(io.BytesIO(jpeg)).convert("RGB")
+    assert has_imagery and img.size == (1600, 1000)
+
+    # Where the drawing puts the roof: orange outline pixels.
+    px = img.load()
+    orange = [(x, y) for x in range(0, 1600, 2) for y in range(0, 1000, 2)
+              if px[x, y][0] > 200 and 120 < px[x, y][1] < 190 and px[x, y][2] < 80]
+    xs, ys = [p[0] for p in orange], [p[1] for p in orange]
+    roof_w, roof_h = max(xs) - min(xs), max(ys) - min(ys)
+    assert roof_w > 1600 * 0.3, "η στέγη πρέπει να γεμίζει μεγάλο μέρος της εικόνας"
+    assert 0 < min(xs) and max(xs) < 1600 and 0 < min(ys) and max(ys) < 1000
+    assert abs(roof_w / roof_h - 12 / 9) < 0.05, "χωρίς παραμόρφωση"
+    # The red mark (centre of the roof on the tiles) sits at the centre of the drawn roof.
+    red = [(x, y) for x in range(1600) for y in range(1000) if px[x, y][0] > 200 and px[x, y][1] < 90]
+    rx, ry = sum(p[0] for p in red) / len(red), sum(p[1] for p in red) / len(red)
+    assert abs(rx - (min(xs) + max(xs)) / 2) < 6 and abs(ry - (min(ys) + max(ys)) / 2) < 6
+
+
+def test_map_image_uses_the_base_map_on_screen(monkeypatch):
+    area = square(12, 9)
+    for basemap in ("esri", "clarity", "streets", "ktimatologio"):
+        used = set()
+        _marked_tiles(monkeypatch, *area[0], used=used)
+        assert mapimage.render_layout([area], [], [], basemap=basemap)[1]
+        assert used == {basemap}
+    # Google without a working key falls back to Esri instead of failing.
+    used = set()
+    _marked_tiles(monkeypatch, *area[0], used=used)
+    monkeypatch.setattr(mapimage, "google_source", lambda c, key, lat, lon: None)
+    assert mapimage.render_layout([area], [], [], basemap="google", google_key="x")[1]
+    assert used == {"esri"}
+
+
+def test_map_image_big_site_downloads_a_sensible_number_of_tiles(monkeypatch):
+    calls = []
+    monkeypatch.setattr(mapimage, "_fetch_tile", lambda c, src, z, x, y: calls.append(z) or Image.new("RGB", (256, 256)))
+    mapimage.render_layout([square(400, 250)], [], [])
+    assert len(calls) <= 120 and max(calls) < 20
+
+
+def test_report_asks_for_the_base_map_of_the_screen(monkeypatch):
+    seen = {}
+    monkeypatch.setattr(report.settings, "load", lambda: {"google_maps_key": "KEY"})
+    monkeypatch.setattr(mapimage, "render_layout", lambda *a, **kw: seen.update(kw) or (b"x", True))
+    report.ReportContext(make_project(basemap="google")).map_image()
+    assert seen["basemap"] == "google" and seen["google_key"] == "KEY"
+    report.ReportContext(make_project()).map_image()
+    assert seen["basemap"] == "esri" and seen["google_key"] == ""
+
+
+def test_cadastre_tiles_cover_the_map_tile():
+    url, params = mapimage._tile_request(mapimage.SOURCES["ktimatologio"], 19, 296710, 202278)
+    w, s, e, n = map(float, params["BBOX"].split(","))
+    x0, y0 = mapimage._world_px(n, w, 19)
+    x1, y1 = mapimage._world_px(s, e, 19)
+    assert abs(x0 - 296710 * 256) < 1e-6 and abs(y1 - 202279 * 256) < 1e-6 and abs(x1 - x0 - 256) < 1e-6
 
 
 def test_report_endpoint():
