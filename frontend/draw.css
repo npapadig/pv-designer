@@ -83,6 +83,21 @@
 .pv-side-box button.ghost { background: transparent; color: #475569; }
 .pv-side-box .muted { color: #667085; margin: 0; }
 
+/* ---------- Selected shape (shapes.js) ---------- */
+/* CSS wins over the SVG attributes Leaflet sets: a moving dashed outline ("marching ants"). */
+.leaflet-overlay-pane path.pv-shape.pv-selected {
+  stroke-dasharray: 9 6; stroke-width: 3.5px; cursor: move; animation: pv-ants 0.9s linear infinite;
+}
+.leaflet-overlay-pane path.pv-area.pv-selected { fill-opacity: 0.24; }
+.leaflet-overlay-pane path.pv-keepout.pv-selected { fill-opacity: 0.4; }
+@keyframes pv-ants { to { stroke-dashoffset: -15; } }
+@media (prefers-reduced-motion: reduce) { .leaflet-overlay-pane path.pv-shape.pv-selected { animation: none; } }
+
+/* Copy / paste / delete buttons under the drawing tools. */
+.pv-shape-tools a { display: flex !important; align-items: center; justify-content: center; }
+.pv-shape-tools .ic { width: 16px; height: 16px; }
+.pv-shape-tools a.pv-off .ic { opacity: 0.38; }
+
 /* ---------- Compass ---------- */
 .pv-compass {
   width: 64px; height: 64px; border-radius: 50%; background: var(--glass-strong); border: 1px solid var(--line-strong);

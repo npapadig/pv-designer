@@ -103,23 +103,30 @@ const AREA_STYLE = { color: "#ff8a3d", weight: 2.5, opacity: 1, fillColor: "#ffc
 const KEEPOUT_STYLE = { color: "#ff4d6d", weight: 2, opacity: 1, fillColor: "#ff4d6d", fillOpacity: 0.25, lineJoin: "round", className: "pv-shape pv-keepout" };
 const DRAFT_STYLE = { color: "#ffc53d", weight: 2.5, opacity: 1, dashArray: "7 6", fillColor: "#ffc53d", fillOpacity: 0.1, lineJoin: "round", className: "pv-shape" };
 
+// Greek texts of Leaflet.draw; set before the control is made, which reads some of them once.
 L.drawLocal.draw.toolbar.buttons.polygon = "Σχεδίαση πολυγώνου";
 L.drawLocal.draw.toolbar.buttons.rectangle = "Σχεδίαση ορθογωνίου";
+L.drawLocal.draw.toolbar.actions = { title: "Ακύρωση της σχεδίασης", text: "Ακύρωση" };
+L.drawLocal.draw.toolbar.finish = { title: "Τέλος της σχεδίασης", text: "Τέλος" };
+L.drawLocal.draw.toolbar.undo = { title: "Σβήσιμο του τελευταίου σημείου", text: "Σβήσε το τελευταίο σημείο" };
 L.drawLocal.draw.handlers.polygon.tooltip = {
   start: "Κάνε κλικ για να ξεκινήσεις.",
   cont: "Κάνε κλικ για το επόμενο σημείο.",
   end: "Κάνε κλικ στο πρώτο σημείο για να κλείσει.",
 };
+L.drawLocal.draw.handlers.polyline.error = "<strong>Προσοχή:</strong> οι πλευρές δεν πρέπει να διασταυρώνονται.";
+L.drawLocal.draw.handlers.rectangle.tooltip.start = "Πάτα και σύρε για να σχεδιάσεις ορθογώνιο.";
+L.drawLocal.draw.handlers.simpleshape.tooltip.end = "Άφησε το κουμπί του ποντικιού για να τελειώσει.";
 
 const editGroup = new L.FeatureGroup().addTo(map);
+// Editing (draw.js) and selecting, copying and deleting shapes (shapes.js) have their own buttons.
 const drawControl = new L.Control.Draw({
   draw: {
     polygon: { allowIntersection: false, showArea: true, shapeOptions: DRAFT_STYLE },
     rectangle: { shapeOptions: DRAFT_STYLE },
     polyline: false, circle: false, marker: false, circlemarker: false,
   },
-  // Editing has its own, clearer button (draw.js); the toolbar keeps only "delete".
-  edit: { featureGroup: editGroup, edit: false },
+  edit: false,
 });
 map.addControl(drawControl);
 
@@ -155,12 +162,6 @@ map.on(L.Draw.Event.CREATED, (e) => {
   // A drawn rectangle becomes a plain polygon, so its corners can be edited one by one.
   const layer = e.layer instanceof L.Rectangle ? L.polygon(e.layer.getLatLngs(), e.layer.options) : e.layer;
   addShape(layer, drawMode());
-  clearLayout();
-});
-map.on(L.Draw.Event.EDITED, clearLayout);
-map.on(L.Draw.Event.DELETED, (e) => {
-  e.layers.eachLayer((l) => { areas.removeLayer(l); keepouts.removeLayer(l); });
-  updateShapesInfo();
   clearLayout();
 });
 
