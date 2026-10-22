@@ -113,3 +113,10 @@
 .plan-scale .row { margin-bottom: 6px; }
 .plan-scale .row input { flex: 1; }
 .plan-scale > button { height: 32px; padding: 0 10px; }
+
+/* New building (plan.js): first where it stands, then the floor plan. */
+.plan-ask { margin: 0 0 12px; padding: 10px 12px; border-radius: 12px; background: var(--warn-soft); border: 1px solid rgba(255, 138, 61, 0.3); }
+.plan-ask .small { margin: 0 0 8px; color: var(--text); }
+.plan-ask .row { margin-bottom: 0; }
+.plan-ask button.ghost { height: 32px; padding: 0 10px; }
+.leaflet-container.plan-where { cursor: crosshair; }

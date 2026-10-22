@@ -86,6 +86,12 @@
     const b = visibleBox();
     return map.containerPointToLatLng([(b.x0 + b.x1) / 2, (b.y0 + b.y1) / 2]);
   }
+  // Bring a point to the middle of the free part of the screen.
+  function centerOn(latlng, zoom) {
+    const b = visibleBox();
+    const offset = L.point((b.x0 + b.x1) / 2, (b.y0 + b.y1) / 2).subtract(map.getSize().divideBy(2));
+    map.setView(map.unproject(map.project(latlng, zoom).subtract(offset), zoom), zoom);
+  }
   // A new plan starts at about half the free part of the screen.
   function startWidthM() {
     const b = visibleBox();
@@ -110,13 +116,13 @@
     img.src = probe.src;
   }
 
-  async function setImage(file, keepPlace) {
+  async function setImage(file, keepPlace, at) {
     checkFile(file);
     loading++;
     const id = await upload(file);
     show(id, await readImage(imageUrl(id)));
     if (!keepPlace) {
-      p.center = visibleCenter();
+      p.center = at ? L.latLng(at) : visibleCenter();
       p.widthM = Math.max(5, Math.round(startWidthM()));
       p.rot = 0;
       p.opacity = 0.6;
@@ -138,19 +144,58 @@
     if (file && cb) cb(file);
   };
 
-  // A new plan from the start screen or the box: put it in the middle of the map.
-  async function start(file, keepPlace = false) {
+  // A new plan from the box: put it in the middle of the map (or at the place of a new building).
+  async function start(file, keepPlace = false, at = null) {
     try {
-      await setImage(file, keepPlace);
+      await setImage(file, keepPlace, at);
       $("planBox").open = true;
-      if (!keepPlace) toast("Βρες τη διεύθυνση, πάτα «Στο κέντρο του χάρτη» και σύρε την κάτοψη στη θέση της.", 7000);
+      if (at) toast("Σύρε την κάτοψη ώστε να ταιριάξει στη θέση της και πάτα «Κλίμακα» για το σωστό μέγεθος.", 7000);
+      else if (!keepPlace) toast("Βρες τη διεύθυνση, πάτα «Στο κέντρο του χάρτη» και σύρε την κάτοψη στη θέση της.", 7000);
     } catch (e) { toast(e.message, 6000); }
   }
+
+  // ---------- New building: first where it will stand, then the floor plan ----------
+  let asking = null; // "where" | "plan" | null
+  let where = null, whereMark = null;
+  function ask(step) {
+    asking = step;
+    $("planAsk").hidden = !step;
+    $("planAskWhere").hidden = step !== "where";
+    $("planAskPlan").hidden = step !== "plan";
+    map.getContainer().classList.toggle("plan-where", step === "where");
+    if (!step && whereMark) { whereMark.remove(); whereMark = null; }
+  }
+  function askWhere() {
+    where = null;
+    ask("where");
+  }
+  function located(latlng) {
+    if (asking !== "where") return;
+    where = L.latLng(latlng);
+    if (!whereMark) whereMark = L.circleMarker(where, { radius: 9, color: "#fff", weight: 3, fillColor: "#ff8a3d", fillOpacity: 1, interactive: false });
+    whereMark.setLatLng(where).addTo(map);
+    ask("plan");
+  }
+  map.on("click", (e) => {
+    if (asking !== "where" || window.drawTools?.editing) return;
+    centerOn(e.latlng, Math.max(map.getZoom(), 19));
+    located(e.latlng);
+  });
+  document.addEventListener("pv:found", (e) => located(e.detail)); // address search (app.js)
+  map.on(L.Draw.Event.CREATED, (e) => { if (asking === "where") located(e.layer.getBounds().getCenter()); });
+  $("btnPlanAskSkip").onclick = () => { where = null; ask("plan"); };
+  $("btnPlanAskNo").onclick = () => ask(null);
+  $("btnPlanAskUpload").onclick = () => pickFile(async (f) => {
+    const at = where;
+    ask(null);
+    await start(f, false, at);
+  });
 
   let loading = 0; // a newer load or clear makes an older, still loading picture stale
   function clear() {
     loading++;
     cancelScale();
+    ask(null);
     Object.assign(p, { image: "", natW: 0, natH: 0, center: null, widthM: 20, rot: 0, opacity: 0.6, locked: false });
     img.removeAttribute("src");
     refresh();
@@ -291,6 +336,6 @@
   $("planOpacity").addEventListener("input", () => { p.opacity = +$("planOpacity").value / 100; applyStyle(); });
   $("planLock").addEventListener("change", () => { p.locked = $("planLock").checked; applyStyle(); });
 
-  window.plan = { pickFile, start, clear, collect, load, active: () => !!p.image };
+  window.plan = { pickFile, start, clear, collect, load, askWhere, active: () => !!p.image };
   refresh();
 })();

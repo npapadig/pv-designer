@@ -103,23 +103,30 @@ const AREA_STYLE = { color: "#ff8a3d", weight: 2.5, opacity: 1, fillColor: "#ffc
 const KEEPOUT_STYLE = { color: "#ff4d6d", weight: 2, opacity: 1, fillColor: "#ff4d6d", fillOpacity: 0.25, lineJoin: "round", className: "pv-shape pv-keepout" };
 const DRAFT_STYLE = { color: "#ffc53d", weight: 2.5, opacity: 1, dashArray: "7 6", fillColor: "#ffc53d", fillOpacity: 0.1, lineJoin: "round", className: "pv-shape" };
 
+// Greek texts of Leaflet.draw; set before the control is made, which reads some of them once.
 L.drawLocal.draw.toolbar.buttons.polygon = "Σχεδίαση πολυγώνου";
 L.drawLocal.draw.toolbar.buttons.rectangle = "Σχεδίαση ορθογωνίου";
+L.drawLocal.draw.toolbar.actions = { title: "Ακύρωση της σχεδίασης", text: "Ακύρωση" };
+L.drawLocal.draw.toolbar.finish = { title: "Τέλος της σχεδίασης", text: "Τέλος" };
+L.drawLocal.draw.toolbar.undo = { title: "Σβήσιμο του τελευταίου σημείου", text: "Σβήσε το τελευταίο σημείο" };
 L.drawLocal.draw.handlers.polygon.tooltip = {
   start: "Κάνε κλικ για να ξεκινήσεις.",
   cont: "Κάνε κλικ για το επόμενο σημείο.",
   end: "Κάνε κλικ στο πρώτο σημείο για να κλείσει.",
 };
+L.drawLocal.draw.handlers.polyline.error = "<strong>Προσοχή:</strong> οι πλευρές δεν πρέπει να διασταυρώνονται.";
+L.drawLocal.draw.handlers.rectangle.tooltip.start = "Πάτα και σύρε για να σχεδιάσεις ορθογώνιο.";
+L.drawLocal.draw.handlers.simpleshape.tooltip.end = "Άφησε το κουμπί του ποντικιού για να τελειώσει.";
 
 const editGroup = new L.FeatureGroup().addTo(map);
+// Editing (draw.js) and selecting, copying and deleting shapes (shapes.js) have their own buttons.
 const drawControl = new L.Control.Draw({
   draw: {
     polygon: { allowIntersection: false, showArea: true, shapeOptions: DRAFT_STYLE },
     rectangle: { shapeOptions: DRAFT_STYLE },
     polyline: false, circle: false, marker: false, circlemarker: false,
   },
-  // Editing has its own, clearer button (draw.js); the toolbar keeps only "delete".
-  edit: { featureGroup: editGroup, edit: false },
+  edit: false,
 });
 map.addControl(drawControl);
 
@@ -157,12 +164,6 @@ map.on(L.Draw.Event.CREATED, (e) => {
   addShape(layer, drawMode());
   clearLayout();
 });
-map.on(L.Draw.Event.EDITED, clearLayout);
-map.on(L.Draw.Event.DELETED, (e) => {
-  e.layers.eachLayer((l) => { areas.removeLayer(l); keepouts.removeLayer(l); });
-  updateShapesInfo();
-  clearLayout();
-});
 
 function latlngsOf(layer) {
   return layer.getLatLngs()[0].map((p) => [p.lat, p.lng]);
@@ -182,7 +183,9 @@ async function search() {
     const res = await r.json();
     if (!res.length) return toast("Δεν βρέθηκε η διεύθυνση.");
     if (!$("projectAddress").value) $("projectAddress").value = q;
-    map.setView([+res[0].lat, +res[0].lon], 19);
+    const at = L.latLng(+res[0].lat, +res[0].lon);
+    map.setView(at, 19);
+    document.dispatchEvent(new CustomEvent("pv:found", { detail: at })); // plan.js: a new building's place
   } catch {
     toast("Η αναζήτηση απέτυχε. Έλεγξε τη σύνδεση στο internet.");
   }
@@ -628,6 +631,7 @@ $("reportAuthor").onchange = () => { try { localStorage.setItem(AUTHOR_KEY, $("r
 function collectProject() {
   return {
     name: $("projectName").value || "Χωρίς όνομα",
+    project_type: state.projectType || "existing",
     settings: {
       ...settings(), loss_pct: +$("loss").value, preset: $("panelPreset").value,
       panel_name: PANEL_PRESETS[$("panelPreset").value].power ? PANEL_PRESETS[$("panelPreset").value].name : null,
@@ -655,6 +659,7 @@ function resetProject() {
   $("projectName").value = "Νέο έργο";
   $("clientName").value = "";
   $("projectAddress").value = "";
+  state.projectType = "existing";
   clearLayout();
   updateShapesInfo();
   markSaved();
@@ -675,6 +680,8 @@ function hasUnsavedWork() {
 function loadProject(p) {
   resetProject();
   state.projectId = p.id;
+  // Older projects have no type: one with a floor plan was a new building.
+  state.projectType = p.project_type || (p.plan?.image ? "new" : "existing");
   $("projectName").value = p.name;
   const s = p.settings || {};
   if (s.preset != null) $("panelPreset").value = s.preset;
