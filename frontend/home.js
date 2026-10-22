@@ -32,7 +32,14 @@
 
   function hide() { $("home").hidden = true; }
 
+  // "Νέο έργο" first asks where the panels go; the start cards come back with "Πίσω".
+  function choosing(on) {
+    $("homeStart").hidden = on;
+    $("homeChoose").hidden = !on;
+  }
+
   async function show() {
+    choosing(false);
     const open = !!state.projectId || areas.getLayers().length > 0;
     $("homeContinue").hidden = !open;
     $("homeContinueName").textContent = $("projectName").value;
@@ -91,21 +98,42 @@
     } catch (e) { toast(e.message); }
   }
 
-  function newProject() {
-    if (!okToLeave()) return;
+  function newProject(asked = false) {
+    if (!asked && !okToLeave()) return false;
     resetProject();
     $("projectList").value = "";
+    return true;
+  }
+
+  // On an existing building: straight to the map, at the address search.
+  $("homeBuilding").onclick = () => {
+    if (!newProject()) return;
     hide();
     goStep("secSite");
     $("searchBox").focus();
-  }
+  };
 
-  $("homeNew").onclick = newProject;
+  // On a floor plan: pick the image first (plan.js), then place it on the map.
+  $("homePlan").onclick = () => {
+    if (!window.plan) return toast("Η κάτοψη δεν είναι ακόμα διαθέσιμη.");
+    if (!okToLeave()) return;
+    plan.pickFile(async (file) => {
+      newProject(true);
+      hide();
+      goStep("secSite");
+      await plan.start(file);
+    });
+  };
+
+  $("homeNew").onclick = () => choosing(true);
+  $("homeBack").onclick = () => choosing(false);
   $("homeContinue").onclick = hide;
   $("btnHome").onclick = show;
   $("homeTheme").onclick = () => $("btnTheme").click();
   document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape" && !$("home").hidden && !$("homeContinue").hidden) hide();
+    if (e.key !== "Escape" || $("home").hidden) return;
+    if (!$("homeChoose").hidden) choosing(false);
+    else if (!$("homeContinue").hidden) hide();
   });
   api("/api/version").then((v) => { $("homeVersion").textContent = `v${v.version}`; }).catch(() => {});
 
