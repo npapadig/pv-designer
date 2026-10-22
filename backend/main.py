@@ -344,6 +344,48 @@ def project_report(project_id: str):
         raise HTTPException(404, "Το έργο δεν βρέθηκε.")
 
 
+# ---------- Ready-made layout proposals (stream "options") ----------
+from concurrent.futures import ThreadPoolExecutor  # noqa: E402
+
+from .layout import layout_options  # noqa: E402
+
+
+class OptionsRequest(LayoutRequest):
+    area: list[list[float]] = []  # unused; the areas carry the outlines
+    areas: list[list[list[float]]] = Field(..., min_length=1)
+    loss_pct: float = Field(14, ge=0, le=60)
+    source: Literal["auto", "pvgis", "offline"] = "auto"
+
+
+def _option_energy(opt: dict, loss_pct: float, source: str) -> dict:
+    """Quick yearly estimate of one proposal (PVGIS, offline fallback), without shading."""
+    lat, lon = opt["center"]
+    if opt.get("faces"):
+        faces = [{"kwp": f["kwp"], "tilt_deg": f["tilt_deg"], "azimuth_deg": f["azimuth_deg"]} for f in opt["faces"]]
+        return energy.estimate_faces(lat, lon, faces, loss_pct, source)
+    return energy.estimate(lat, lon, opt["kwp"], opt["tilt_deg"], opt["azimuth_deg"], loss_pct, source)
+
+
+@app.post("/api/layout/options")
+def layout_options_route(req: OptionsRequest):
+    params = LayoutParams(**req.model_dump(exclude={"area", "areas", "loss_pct", "source"}))
+    try:
+        options = layout_options(req.areas, params)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    todo = [o for o in options if o["count"]]
+    with ThreadPoolExecutor(max_workers=len(todo) or 1) as pool:
+        results = list(pool.map(lambda o: _option_energy(o, req.loss_pct, req.source), todo))
+    for o, r in zip(todo, results):
+        o["annual_kwh"], o["specific_yield"], o["energy_source"] = r["annual_kwh"], r["specific_yield"], r["source"]
+        if r.get("warning"):
+            o["warning"] = r["warning"]
+    for o in options:
+        o.setdefault("annual_kwh", None)
+        o.setdefault("specific_yield", None)
+    return {"options": options}
+
+
 # The page links its own CSS and JS with ?v=<version>, so a browser that cached the files of
 # an older version fetches the new ones after an update. no-cache makes it check every time.
 @app.get("/", include_in_schema=False)
