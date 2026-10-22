@@ -9,6 +9,7 @@
   <link rel="stylesheet" href="vendor/leaflet-draw/leaflet.draw.css">
   <link rel="stylesheet" href="style.css?v=__VERSION__">
   <link rel="stylesheet" href="home.css?v=__VERSION__">
+  <link rel="stylesheet" href="draw.css?v=__VERSION__">
   <script>
     // Apply the saved light/dark choice before the page paints, so it does not flash.
     try { const t = localStorage.getItem("pv-designer.theme"); if (t) document.documentElement.dataset.theme = t; } catch {}
@@ -247,7 +248,7 @@
       <button id="btnShading" class="primary"><svg class="ic"><use href="#i-cloud-sun"/></svg>Ανάλυση σκιάσεων</button>
       <p id="shadingInfo" class="muted small"></p>
       <div id="shadingLegend" class="legend small" hidden>
-        <span><i style="background:#2563eb"></i>&lt;1%</span>
+        <span><i style="background:#1e3a8a"></i>&lt;1%</span>
         <span><i style="background:#facc15"></i>1–5%</span>
         <span><i style="background:#f97316"></i>5–10%</span>
         <span><i style="background:#dc2626"></i>&gt;10%</span>
@@ -436,6 +437,7 @@
   <script src="vendor/leaflet-draw/leaflet.draw.js"></script>
   <script src="vendor/chartjs/chart.umd.js"></script>
   <script src="app.js?v=__VERSION__"></script>
+  <script src="draw.js?v=__VERSION__"></script>
   <script src="nudge.js?v=__VERSION__"></script>
   <script src="faces.js?v=__VERSION__"></script>
   <script src="electrical.js?v=__VERSION__"></script>

@@ -98,8 +98,10 @@ const areas = new L.FeatureGroup().addTo(map);
 const keepouts = new L.FeatureGroup().addTo(map);
 const panelsLayer = new L.FeatureGroup().addTo(map);
 const shadowsLayer = new L.FeatureGroup().addTo(map);
-const AREA_STYLE = { color: "#f59e0b", weight: 2, fillOpacity: 0.08 };
-const KEEPOUT_STYLE = { color: "#ef4444", weight: 2, fillOpacity: 0.3 };
+// className hooks the shapes to draw.css (soft dark halo, hover); it applies when a shape is added to the map.
+const AREA_STYLE = { color: "#ff8a3d", weight: 2.5, opacity: 1, fillColor: "#ffc53d", fillOpacity: 0.12, lineJoin: "round", className: "pv-shape pv-area" };
+const KEEPOUT_STYLE = { color: "#ff4d6d", weight: 2, opacity: 1, fillColor: "#ff4d6d", fillOpacity: 0.25, lineJoin: "round", className: "pv-shape pv-keepout" };
+const DRAFT_STYLE = { color: "#ffc53d", weight: 2.5, opacity: 1, dashArray: "7 6", fillColor: "#ffc53d", fillOpacity: 0.1, lineJoin: "round", className: "pv-shape" };
 
 L.drawLocal.draw.toolbar.buttons.polygon = "Σχεδίαση πολυγώνου";
 L.drawLocal.draw.toolbar.buttons.rectangle = "Σχεδίαση ορθογωνίου";
@@ -110,14 +112,16 @@ L.drawLocal.draw.handlers.polygon.tooltip = {
 };
 
 const editGroup = new L.FeatureGroup().addTo(map);
-map.addControl(new L.Control.Draw({
+const drawControl = new L.Control.Draw({
   draw: {
-    polygon: { allowIntersection: false, showArea: true, shapeOptions: AREA_STYLE },
-    rectangle: { shapeOptions: AREA_STYLE },
+    polygon: { allowIntersection: false, showArea: true, shapeOptions: DRAFT_STYLE },
+    rectangle: { shapeOptions: DRAFT_STYLE },
     polyline: false, circle: false, marker: false, circlemarker: false,
   },
-  edit: { featureGroup: editGroup },
-}));
+  // Editing has its own, clearer button (draw.js); the toolbar keeps only "delete".
+  edit: { featureGroup: editGroup, edit: false },
+});
+map.addControl(drawControl);
 
 function drawMode() {
   return document.querySelector("input[name=drawMode]:checked").value;
@@ -137,6 +141,7 @@ function setObstacleHeight(layer, h) {
   layer.pvHeight = Math.max(0, +h || 0);
   layer.bindTooltip(layer.pvHeight ? `Εμπόδιο ${fmt(layer.pvHeight, 1)} m` : "Εμπόδιο (χωρίς σκιά)");
   layer.off("click").on("click", () => {
+    if (window.drawTools?.editing) return;
     const box = L.DomUtil.create("div");
     box.innerHTML = `<label>Ύψος εμποδίου (m) <input type="number" min="0" step="0.5" value="${layer.pvHeight}"></label>`;
     const input = box.querySelector("input");
@@ -147,7 +152,9 @@ function setObstacleHeight(layer, h) {
 }
 
 map.on(L.Draw.Event.CREATED, (e) => {
-  addShape(e.layer, drawMode());
+  // A drawn rectangle becomes a plain polygon, so its corners can be edited one by one.
+  const layer = e.layer instanceof L.Rectangle ? L.polygon(e.layer.getLatLngs(), e.layer.options) : e.layer;
+  addShape(layer, drawMode());
   clearLayout();
 });
 map.on(L.Draw.Event.EDITED, clearLayout);
@@ -280,7 +287,9 @@ function clearLayout() {
   window.elec?.reset();
 }
 
-const PANEL_STYLE = { color: "#dbeafe", weight: 0.5, fillColor: "#2563eb", fillOpacity: 0.75 };
+// Deep blue modules with a thin light frame; draw.js adds the cell lines when zoomed in.
+const PANEL_FILL = "#1e3a8a";
+const PANEL_STYLE = { color: "#e2e8f0", weight: 0.8, opacity: 0.9, fillColor: PANEL_FILL, fillOpacity: 0.92, lineJoin: "miter" };
 const addPanel = (latlngs) => L.polygon(latlngs, PANEL_STYLE).addTo(panelsLayer);
 
 async function runLayout() {
@@ -343,7 +352,7 @@ function clearShading() {
 }
 
 function lossColor(pct) {
-  if (pct < 1) return "#2563eb";
+  if (pct < 1) return PANEL_FILL;
   if (pct < 5) return "#facc15";
   if (pct < 10) return "#f97316";
   return "#dc2626";
@@ -353,7 +362,7 @@ function colorPanels() {
   const losses = state.shading && state.shading.panel_loss_pct;
   panelsLayer.getLayers().forEach((l, i) => {
     const pct = losses ? losses[i] : null;
-    l.setStyle({ fillColor: pct == null ? "#2563eb" : lossColor(pct) });
+    l.setStyle({ fillColor: pct == null ? PANEL_FILL : lossColor(pct) });
     if (pct == null) l.unbindTooltip(); else l.bindTooltip(`Σκίαση: ${fmt(pct, 1)}% τον χρόνο`);
   });
   $("shadingLegend").hidden = !losses;

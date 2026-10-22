@@ -1,0 +1,100 @@
+/* Drawing aids on the map (draw.js). Uses the theme colours of style.css. */
+
+/* ---------- Side lengths ---------- */
+.leaflet-pvLabels-pane { pointer-events: none; }
+.pv-edge { width: 0; height: 0; }
+.pv-edge span {
+  position: absolute; left: 0; top: 0; transform: translate(-50%, -50%) rotate(var(--a));
+  white-space: nowrap; padding: 3px 7px; border-radius: 999px;
+  font: 600 11px/1.1 var(--font); font-variant-numeric: tabular-nums; letter-spacing: 0.01em;
+  color: var(--text); background: var(--glass-strong); border: 1px solid var(--line-strong);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+}
+.pv-edge.area span { border-color: rgba(255, 138, 61, 0.55); }
+.pv-edge.keepout span { border-color: rgba(255, 77, 109, 0.6); }
+.pv-edge.live span { color: #fff; background: var(--sun-2); border-color: transparent; }
+.pv-edge.keepout.live span { background: var(--sun-3); }
+.pv-edge.closing span { opacity: 0.7; }
+
+/* ---------- Lines and handles ---------- */
+.leaflet-overlay-pane path.pv-shape { filter: url(#pvHalo); transition: fill-opacity 0.15s; }
+.leaflet-overlay-pane path.pv-area:hover { fill-opacity: 0.2; }
+.leaflet-overlay-pane path.pv-keepout:hover { fill-opacity: 0.35; }
+
+/* Vertex handles while drawing and editing: white dots with a sun-coloured ring. */
+.leaflet-marker-icon.leaflet-editing-icon {
+  border-radius: 50%; border: 2px solid var(--sun-2); background: #fff;
+  box-shadow: 0 0 0 1.5px rgba(0, 0, 0, 0.45), 0 2px 6px rgba(0, 0, 0, 0.4);
+  transition: box-shadow 0.12s, background 0.12s;
+}
+/* No transform here: Leaflet positions markers with it. */
+.leaflet-marker-icon.leaflet-editing-icon:hover {
+  background: var(--sun-1); box-shadow: 0 0 0 4px rgba(255, 197, 61, 0.45), 0 2px 6px rgba(0, 0, 0, 0.4);
+}
+
+/* Leaflet.draw hints that follow the mouse. */
+.leaflet-draw-tooltip {
+  background: var(--glass-strong); color: var(--text); border: 1px solid var(--line-strong); border-radius: 10px;
+  box-shadow: var(--shadow); font: 500 12px/1.4 var(--font); padding: 6px 10px; margin-left: 22px;
+}
+.leaflet-draw-tooltip::before { border-right-color: var(--glass-strong); }
+.leaflet-draw-tooltip-subtext { color: var(--muted); }
+.leaflet-error-draw-tooltip { background: var(--danger); color: #fff; border-color: transparent; }
+.leaflet-error-draw-tooltip::before { border-right-color: var(--danger); }
+.leaflet-draw-guide-dash { width: 4px; height: 4px; border-radius: 50%; opacity: 0.9; }
+
+/* ---------- Editing ---------- */
+.pv-edit-control a {
+  display: flex !important; align-items: center; gap: 6px; width: auto !important; padding: 0 12px;
+  font: 600 12.5px/30px var(--font); white-space: nowrap; text-decoration: none;
+}
+.pv-edit-control .ic { width: 15px; height: 15px; }
+.pv-edit-control a.active, .pv-edit-control a.active:hover { color: #fff; background: var(--sun-2); }
+
+/* The bar with the hints and Τέλος / Ακύρωση, centred over the visible map. */
+.pv-editbar {
+  position: absolute; z-index: 1000; top: 12px; left: calc((100% + var(--left)) / 2); transform: translateX(-50%);
+  width: max-content; max-width: min(760px, calc(100% - var(--left) - 140px));
+  display: flex; gap: 14px; align-items: center; padding: 10px 12px 10px 16px; border-radius: 16px;
+  background: var(--glass-strong); color: var(--text); border: 1px solid var(--line-strong); box-shadow: var(--shadow);
+  backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); font-family: var(--font);
+}
+.pv-editbar[hidden] { display: none; }
+.pv-editbar-text { display: grid; gap: 2px; font-size: 12px; line-height: 1.4; }
+.pv-editbar-text b { font-size: 13px; }
+.pv-editbar-text span { color: var(--muted); }
+.pv-editbar-actions { display: flex; gap: 6px; flex: none; }
+.pv-editbar-actions button { flex: none; }
+.pv-editbar-actions button[data-a="done"] { color: #fff; background: var(--sun); border-color: transparent; }
+
+/* In edit mode the lengths are buttons, moved off the side so the "new corner" dot stays free. */
+.pv-editing .pv-edge span {
+  transform: translate(-50%, -50%) rotate(var(--a)) translateY(-16px); cursor: pointer;
+  background: var(--sun-2); color: #fff; border-color: transparent;
+}
+.pv-editing .pv-edge.keepout span { background: var(--sun-3); }
+.pv-editing .pv-edge span:hover { filter: brightness(1.12); box-shadow: 0 0 0 3px rgba(255, 197, 61, 0.45); }
+
+/* The side box (a Leaflet popup, light like the other map popups). */
+.pv-side-box { display: grid; gap: 6px; min-width: 220px; }
+.pv-side-box .row { display: flex; gap: 6px; margin: 0; }
+.pv-side-box button { color: #111827; background: #f1f5f9; border-color: #d0d5dd; }
+.pv-side-box button:hover { background: #e2e8f0; }
+.pv-side-box button.ghost { background: transparent; color: #475569; }
+.pv-side-box .muted { color: #667085; margin: 0; }
+
+/* ---------- Compass ---------- */
+.pv-compass {
+  width: 64px; height: 64px; border-radius: 50%; background: var(--glass-strong); border: 1px solid var(--line-strong);
+  box-shadow: var(--shadow); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); pointer-events: none;
+}
+.pv-compass svg { display: block; width: 100%; height: 100%; }
+.pv-compass .ring { fill: none; stroke: var(--line-strong); stroke-width: 1; }
+.pv-compass .ticks line { stroke: var(--muted); stroke-width: 1.4; stroke-linecap: round; }
+.pv-compass .north { fill: url(#pvNeedle); }
+.pv-compass .south { fill: var(--muted); opacity: 0.55; }
+.pv-compass .pin { fill: var(--text); }
+.pv-compass text {
+  fill: var(--muted); font: 700 10px var(--font); text-anchor: middle; dominant-baseline: middle;
+}
+.pv-compass text.n { fill: var(--accent-text); font-size: 11.5px; }
