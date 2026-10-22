@@ -12,6 +12,7 @@ fi
 echo "Έλεγχος βιβλιοθηκών (την πρώτη φορά παίρνει 1-2 λεπτά)..."
 .venv/bin/python -m pip install --quiet --upgrade pip
 .venv/bin/python -m pip install --quiet --prefer-binary -r requirements.txt
-echo "Η εφαρμογή τρέχει στο http://127.0.0.1:8000  (Ctrl+C για τερματισμό)"
-( sleep 2; (open http://127.0.0.1:8000 || xdg-open http://127.0.0.1:8000) >/dev/null 2>&1 ) &
-exec .venv/bin/python -m uvicorn backend.main:app --host 127.0.0.1 --port 8000
+echo "Η εφαρμογή ξεκινά στο http://127.0.0.1:8000 και ο browser ανοίγει μόλις είναι έτοιμη."
+echo "Σταματά μόνη της όταν κλείσεις τον browser (ή με Ctrl+C)."
+# backend/lifecycle.py: opens the browser once the server answers, stops it when the browser closes.
+exec .venv/bin/python -m backend.lifecycle

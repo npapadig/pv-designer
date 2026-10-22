@@ -2,6 +2,13 @@
 setlocal
 cd /d "%~dp0"
 
+rem Already running: just open the browser (updates wait for the next start).
+curl.exe -s -m 2 http://127.0.0.1:8000/api/health 2>nul | findstr /r /c:"ok.:true" >nul
+if not errorlevel 1 (
+  start "" http://127.0.0.1:8000
+  exit /b 0
+)
+
 rem Fetch the latest version from GitHub. If files were replaced (this script
 rem included), restart from the new copy; the whole line is parsed before it runs.
 if exist .updated del .updated
@@ -66,11 +73,22 @@ echo ok> .venv\ready-312.txt
 
 :run
 echo.
-echo H efarmogh trexei sto http://127.0.0.1:8000
-echo Gia na th stamathseis, kleise ayto to parathyro.
-start "" http://127.0.0.1:8000
-.venv\Scripts\python -m uvicorn backend.main:app --host 127.0.0.1 --port 8000
-pause
+echo Ksekinaei h efarmogh, se ligo anoigei o browser...
+echo (Stamata monh ths otan kleiseis ton browser.)
+rem backend\lifecycle.py runs the server without a window (pythonw), opens the browser once the
+rem server answers and stops the server when the browser is closed.
+if exist .venv\Scripts\pythonw.exe (
+  start "" .venv\Scripts\pythonw.exe -m backend.lifecycle
+) else (
+  start "PV Designer" /min .venv\Scripts\python.exe -m backend.lifecycle
+)
+rem Keep this window (with the message above) until the server answers, then close it.
+where curl.exe >nul 2>nul
+if errorlevel 1 exit /b 0
+for /l %%i in (1,1,60) do (
+  curl.exe -s -m 1 http://127.0.0.1:8000/api/health 2>nul | findstr /r /c:"ok.:true" >nul && exit /b 0
+  timeout /t 1 /nobreak >nul
+)
 exit /b 0
 
 :install_failed

@@ -165,4 +165,19 @@
 
   window.home = { show, hide };
   show();
+
+  // The app stops by itself when its browser is closed (backend/lifecycle.py): this page says hello,
+  // pings every 30 s and says bye when it goes away; a reload says hello again.
+  const pageId = window.crypto?.randomUUID?.() || String(Math.random()).slice(2);
+  const tellServer = (what) => fetch(`/api/lifecycle/${what}?page=${pageId}`, { method: "POST", keepalive: true });
+  let gone = false;
+  const ping = () => tellServer("ping").then((r) => { if (r.ok) gone = false; else throw r; }).catch(() => {
+    if (!gone) toast("Η εφαρμογή δεν τρέχει πια. Άνοιξέ τη ξανά με το αρχείο εκκίνησης.", 15000);
+    gone = true;
+  });
+  tellServer("hello").catch(() => {});
+  setInterval(ping, 30000);
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) ping(); });
+  addEventListener("pagehide", () => navigator.sendBeacon(`/api/lifecycle/bye?page=${pageId}`));
+  addEventListener("pageshow", (e) => { if (e.persisted) tellServer("hello").catch(() => {}); });
 })();
