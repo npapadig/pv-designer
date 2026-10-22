@@ -64,6 +64,7 @@
   medium; Sonnet for normal work and for the coordinator's routine (merges, checks, handoff), effort medium; Sonnet
   low or Haiku for mechanical work (texts, translations, renames, docs). Set it when you start a session (model/effort
   parameters), not mid-conversation (switching loses the cache). Say in one line what you picked and why.
+- YOU decide when streams are needed and how many run in parallel (Νίκος, 2026-10-22; replaces "at most 2").
 - Streams only for BIG independent pieces (each stream starts cold and re-reads the code). Small fixes: do them in
   one session, one after the other. Merge in batches, not after every step.
 
