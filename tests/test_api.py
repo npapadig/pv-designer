@@ -31,6 +31,20 @@ def test_projects_crud(tmp_path, monkeypatch):
     assert client.get("/api/projects/../../etc").status_code == 404
 
 
+def test_projects_list_card_fields(tmp_path, monkeypatch):
+    monkeypatch.setattr(storage, "DATA_DIR", tmp_path)
+    client.post("/api/projects", json={"name": "Άδειο"})
+    client.post("/api/projects", json={
+        "name": "Με πάνελ", "layout": {"kwp": 6.15, "count": 15}, "energy": {"annual_kwh": 9100},
+        "report_info": {"address": "Πάτρα"},
+    })
+    cards = {c["name"]: c for c in client.get("/api/projects").json()}
+    assert cards["Με πάνελ"]["kwp"] == 6.15
+    assert cards["Με πάνελ"]["annual_kwh"] == 9100
+    assert cards["Με πάνελ"]["address"] == "Πάτρα"
+    assert cards["Άδειο"]["kwp"] is None and cards["Άδειο"]["has_plan"] is False
+
+
 MODULE = {"power_w": 410, "voc": 37.3, "isc": 13.9, "vmp": 31.0, "imp": 13.2}
 
 

@@ -1,0 +1,90 @@
+/* Start screen (home.js) and floor-plan box (plan.js). Uses the theme tokens of style.css. */
+
+/* ---------- Start screen ---------- */
+#home {
+  position: fixed; inset: 0; z-index: 1500; overflow-y: auto; color: var(--text);
+  background:
+    radial-gradient(1200px 600px at 85% -10%, rgba(255, 138, 61, 0.16), transparent 60%),
+    radial-gradient(900px 500px at -10% 110%, rgba(45, 212, 191, 0.1), transparent 60%),
+    #0a0d16;
+  animation: homeIn 0.3s ease-out;
+}
+:root[data-theme="light"] #home {
+  background:
+    radial-gradient(1200px 600px at 85% -10%, rgba(255, 138, 61, 0.14), transparent 60%),
+    radial-gradient(900px 500px at -10% 110%, rgba(13, 148, 136, 0.08), transparent 60%),
+    #f4f6fb;
+}
+@keyframes homeIn { from { opacity: 0; } }
+.home-wrap { max-width: 980px; margin: 0 auto; padding: 48px 24px 40px; }
+.home-head { display: flex; align-items: center; gap: 16px; margin-bottom: 36px; }
+.home-head .logo { margin: 0; width: 54px; height: 54px; border-radius: 17px; }
+.home-head .logo .ic { width: 28px; height: 28px; }
+.home-title { flex: 1; min-width: 0; }
+.home-title h1 { margin: 0; font-size: 1.7rem; font-weight: 780; letter-spacing: -0.035em; line-height: 1.15; }
+.home-title p { margin: 2px 0 0; font-size: 0.9rem; }
+#homeTheme .ic:last-child { display: none; }
+:root[data-theme="light"] #homeTheme .ic:first-child { display: none; }
+:root[data-theme="light"] #homeTheme .ic:last-child { display: block; }
+
+.home-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 16px; }
+.home-card {
+  position: relative; display: flex; flex-direction: column; align-items: flex-start; justify-content: flex-end; gap: 4px;
+  height: auto; min-height: 170px; padding: 20px; border-radius: 22px; text-align: left; white-space: normal;
+  background: var(--glass); border: 1px solid var(--line); box-shadow: var(--shadow); color: var(--text);
+  transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+}
+.home-card:hover { transform: translateY(-3px); border-color: var(--line-strong); background: var(--glass); }
+.home-card b { font-size: 1.15rem; font-weight: 750; letter-spacing: -0.02em; }
+.home-card small { color: var(--muted); font-size: 0.82rem; font-weight: 500; line-height: 1.4; }
+.home-ic {
+  position: absolute; top: 18px; left: 20px; width: 44px; height: 44px; border-radius: 14px; display: grid; place-items: center;
+  background: var(--field); color: var(--accent-text);
+}
+.home-ic .ic { width: 22px; height: 22px; }
+.home-card.new { background: var(--sun); border-color: transparent; color: #fff; box-shadow: 0 16px 40px rgba(255, 106, 61, 0.35); }
+.home-card.new:hover { box-shadow: 0 20px 48px rgba(255, 106, 61, 0.5); filter: brightness(1.04); }
+.home-card.new small { color: rgba(255, 255, 255, 0.88); }
+.home-card.new .home-ic { background: rgba(255, 255, 255, 0.22); color: #fff; }
+
+.home-sub { margin: 38px 0 14px; }
+.home-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 14px; }
+.proj { position: relative; }
+.proj-open {
+  width: 100%; height: auto; min-height: 128px; display: flex; flex-direction: column; align-items: flex-start; gap: 6px;
+  padding: 16px 52px 16px 18px; border-radius: 18px; text-align: left; white-space: normal;
+  background: var(--glass); border: 1px solid var(--line); box-shadow: var(--shadow); transition: transform 0.2s, border-color 0.2s;
+}
+.proj-open:hover { transform: translateY(-2px); border-color: var(--sun-2); background: var(--glass); }
+.proj-open b { font-size: 1rem; font-weight: 720; letter-spacing: -0.015em; overflow-wrap: anywhere; }
+.proj-open .when, .proj-open .where { color: var(--muted); font-size: 0.76rem; font-weight: 500; }
+.proj-open .where { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+.proj-open .tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: auto; padding-top: 6px; }
+.proj-open .tag {
+  font-size: 0.72rem; font-weight: 700; padding: 3px 9px; border-radius: 999px; background: var(--field);
+  border: 1px solid var(--line); color: var(--text); font-variant-numeric: tabular-nums;
+}
+.proj-open .tag.kwp { color: var(--accent-text); border-color: rgba(255, 138, 61, 0.35); background: var(--warn-soft); }
+.proj-del { position: absolute; top: 10px; right: 10px; width: 36px; height: 36px; }
+
+/* Rail logo = way back to the start screen: the house shows on hover. */
+#btnHome { padding: 0; border: 0; cursor: pointer; }
+#btnHome:hover { background: var(--sun); filter: brightness(1.08); }
+#btnHome .ic:last-child, #btnHome:hover .ic:first-child { display: none; }
+#btnHome:hover .ic:last-child { display: block; }
+
+@media (max-width: 760px) {
+  .home-wrap { padding: 24px 16px 32px; }
+  .home-head { margin-bottom: 22px; }
+  .home-title h1 { font-size: 1.35rem; }
+  .home-cards, .home-grid { grid-template-columns: 1fr; gap: 12px; }
+  .home-card { min-height: 0; padding: 18px 18px 18px 78px; justify-content: center; }
+  .home-ic { top: 50%; transform: translateY(-50%); left: 18px; }
+  .home-sub { margin-top: 28px; }
+  .proj-open { min-height: 0; }
+  /* style.css hides the logo on phones; keep it small as the way back to the start screen. */
+  #rail #btnHome { display: grid; width: 36px; height: 36px; border-radius: 12px; margin: 0; flex: none; }
+  #rail #btnHome .ic { width: 19px; height: 19px; }
+  #rail #btnHome .ic:first-child { display: none; }
+  #rail #btnHome .ic:last-child { display: block; }
+}

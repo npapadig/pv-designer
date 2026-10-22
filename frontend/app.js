@@ -624,6 +624,18 @@ function resetProject() {
   $("projectAddress").value = "";
   clearLayout();
   updateShapesInfo();
+  markSaved();
+}
+
+// What the project looked like when it was last saved or opened, to warn before unsaved work is lost.
+let savedSnapshot = "";
+function projectSnapshot() {
+  const { view, ...rest } = collectProject();
+  return JSON.stringify(rest);
+}
+function markSaved() { savedSnapshot = projectSnapshot(); }
+function hasUnsavedWork() {
+  return (areas.getLayers().length > 0 || !!state.projectId) && projectSnapshot() !== savedSnapshot;
 }
 
 function loadProject(p) {
@@ -664,6 +676,7 @@ function loadProject(p) {
   window.elec?.load(p.electrical);
   renderResults();
   if (p.view) map.setView(p.view.center, p.view.zoom);
+  markSaved();
 }
 
 async function refreshProjectList() {
@@ -680,6 +693,7 @@ $("btnSave").onclick = () => withBusy($("btnSave"), async () => {
     ? await api(`/api/projects/${state.projectId}`, "PUT", data)
     : await api("/api/projects", "POST", data);
   state.projectId = saved.id;
+  markSaved();
   await refreshProjectList();
   toast("Το έργο αποθηκεύτηκε.");
 });

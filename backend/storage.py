@@ -25,7 +25,14 @@ def list_projects() -> list[dict]:
             d = json.loads(f.read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError):
             continue
-        items.append({"id": d["id"], "name": d.get("name", ""), "updated_at": d.get("updated_at", "")})
+        layout, en = d.get("layout") or {}, d.get("energy") or {}
+        items.append({
+            "id": d["id"], "name": d.get("name", ""), "updated_at": d.get("updated_at", ""),
+            # Shown on the cards of the start screen.
+            "kwp": layout.get("kwp"), "annual_kwh": en.get("annual_kwh"),
+            "address": (d.get("report_info") or {}).get("address", ""),
+            "has_plan": bool((d.get("plan") or {}).get("image")),
+        })
     return sorted(items, key=lambda x: x["updated_at"], reverse=True)
 
 

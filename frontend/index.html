@@ -8,6 +8,7 @@
   <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
   <link rel="stylesheet" href="vendor/leaflet-draw/leaflet.draw.css">
   <link rel="stylesheet" href="style.css?v=__VERSION__">
+  <link rel="stylesheet" href="home.css?v=__VERSION__">
   <script>
     // Apply the saved light/dark choice before the page paints, so it does not flash.
     try { const t = localStorage.getItem("pv-designer.theme"); if (t) document.documentElement.dataset.theme = t; } catch {}
@@ -36,10 +37,32 @@
     <symbol id="i-left" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></symbol>
     <symbol id="i-right" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
     <symbol id="i-up" viewBox="0 0 24 24"><path d="m18 15-6-6-6 6"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M12 5v14"/></symbol>
+    <symbol id="i-house" viewBox="0 0 24 24"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></symbol>
+    <symbol id="i-image" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></symbol>
   </svg>
+  <div id="home" role="dialog" aria-label="Αρχική οθόνη">
+    <div class="home-wrap">
+      <header class="home-head">
+        <div class="logo"><svg class="ic"><use href="#i-sun"/></svg></div>
+        <div class="home-title"><h1>PV Designer <small id="homeVersion" class="version"></small></h1>
+          <p class="muted">Σχεδιασμός φωτοβολταϊκών συστημάτων</p></div>
+        <button id="homeTheme" class="icon-btn ghost" type="button" title="Σκούρο / φωτεινό θέμα" aria-label="Σκούρο / φωτεινό θέμα"><svg class="ic"><use href="#i-moon"/></svg><svg class="ic"><use href="#i-sun"/></svg></button>
+      </header>
+      <div id="homeStart" class="home-cards">
+        <button id="homeNew" class="home-card new" type="button"><span class="home-ic"><svg class="ic"><use href="#i-plus"/></svg></span>
+          <b>Νέο έργο</b><small>Ξεκίνα μια νέα μελέτη</small></button>
+        <button id="homeContinue" class="home-card" type="button" hidden><span class="home-ic"><svg class="ic"><use href="#i-right"/></svg></span>
+          <b>Συνέχεια</b><small id="homeContinueName"></small></button>
+      </div>
+      <h3 class="home-sub">Αποθηκευμένα έργα</h3>
+      <div id="homeProjects" class="home-grid"></div>
+      <p id="homeEmpty" class="muted small" hidden>Δεν υπάρχουν ακόμα αποθηκευμένα έργα. Πάτα «Νέο έργο» για να ξεκινήσεις.</p>
+    </div>
+  </div>
   <main id="map"></main>
   <nav id="rail" aria-label="Βήματα">
-    <div class="logo" title="PV Designer"><svg class="ic"><use href="#i-sun"/></svg></div>
+    <button id="btnHome" class="logo" type="button" title="Αρχική οθόνη" aria-label="Αρχική οθόνη"><svg class="ic"><use href="#i-sun"/></svg><svg class="ic"><use href="#i-house"/></svg></button>
     <a href="#secProject" data-step="secProject"><b><svg class="ic"><use href="#i-folder"/></svg><i>1</i></b><span>Έργο</span></a>
     <a href="#secSite" data-step="secSite"><b><svg class="ic"><use href="#i-pin"/></svg><i>2</i></b><span>Χώρος</span></a>
     <a href="#secPanels" data-step="secPanels"><b><svg class="ic"><use href="#i-grid"/></svg><i>3</i></b><span>Πάνελ</span></a>
@@ -370,5 +393,6 @@
   <script src="faces.js?v=__VERSION__"></script>
   <script src="electrical.js?v=__VERSION__"></script>
   <script src="ui.js?v=__VERSION__"></script>
+  <script src="home.js?v=__VERSION__"></script>
 </body>
 </html>
