@@ -125,3 +125,16 @@
 .google-key { margin-top: 6px; padding-top: 6px; border-top: 1px solid #ddd; }
 .google-key a { color: #64748b; font-size: 0.76rem; text-decoration: none; }
 .google-key a:hover { color: #111827; text-decoration: underline; }
+
+/* Address suggestions under the search box (search.js). */
+.search-row { position: relative; }
+.search-list {
+  position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 40; margin: 0; padding: 6px; list-style: none;
+  max-height: 320px; overflow-y: auto; border-radius: 14px; background: var(--glass-strong); border: 1px solid var(--line-strong);
+  box-shadow: var(--shadow); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
+}
+.search-list li { display: flex; flex-direction: column; gap: 1px; padding: 8px 10px; border-radius: 10px; cursor: pointer; }
+.search-list li b { font-size: 0.86rem; font-weight: 650; overflow-wrap: anywhere; }
+.search-list li span { color: var(--muted); font-size: 0.74rem; }
+.search-list li:hover, .search-list li.active { background: var(--field-hover); }
+.search-list li.active { outline: 1px solid var(--ring); }

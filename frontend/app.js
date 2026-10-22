@@ -174,6 +174,7 @@ function updateShapesInfo() {
 }
 
 // ---------- Search ----------
+// Suggestions while typing come from search.js; the button (and Enter with no suggestion) asks Nominatim.
 async function search() {
   const q = $("searchBox").value.trim();
   if (!q) return;
@@ -181,16 +182,22 @@ async function search() {
     const r = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(q)}`);
     const res = await r.json();
     if (!res.length) return toast("Δεν βρέθηκε η διεύθυνση.");
-    if (!$("projectAddress").value) $("projectAddress").value = q;
-    const at = L.latLng(+res[0].lat, +res[0].lon);
-    map.setView(at, 19);
-    document.dispatchEvent(new CustomEvent("pv:found", { detail: at })); // plan.js: a new building's place
+    showFound(L.latLng(+res[0].lat, +res[0].lon), q);
   } catch {
     toast("Η αναζήτηση απέτυχε. Έλεγξε τη σύνδεση στο internet.");
   }
 }
+
+// The found place goes to the middle of the free part of the map; plan.js also listens for
+// "pv:found" (where a new building will stand).
+function showFound(at, label) {
+  if (!$("projectAddress").value) $("projectAddress").value = label;
+  if (window.plan) plan.centerOn(at, 19);
+  else map.setView(at, 19);
+  document.dispatchEvent(new CustomEvent("pv:found", { detail: at }));
+}
 $("btnSearch").onclick = search;
-$("searchBox").addEventListener("keydown", (e) => { if (e.key === "Enter") search(); });
+$("searchBox").addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.defaultPrevented) search(); });
 
 // ---------- Panel presets ----------
 PANEL_PRESETS.forEach((p, i) => $("panelPreset").add(new Option(p.name, i)));

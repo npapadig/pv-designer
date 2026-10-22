@@ -27,6 +27,12 @@ def test_start_screen_offers_three_kinds():
         assert el in html
 
 
+def test_search_suggestions_are_wired():
+    html = client.get("/").text
+    assert 'id="searchList"' in html and "search.js?v=" in html
+    assert client.get("/search.js").headers["content-type"].startswith("text/javascript")
+
+
 def test_google_box_is_gone():
     # The key is entered from the map menu ("Κλειδί Google…", app.js) when there is none.
     html = client.get("/").text

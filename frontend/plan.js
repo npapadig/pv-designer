@@ -336,6 +336,6 @@
   $("planOpacity").addEventListener("input", () => { p.opacity = +$("planOpacity").value / 100; applyStyle(); });
   $("planLock").addEventListener("change", () => { p.locked = $("planLock").checked; applyStyle(); });
 
-  window.plan = { pickFile, start, clear, collect, load, askWhere, active: () => !!p.image };
+  window.plan = { pickFile, start, clear, collect, load, askWhere, centerOn, active: () => !!p.image };
   refresh();
 })();

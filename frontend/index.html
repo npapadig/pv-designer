@@ -124,9 +124,11 @@
 
     <section id="secSite" class="step">
       <h2>Τοποθεσία</h2>
-      <div class="row">
-        <input id="searchBox" placeholder="Διεύθυνση ή πόλη…">
+      <div class="row search-row">
+        <input id="searchBox" placeholder="Διεύθυνση ή πόλη…" autocomplete="off" role="combobox" aria-autocomplete="list"
+          aria-expanded="false" aria-controls="searchList">
         <button id="btnSearch" class="icon-btn" title="Αναζήτηση" aria-label="Αναζήτηση"><svg class="ic"><use href="#i-search"/></svg></button>
+        <ul id="searchList" class="search-list" role="listbox" aria-label="Προτάσεις διευθύνσεων" hidden></ul>
       </div>
       <div class="row segmented" id="roofRow">
         <label class="radio"><input type="radio" name="roofType" value="flat"> Επίπεδη ταράτσα</label>
@@ -472,6 +474,7 @@
   <script src="options.js?v=__VERSION__"></script>
   <script src="electrical.js?v=__VERSION__"></script>
   <script src="ui.js?v=__VERSION__"></script>
+  <script src="search.js?v=__VERSION__"></script>
   <script src="plan.js?v=__VERSION__"></script>
   <script src="home.js?v=__VERSION__"></script>
 </body>
