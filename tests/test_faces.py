@@ -285,8 +285,8 @@ def test_face_rows_match_faces_by_index_when_one_face_is_empty():
 def test_pdf_with_roof_faces(monkeypatch):
     from PIL import Image as PILImage
     from backend import mapimage, report
-    monkeypatch.setattr(mapimage, "_native_zoom", lambda c, lat, lon: 20)
-    monkeypatch.setattr(mapimage, "_fetch_tile", lambda c, z, x, y: PILImage.new("RGB", (256, 256), (80, 110, 70)))
+    monkeypatch.setattr(mapimage, "_native_zoom", lambda c, src, lat, lon: 20)
+    monkeypatch.setattr(mapimage, "_fetch_tile", lambda c, src, z, x, y: PILImage.new("RGB", (256, 256), (80, 110, 70)))
     project, _, _ = _faces_project()
     ctx = report.ReportContext(project, imagery=False)
     flow = report.layout_section(ctx)

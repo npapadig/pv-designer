@@ -131,8 +131,8 @@ def test_east_west_api_keeps_the_users_gap():
 @pytest.mark.parametrize("key", ["economic", "east_west", "aesthetic"])
 def test_every_proposal_works_in_the_next_steps(key, monkeypatch):
     """Shading, shadows, inverter/strings, production and the PDF accept each proposal as it is applied."""
-    monkeypatch.setattr(mapimage, "_native_zoom", lambda c, lat, lon: 20)
-    monkeypatch.setattr(mapimage, "_fetch_tile", lambda c, z, x, y: Image.new("RGB", (256, 256), (80, 110, 70)))
+    monkeypatch.setattr(mapimage, "_native_zoom", lambda c, src, lat, lon: 20)
+    monkeypatch.setattr(mapimage, "_fetch_tile", lambda c, src, z, x, y: Image.new("RGB", (256, 256), (80, 110, 70)))
     o = by_key()[key]
     obstacles = [{"polygon": rect(-2, -9, 2, -7), "height_m": 5}]
     faces = [{"tilt_deg": f["tilt_deg"], "azimuth_deg": f["azimuth_deg"]} for f in o.get("faces", [])] or None
