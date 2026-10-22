@@ -347,7 +347,7 @@ def project_report(project_id: str):
 # ---------- Ready-made layout proposals (stream "options") ----------
 from concurrent.futures import ThreadPoolExecutor  # noqa: E402
 
-from .layout import layout_options  # noqa: E402
+from .layout import compute_ew_areas, layout_options  # noqa: E402
 
 
 class OptionsRequest(LayoutRequest):
@@ -384,6 +384,21 @@ def layout_options_route(req: OptionsRequest):
         o.setdefault("annual_kwh", None)
         o.setdefault("specific_yield", None)
     return {"options": options}
+
+
+class AreasLayoutRequest(LayoutRequest):
+    area: list[list[float]] = []  # unused; the areas carry the outlines
+    areas: list[list[list[float]]] = Field(..., min_length=1)
+
+
+@app.post("/api/layout/ew")
+def layout_east_west(req: AreasLayoutRequest):
+    """East-west racks back to back over all areas: two faces (0 = east, 1 = west), like /api/layout/faces."""
+    params = LayoutParams(**req.model_dump(exclude={"area", "areas"}))
+    try:
+        return compute_ew_areas(req.areas, params)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
 
 
 # The page links its own CSS and JS with ?v=<version>, so a browser that cached the files of

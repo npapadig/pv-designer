@@ -282,6 +282,17 @@ function clearLayout() {
 
 const PANEL_STYLE = { color: "#dbeafe", weight: 0.5, fillColor: "#2563eb", fillOpacity: 0.75 };
 const addPanel = (latlngs) => L.polygon(latlngs, PANEL_STYLE).addTo(panelsLayer);
+const NO_FIT = "Δεν χωράει κανένα πάνελ. Δοκίμασε μικρότερη απόσταση από τα άκρα ή οριζόντια πάνελ.";
+
+// Show a computed layout (panels + totals) on the map; also used by options.js for a chosen proposal.
+function setLayout(panels, res) {
+  panelsLayer.clearLayers();
+  panels.forEach((p) => addPanel(p));
+  state.layout = res;
+  clearShading();
+  window.elec?.reset();
+  if (!res.count) toast(NO_FIT, 6000);
+}
 
 async function runLayout() {
   const areaLayers = areas.getLayers();
@@ -293,12 +304,12 @@ async function runLayout() {
   // Roof faces with their own tilt/azimuth: one request for all, with the face of every panel.
   if (window.faces?.active()) {
     const { panels, ...res } = await api("/api/layout/faces", "POST", { ...s, keepouts: ko, faces: faces.list() });
-    panels.forEach((p) => addPanel(p));
-    state.layout = res;
-    clearShading();
-    window.elec?.reset();
-    if (!res.count) toast("Δεν χωράει κανένα πάνελ. Δοκίμασε μικρότερη απόσταση από τα άκρα ή οριζόντια πάνελ.", 6000);
-    return;
+    return setLayout(panels, res);
+  }
+  // East-west racks back to back: two faces (east, west), like roof faces.
+  if (window.options?.eastWest()) {
+    const { panels, ...res } = await api("/api/layout/ew", "POST", { ...s, keepouts: ko, areas: areaLayers.map(latlngsOf) });
+    return setLayout(panels, res);
   }
 
   const total = { count: 0, kwp: 0, area_m2: 0, module_area_m2: 0, row_gap_m: null, center: null };
@@ -320,7 +331,9 @@ async function runLayout() {
   window.elec?.reset();
   if (!total.count) toast("Δεν χωράει κανένα πάνελ. Δοκίμασε μικρότερη απόσταση από τα άκρα ή οριζόντια πάνελ.", 6000);
 }
-$("btnLayout").onclick = () => withBusy($("btnLayout"), runLayout);
+// The main button shows the three proposals (options.js); the second one uses the settings as they are.
+$("btnLayout").onclick = () => withBusy($("btnLayout"), () => (window.options ? options.show() : runLayout()));
+$("btnLayoutCustom").onclick = () => withBusy($("btnLayoutCustom"), runLayout);
 
 // ---------- Shading ----------
 function shadingInput() {

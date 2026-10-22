@@ -110,3 +110,13 @@ def test_options_api_empty_area():
     assert r.status_code == 200
     assert all(o["count"] == 0 and o["annual_kwh"] is None for o in r.json()["options"])
     assert client.post("/api/layout/options", json={"areas": [[[0, 0], [0, 1]]]}).status_code == 400
+
+
+def test_east_west_api_keeps_the_users_gap():
+    base = {"areas": [ROOF], "tilt_deg": layout.OPTION_EAST_WEST["tilt_deg"]}
+    auto = client.post("/api/layout/ew", json=base).json()
+    wide = client.post("/api/layout/ew", json={**base, "row_spacing_m": 0.5}).json()
+    assert auto["row_gap_m"] == layout.OPTION_EAST_WEST["row_gap_m"]
+    assert auto["panels"] == by_key()["east_west"]["panels"]
+    assert wide["row_gap_m"] == 0.5 and wide["count"] < auto["count"]
+    assert [f["azimuth_deg"] for f in wide["faces"]] == [90, 270]

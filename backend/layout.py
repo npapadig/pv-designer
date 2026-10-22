@@ -280,6 +280,15 @@ def _merge(results: list[dict], p: LayoutParams) -> dict:
     return out
 
 
+def compute_ew_areas(areas: list, p: LayoutParams) -> dict:
+    """East-west layout of all drawn areas; the row gap is p.row_spacing_m, or the proposal's when None."""
+    if not areas:
+        raise ValueError("Σχεδίασε πρώτα μια περιοχή στον χάρτη.")
+    gap = OPTION_EAST_WEST["row_gap_m"] if p.row_spacing_m is None else p.row_spacing_m
+    q = replace(p, mounting="rack", row_spacing_m=gap)
+    return _merge([compute_ew_layout(a, q, gap) for a in areas], q)
+
+
 def layout_options(areas: list, p: LayoutParams) -> list[dict]:
     """The three ready-made proposals for the same drawn areas (panel size, setbacks, gaps from p).
 
