@@ -59,6 +59,13 @@
 - Big/slow checks run ONCE per merge, in the coordinator. Keep conversations short; read only the parts of big
   files you need; save long command output to a file and read the summary. Run commands over ~2 minutes in the
   background.
+- **Model and effort: YOU choose them, per session and per stream, for the best result per usage (Νίκος, 2026-10-22).**
+  Default guide: Opus only for design-heavy or risky work (engine/results, tricky UI logic, the launcher), effort
+  medium; Sonnet for normal work and for the coordinator's routine (merges, checks, handoff), effort medium; Sonnet
+  low or Haiku for mechanical work (texts, translations, renames, docs). Set it when you start a session (model/effort
+  parameters), not mid-conversation (switching loses the cache). Say in one line what you picked and why.
+- Streams only for BIG independent pieces (each stream starts cold and re-reads the code). Small fixes: do them in
+  one session, one after the other. Merge in batches, not after every step.
 
 ## 6. Fresh sessions instead of long ones
 - Propose a NEW session (after a short handoff) when a stream's list is done, the conversation is long, or I bring
