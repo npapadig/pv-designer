@@ -3,7 +3,7 @@
 // paste, Esc = done; Ctrl+Z / Ctrl+Y undo and redo any change of the shapes. Also the tree tool, the
 // same actions as buttons on the map, and lists of the shapes, with names, in the side panel. Loaded
 // after draw.js and uses app.js's map, areas, keepouts, panelsLayer, editGroup, drawControl, addShape,
-// setObstacleHeight, updateShapesInfo, clearLayout, clearShading, fmt and toast.
+// setObstacleHeight, shapeName, updateShapesInfo, clearLayout, clearShading, fmt and toast.
 (() => {
   const PICK = "Διάλεξε πρώτα ένα σχήμα (διπλό κλικ).";
   const DBL_MS = 300; // a single click on a shape waits this long, in case it becomes a double-click
@@ -25,10 +25,14 @@
     selected = layer;
     L.DomUtil.addClass(layer.getElement(), "pv-selected");
     layer.editing.enable(); // corner handles: drag a corner, click a side's middle dot for a new one
-    bar.querySelector("b").textContent = kindOf(layer) === "keepout" ? "Επιλεγμένο εμπόδιο" : "Επιλεγμένη περιοχή πάνελ";
+    barTitle(layer);
     bar.hidden = false;
     showButtons();
     showLists();
+  }
+
+  function barTitle(layer) {
+    bar.querySelector("b").textContent = `${kindOf(layer) === "keepout" ? "Επιλεγμένο εμπόδιο" : "Επιλεγμένη περιοχή πάνελ"}: ${shapeName(layer)}`;
   }
 
   function deselect() {
@@ -360,17 +364,22 @@
   map.on("draw:editstart", deselect);
 
   // ---------- Lists in the side panel ----------
-  // One row per obstacle: number, name, height. A click on a row selects the shape on the map, and
-  // a shape selected on the map lights up its row.
-  const LISTS = { keepout: { group: keepouts, box: document.getElementById("keepoutList"), title: "Εμπόδιο" } };
+  // One row per panel area (number, name, m²) and per obstacle (number, name, height). A click on a
+  // row selects the shape on the map, and a shape selected on the map lights up its row.
+  const LISTS = {
+    area: { group: areas, box: document.getElementById("areaList"), title: "Χώρος" },
+    keepout: { group: keepouts, box: document.getElementById("keepoutList"), title: "Εμπόδιο" },
+  };
+  const m2 = (layer) => window.drawTools.area(ring(layer));
 
   function makeRow(kind, layer) {
     const row = document.createElement("div");
     row.className = `shape-row ${kind}${layer.pvTree ? " tree" : ""}`;
     row.pvLayer = layer;
     row.innerHTML = `<span class="shape-no"></span>
-      <input name="name" maxlength="40" autocomplete="off" placeholder="π.χ. δέντρο, φράχτης">
-      <label class="shape-num"><input name="height" type="number" min="0" step="0.5" aria-label="Ύψος σε μέτρα"><span>m</span></label>
+      <input name="name" maxlength="40" autocomplete="off" placeholder="${kind === "area" ? "π.χ. νότια στέγη" : "π.χ. δέντρο, φράχτης"}">
+      ${kind === "area" ? '<span class="shape-num shape-m2"></span>'
+        : '<label class="shape-num"><input name="height" type="number" min="0" step="0.5" aria-label="Ύψος σε μέτρα"><span>m</span></label>'}
       <button type="button" class="ghost icon-btn shape-del" title="Διαγραφή" aria-label="Διαγραφή">${ICONS.remove}</button>`;
     return row;
   }
@@ -392,10 +401,15 @@
       row.querySelector(".shape-no").textContent = `${title} ${i + 1}`;
       row.querySelector("[name=name]").setAttribute("aria-label", `Όνομα: ${title} ${i + 1}`);
       setValue(row.querySelector("[name=name]"), l.pvName || "");
-      setValue(row.querySelector("[name=height]"), l.pvHeight ?? 0);
+      if (kind === "area") row.querySelector(".shape-m2").textContent = `${fmt(m2(l), 1)} m²`;
+      else setValue(row.querySelector("[name=height]"), l.pvHeight ?? 0);
       row.classList.toggle("on", l === selected);
     });
     box.hidden = !layers.length;
+    if (kind === "area") {
+      const total = layers.reduce((sum, l) => sum + m2(l), 0);
+      box.querySelector("h3").textContent = layers.length > 1 ? `Χώροι πάνελ · ${fmt(total, 1)} m²` : "Χώροι πάνελ";
+    }
   }
 
   let listsQueued = false;
@@ -405,6 +419,8 @@
     queueMicrotask(() => { listsQueued = false; for (const kind in LISTS) renderList(kind); });
   }
   keepouts.on("layeradd layerremove", showLists);
+  areas.on("layeradd layerremove", showLists);
+  areas.on("layeradd", (e) => e.layer.on("edit editdrag pv:moved", showLists)); // the m² while it changes
   map.on("pv:shapes pv:restored", showLists);
 
   for (const { box } of Object.values(LISTS)) {
@@ -428,6 +444,7 @@
       layer.pvName = e.target.value.trim() || undefined;
       const tip = layer.getTooltip();
       if (tip?.isOpen()) tip.update();
+      if (layer === selected) barTitle(layer);
     });
     box.addEventListener("change", (e) => {
       const layer = layerOf(e.target);

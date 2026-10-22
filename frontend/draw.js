@@ -257,6 +257,14 @@
       back: ([x, y]) => L.latLng(lat0 + y / r.north, lng0 + x / r.east),
     };
   }
+  // Area in m², in the same local metres as the side lengths.
+  function area(pts) {
+    if (pts.length < 3) return 0;
+    const { xy } = local(pts);
+    let twice = 0;
+    for (let i = 0; i < xy.length; i++) twice += cross(xy[i], xy[(i + 1) % xy.length]);
+    return Math.abs(twice) / 2;
+  }
   function reshape(layer, fn) {
     const { xy, back } = local(ring(layer));
     fn(xy, xy.length);
@@ -413,7 +421,7 @@
   map.addControl(new Compass());
 
   window.drawTools = {
-    meters, refresh, refreshAll,
+    meters, area, refresh, refreshAll,
     get editing() { return editing; },
   };
 })();

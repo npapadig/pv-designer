@@ -666,6 +666,7 @@ function collectProject() {
     },
     report_info: { client: $("clientName").value, address: $("projectAddress").value, author: $("reportAuthor").value },
     areas: areas.getLayers().map(latlngsOf),
+    area_names: areas.getLayers().map((l) => l.pvName || ""),
     area_faces: window.faces?.collect() || null,
     keepouts: keepouts.getLayers().map(latlngsOf),
     keepout_heights: keepouts.getLayers().map((l) => l.pvHeight || 0),
@@ -722,7 +723,11 @@ function loadProject(p) {
   $("clientName").value = info.client || "";
   $("projectAddress").value = info.address || "";
   if (info.author) $("reportAuthor").value = info.author;
-  (p.areas || []).forEach((a) => addShape(L.polygon(a), "area"));
+  (p.areas || []).forEach((a, i) => {
+    const layer = L.polygon(a);
+    layer.pvName = (p.area_names || [])[i] || undefined; // older projects: «Χώρος N»
+    addShape(layer, "area");
+  });
   window.faces?.load(p.area_faces);
   // Projects saved before shading analysis have no heights: their obstacles cast no shadow.
   (p.keepouts || []).forEach((k, i) => {

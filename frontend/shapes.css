@@ -58,3 +58,4 @@
 
 /* Three mode buttons side by side: keep «Περιοχή πάνελ» on one line. */
 #drawModes label.radio { padding: 9px 4px; font-size: 0.8rem; white-space: nowrap; }
+.shape-m2 { justify-content: flex-end; min-width: 62px; color: var(--muted); font-weight: 600; font-variant-numeric: tabular-nums; }
