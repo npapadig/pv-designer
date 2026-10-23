@@ -44,3 +44,30 @@ def test_plan_has_coordinates_page_and_english_has_no_greek():
     p = make_project()
     pdf = plan_drawing.build_plan_pdf(p, "el")
     assert pdf.count(b"/Type /Page\n") == 2 or pdf.count(b"/Type /Page ") + pdf.count(b"/Type /Page\n") == 2
+
+
+def _design():
+    from backend import electrical, equipment
+    inv = equipment.Inverter(name="Test 5 kW", phases=1, pac_w=5000, pdc_max_w=7500, vdc_max=600, v_mppt_min=100,
+                             v_mppt_max=500, v_start=80, n_mppt=2, strings_per_mppt=1, i_max_mppt=16,
+                             isc_max_mppt=20)
+    return {"inverter": inv.model_dump(), "n_inverters": 1, "modules_per_string": 9, "n_strings": 2,
+            "modules_used": 18, "dc_kwp": 7.38, "ac_kw": 5.0,
+            "per_inverter": [{"strings": 2, "mppts": [1, 1]}]}
+
+
+def test_single_line_pdf_and_endpoint():
+    from backend import single_line
+    p = make_project(electrical={"design": _design()})
+    for lang in ("el", "en"):
+        assert single_line.build_single_line_pdf(p, lang).startswith(b"%PDF")
+    r = client.post("/api/single-line", json={**p, "lang": "en"})
+    assert r.status_code == 200 and "single-line" in r.headers["content-disposition"].lower()
+    assert client.post("/api/single-line", json=make_project()).status_code == 400
+
+
+def test_breaker_sizes():
+    from backend import single_line
+    assert abs(single_line.ac_current(5000, 1) - 21.74) < 0.01
+    assert single_line.breaker_for(21.74) == 25
+    assert single_line.breaker_for(7.2) == 10

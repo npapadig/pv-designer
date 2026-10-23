@@ -12,7 +12,7 @@ from fastapi.responses import Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from . import electrical, energy, finance, plan_drawing, report, settings, shading, simulation, storage
+from . import electrical, energy, finance, plan_drawing, report, single_line, settings, shading, simulation, storage
 from . import lifecycle
 from .equipment import INVERTERS, Inverter
 from .layout import LayoutParams, compute_faces_layout, compute_layout, split_area
@@ -348,6 +348,19 @@ def plan_drawing_from_data(data: dict):
     name = quote(plan_drawing.filename(data, lang))
     return Response(pdf, media_type="application/pdf",
                     headers={"Content-Disposition": f"attachment; filename=plan.pdf; filename*=UTF-8''{name}"})
+
+
+@app.post("/api/single-line")
+def single_line_from_data(data: dict):
+    """Single-line electrical diagram PDF (needs the electrical design of the project)."""
+    lang = data.get("lang") or "el"
+    try:
+        pdf = single_line.build_single_line_pdf(data, lang)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    name = quote(single_line.filename(data, lang))
+    return Response(pdf, media_type="application/pdf",
+                    headers={"Content-Disposition": f"attachment; filename=single-line.pdf; filename*=UTF-8''{name}"})
 
 
 @app.get("/api/projects/{project_id}/report")
