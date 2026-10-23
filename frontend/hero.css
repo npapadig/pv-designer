@@ -1,0 +1,13 @@
+/* Start-screen diorama (hero.js): a tiny living scene in the bottom-right corner. Decorative only. */
+#heroScene {
+  position: fixed; right: 28px; bottom: 28px; z-index: 0; width: 360px; height: 220px;
+  border-radius: 26px; border: 1px solid var(--line-strong); box-shadow: var(--shadow);
+  pointer-events: none; opacity: 0; transform: translateY(14px) scale(0.97);
+  transition: opacity 0.9s ease 0.3s, transform 0.9s cubic-bezier(0.2, 0.8, 0.2, 1) 0.3s;
+}
+#heroScene.on { opacity: 0.96; transform: none; }
+/* The content sits above the scene, so cards and buttons are never covered. */
+#home .home-wrap { position: relative; z-index: 1; }
+/* Only where the corner is really free. */
+@media (max-width: 1099px), (max-height: 620px) { #heroScene { display: none; } }
+@media (prefers-reduced-motion: reduce) { #heroScene { transition: none; } }
