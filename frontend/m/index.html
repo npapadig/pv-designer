@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="el">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>PV Designer</title>
+  <meta name="theme-color" content="#0d111e">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icon.svg">
+  <link rel="stylesheet" href="../vendor/leaflet/leaflet.css">
+  <link rel="stylesheet" href="m.css">
+  <script src="../lang/en.js"></script>
+  <script src="../i18n.js"></script>
+  <script>
+    try { const t = localStorage.getItem("pv-designer.theme"); if (t) document.documentElement.dataset.theme = t; } catch {}
+  </script>
+</head>
+<body>
+  <header class="bar" id="bar" hidden>
+    <button id="back" class="icon" type="button" aria-label="Πίσω" hidden>‹</button>
+    <h1 id="title">PV Designer</h1>
+    <button id="lang" class="icon txt" type="button" translate="no" aria-label="Γλώσσα / Language">EN</button>
+    <button id="theme" class="icon" type="button" aria-label="Σκούρο / φωτεινό θέμα">◐</button>
+  </header>
+  <div id="offline" class="banner" hidden>Δεν υπάρχει σύνδεση με τον υπολογιστή. Δοκίμασε ξανά όταν είσαι στο ίδιο Wi-Fi.</div>
+  <main id="view"></main>
+  <script src="../vendor/leaflet/leaflet.js"></script>
+  <script src="mock.js"></script>
+  <script src="m.js"></script>
+  <script src="screens.js"></script>
+  <script>
+    if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
+  </script>
+</body>
+</html>
