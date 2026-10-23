@@ -26,8 +26,11 @@ from typing import Literal
 
 from fastapi import APIRouter, Query
 
+from . import settings
+
 HOST, PORT = "127.0.0.1", int(os.environ.get("PV_DESIGNER_PORT") or 8000)  # another port only for tests
 URL = f"http://{HOST}:{PORT}/"
+listening_host = HOST  # what the running server really listens on (set in main())
 BYE_GRACE_S = 10
 IDLE_LIMIT_S = 180
 SLEEP_GAP_S = 30  # a longer pause between two checks means the computer slept
@@ -98,6 +101,12 @@ def watch(stop, every: float = 1.0):
 
 
 # ---------- Launcher ----------
+def listen_host() -> str:
+    """The whole network only when the phone app is on (and has a password); otherwise this computer only."""
+    m = settings.load_mobile()
+    return "0.0.0.0" if m["mobile_enabled"] and m["mobile_password_hash"] else HOST
+
+
 def server_answers(timeout: float = 1.0) -> bool:
     try:
         with urllib.request.urlopen(f"{URL}api/health", timeout=timeout) as r:
@@ -130,12 +139,14 @@ def main():
         return
     if sys.stdout is None or sys.stderr is None:  # pythonw: keep the server's messages in a file
         sys.stdout = sys.stderr = open(LOG_FILE, "w", encoding="utf-8", buffering=1)
+    global listening_host
     server = None
     try:
         import uvicorn
 
         from backend.main import app
-        server = uvicorn.Server(uvicorn.Config(app, host=HOST, port=PORT, access_log=False))
+        listening_host = listen_host()
+        server = uvicorn.Server(uvicorn.Config(app, host=listening_host, port=PORT, access_log=False))
         watch(lambda: setattr(server, "should_exit", True))
         threading.Thread(target=open_browser_when_ready, daemon=True).start()
         server.run()

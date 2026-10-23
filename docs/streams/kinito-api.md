@@ -57,7 +57,7 @@ line endings ή άσχετα αρχεία. Ενημέρωνε τον πίνακ�
 
 | Βήμα | Κατάσταση |
 |---|---|
-| 1 | |
-| 2 | |
-| 3 | |
-| 4 | |
+| 1 | ΕΤΟΙΜΟ (auth: κωδικός scrypt, token, lockout· 8 τεστ· σύνολο 335 OK) |
+| 2 | ΕΤΟΙΜΟ (middleware loopback· 15 νέα τεστ στο test_mobile_api.py) |
+| 3 | ΕΤΟΙΜΟ (projects + 5 PDF· 36 τεστ στο test_mobile_api.py) |
+| 4 | ΕΤΟΙΜΟ (setup/info loopback, ακρόαση 0.0.0.0 υπό συνθήκη, README, μηνύματα en.js· δοκιμή live στη θύρα 8065 OK: από LAN IP 403 εκτός /m, /api/m, /api/version) |
