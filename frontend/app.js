@@ -734,6 +734,33 @@ async function downloadTechDesc() {
   setTimeout(() => URL.revokeObjectURL(url), 60000);
   toast("Η τεχνική περιγραφή κατέβηκε στα «Λήψεις» (Downloads).", 5000);
 }
+// DEDDIE «Παράρτημα Ι» (equipment data), pre-filled from the electrical design.
+async function downloadAppendixI() {
+  if (!state.electrical) {
+    toast("Κάνε πρώτα τον ηλεκτρολογικό σχεδιασμό στο βήμα «Inverter».", 6000);
+    return;
+  }
+  toast("Ετοιμάζεται το Παράρτημα Ι…", 15000);
+  const r = await fetch("/api/appendix-i", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(collectProject()),
+  });
+  if (!r.ok) {
+    const data = await r.json().catch(() => ({}));
+    throw new Error(typeof data.detail === "string" ? data.detail : "Το Παράρτημα Ι δεν δημιουργήθηκε.");
+  }
+  const url = URL.createObjectURL(await r.blob());
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `Παράρτημα Ι ΦΒ - ${$("projectName").value || "έργο"}.pdf`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
+  toast("Το Παράρτημα Ι κατέβηκε στα «Λήψεις» (Downloads).", 5000);
+}
+$("btnAppendixI").onclick = () => withBusy($("btnAppendixI"), downloadAppendixI);
 $("btnTechDesc").onclick = () => withBusy($("btnTechDesc"), downloadTechDesc);
 $("btnSingleLine").onclick = () => withBusy($("btnSingleLine"), downloadSingleLine);
 $("btnPlanPdf").onclick = () => withBusy($("btnPlanPdf"), downloadPlanPdf);

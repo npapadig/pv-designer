@@ -81,3 +81,12 @@ def test_tech_description_pdf_and_endpoint():
     r = client.post("/api/tech-description", json={**p, "lang": "en"})
     assert r.status_code == 200 and "technical" in r.headers["content-disposition"].lower()
     assert client.post("/api/tech-description", json=make_project()).status_code == 400
+
+
+def test_appendix_i_pdf_and_endpoint():
+    from backend import appendix_i
+    p = make_project(electrical={"design": _design()})
+    assert appendix_i.build_appendix_i_pdf(p).startswith(b"%PDF")
+    r = client.post("/api/appendix-i", json=p)
+    assert r.status_code == 200 and r.headers["content-type"] == "application/pdf"
+    assert client.post("/api/appendix-i", json=make_project()).status_code == 400

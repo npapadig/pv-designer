@@ -12,7 +12,7 @@ from fastapi.responses import Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from . import electrical, energy, finance, plan_drawing, report, single_line, tech_description, settings, shading, simulation, storage
+from . import electrical, energy, finance, plan_drawing, report, single_line, tech_description, appendix_i, settings, shading, simulation, storage
 from . import lifecycle
 from .equipment import INVERTERS, Inverter
 from .layout import LayoutParams, compute_faces_layout, compute_layout, split_area
@@ -374,6 +374,18 @@ def tech_description_from_data(data: dict):
     name = quote(tech_description.filename(data, lang))
     return Response(pdf, media_type="application/pdf",
                     headers={"Content-Disposition": f"attachment; filename=tech.pdf; filename*=UTF-8''{name}"})
+
+
+@app.post("/api/appendix-i")
+def appendix_i_from_data(data: dict):
+    """DEDDIE «Παράρτημα Ι» pre-filled with what the project knows (Greek only, needs the electrical design)."""
+    try:
+        pdf = appendix_i.build_appendix_i_pdf(data)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    name = quote(appendix_i.filename(data))
+    return Response(pdf, media_type="application/pdf",
+                    headers={"Content-Disposition": f"attachment; filename=appendix-i.pdf; filename*=UTF-8''{name}"})
 
 
 @app.get("/api/projects/{project_id}/report")
