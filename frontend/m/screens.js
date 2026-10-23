@@ -110,4 +110,50 @@
     else map.setView([38, 23.7], 6);
     setTimeout(() => map && map.invalidateSize(), 0);
   }
+  // ---------------------------------------------------------------- documents (PDF)
+  S.docs = async ([id], c) => {
+    const { api, h, setView, setBar, spinner, errorBox } = c;
+    const back = "#/project/" + encodeURIComponent(id);
+    setBar({ title: "Έγγραφα", back });
+    setView(spinner());
+    let docs;
+    try { docs = await api("/projects/" + encodeURIComponent(id) + "/documents"); }
+    catch (e) { if (e.status !== 401) setView(errorBox(e.message, () => S.docs([id], c))); return; }
+
+    let pdfLang = window.I18N && I18N.lang === "en" ? "en" : "el";
+    const langBtns = [["el", "Ελληνικά"], ["en", "English"]].map(([code, label]) => {
+      const b = h("button", { type: "button", "aria-pressed": String(code === pdfLang), translate: "no", onclick: () => {
+        pdfLang = code; langBtns.forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+      } }, label);
+      return b;
+    });
+    const rows = docs.map((d) => {
+      const msg = h("p", { class: "err", role: "alert" });
+      const act = (how) => async (ev) => {
+        const btn = ev.currentTarget;
+        msg.textContent = ""; btn.disabled = true;
+        // Open the tab now (a click is needed for the phone to allow it), fill it when the PDF is ready.
+        const w = how === "open" ? window.open("", "_blank") : null;
+        try {
+          const res = await api("/projects/" + encodeURIComponent(id) + "/documents/" + encodeURIComponent(d.kind) + "?lang=" + pdfLang, { raw: true });
+          const url = URL.createObjectURL(new Blob([await res.blob()], { type: "application/pdf" }));
+          if (w) w.location = url;
+          else {
+            const a = h("a", { href: url, download: (d.title || d.kind) + ".pdf" });
+            document.body.append(a); a.click(); a.remove();
+          }
+          setTimeout(() => URL.revokeObjectURL(url), 120000);
+        } catch (e) { if (w) w.close(); msg.textContent = e.message; }
+        btn.disabled = false;
+      };
+      return h("div", { class: "card doc" }, h("h3", {}, d.title || d.kind),
+        d.available ? null : h("p", { class: "muted" }, d.reason || "Δεν είναι διαθέσιμο ακόμα."),
+        h("div", { class: "row" },
+          h("button", { class: "big", type: "button", disabled: !d.available, onclick: act("open") }, "Άνοιγμα"),
+          h("button", { class: "big ghost", type: "button", disabled: !d.available, onclick: act("save") }, "Λήψη")),
+        msg);
+    });
+    setView(h("div", { class: "pad" }, h("p", { class: "muted" }, "Γλώσσα του PDF"), h("div", { class: "seg" }, langBtns)),
+      h("div", { class: "cards" }, rows.length ? rows : [h("p", { class: "muted" }, "Δεν υπάρχουν έγγραφα.")]));
+  };
 })();

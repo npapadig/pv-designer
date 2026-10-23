@@ -1253,7 +1253,20 @@ window.I18N_EN =
 "Έγγραφα PDF": "PDF documents",
 "Ο χάρτης δεν φορτώθηκε.": "The map did not load.",
 "Δορυφορικός": "Satellite",
-"Χάρτης (OSM)": "Map (OSM)"
+"Χάρτης (OSM)": "Map (OSM)",
+// ---------------------------------------------------------------- mobile app: documents
+"Έγγραφα": "Documents",
+"Γλώσσα του PDF": "PDF language",
+"Ελληνικά": "Greek",
+"Λήψη": "Download",
+"Δεν είναι διαθέσιμο ακόμα.": "Not available yet.",
+"Δεν υπάρχουν έγγραφα.": "There are no documents.",
+"Κάτι πήγε στραβά. Δοκίμασε ξανά.": "Something went wrong. Try again.",
+"Λείπει ο σχεδιασμός inverter.": "The inverter design is missing.",
+"Αναφορά": "Report",
+"Μονογραμμικό": "Single-line diagram",
+"Τεχνική περιγραφή": "Technical description",
+"Παράρτημα Ι": "Appendix I"
 },
 "rules": [
 // mobile app: chip on a project card

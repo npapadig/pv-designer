@@ -123,7 +123,9 @@
     if (!store.get(TOKEN_KEY)) { loginScreen(); return; }
     const parts = location.hash.replace(/^#\/?/, "").split("/").filter(Boolean);
     const fn = screens[parts[0] || "projects"];
-    if (fn) fn(parts.slice(1), { api, h, setView, setBar, spinner, errorBox, tr, logout, store });
+    const ctx = { api, h, setView, setBar, spinner, errorBox, tr, logout, store };
+    if (fn) Promise.resolve().then(() => fn(parts.slice(1), ctx))
+      .catch(() => { setView(errorBox("Κάτι πήγε στραβά. Δοκίμασε ξανά.", route)); });
     else { location.hash = "#/"; }
   }
   addEventListener("hashchange", route);
