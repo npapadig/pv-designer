@@ -10,6 +10,7 @@ from __future__ import annotations
 import hashlib
 import hmac
 import secrets
+import socket
 import threading
 import time
 from urllib.parse import quote
@@ -18,7 +19,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, Field
 
-from . import appendix_i, plan_drawing, report, settings, single_line, storage, tech_description
+from . import appendix_i, lifecycle, plan_drawing, report, settings, single_line, storage, tech_description
 
 TOKEN_DAYS = 30
 MAX_FAILURES = 5
@@ -227,6 +228,65 @@ def document(project_id: str, kind: str, lang: str = "el", _: str = Depends(requ
         raise HTTPException(400, str(e))
     disposition = f"inline; filename={kind}.pdf; filename*=UTF-8''" + quote(name)
     return Response(pdf, media_type="application/pdf", headers={"Content-Disposition": disposition})
+
+
+# ---------- Setup from the computer (loopback only) ----------
+def loopback_only(request: Request) -> None:
+    host = request.client.host if request.client else ""
+    if host not in LOOPBACK:
+        raise HTTPException(403, "Η ρύθμιση γίνεται μόνο από τον υπολογιστή.")
+
+
+def lan_addresses() -> list[str]:
+    """Addresses of this computer on the local network (the UDP "connect" sends nothing)."""
+    found: list[str] = []
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+            s.connect(("10.255.255.255", 1))
+            found.append(s.getsockname()[0])
+    except OSError:
+        pass
+    try:
+        found += socket.gethostbyname_ex(socket.gethostname())[2]
+    except OSError:
+        pass
+    return list(dict.fromkeys(a for a in found if not a.startswith(("127.", "169.254.", "0."))))
+
+
+def listening_on_network() -> bool:
+    return lifecycle.listening_host != lifecycle.HOST
+
+
+@router.get("/info", dependencies=[Depends(loopback_only)])
+def info():
+    m = settings.load_mobile()
+    on = enabled()
+    return {"enabled": on, "password_set": bool(m["mobile_password_hash"]),
+            "urls": [f"http://{a}:{lifecycle.PORT}/m/" for a in lan_addresses()] if on else [],
+            "restart_needed": on != listening_on_network()}
+
+
+class SetupRequest(BaseModel):
+    enabled: bool
+    password: str | None = Field(None, max_length=200)
+
+
+@router.post("/setup", dependencies=[Depends(loopback_only)])
+def setup(req: SetupRequest):
+    changes: dict = {"mobile_enabled": req.enabled}
+    if req.password is not None:
+        if len(req.password) < MIN_PASSWORD:
+            raise HTTPException(400, f"Ο κωδικός πρέπει να έχει τουλάχιστον {MIN_PASSWORD} χαρακτήρες.")
+        # A new password logs every phone out.
+        changes.update(mobile_password_hash=hash_password(req.password), mobile_tokens={})
+    elif req.enabled and not settings.load_mobile()["mobile_password_hash"]:
+        raise HTTPException(400, "Διάλεξε πρώτα έναν κωδικό για το κινητό.")
+    if not req.enabled:
+        changes["mobile_tokens"] = {}
+    settings.save_mobile(changes)
+    with _lock:
+        _failures.clear()
+    return info()
 
 
 # ---------- Who may reach what ----------

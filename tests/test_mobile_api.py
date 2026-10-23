@@ -203,3 +203,59 @@ def test_phone_cannot_change_or_delete_anything(phone):
         r = getattr(phone, method)(f"/api/m/projects/{phone.full}")
         assert r.status_code in (404, 405)
     assert storage.get_project(phone.full)["name"] == "Σπίτι Αθήνα"
+
+
+# ---------- Step 4: setup/info from the computer, listening address ----------
+from backend import lifecycle  # noqa: E402
+
+
+def test_setup_and_info_are_for_the_computer_only(phone):
+    assert phone.get("/api/m/info").status_code == 403
+    assert phone.post("/api/m/setup", json={"enabled": False}).status_code == 403
+    assert settings.load_mobile()["mobile_enabled"] is True  # untouched
+
+
+def test_setup_needs_a_password_before_enabling():
+    assert client.post("/api/m/setup", json={"enabled": True}).status_code == 400
+    assert client.post("/api/m/setup", json={"enabled": True, "password": "123"}).status_code == 400
+    assert client.get("/api/m/info").json() == {"enabled": False, "password_set": False, "urls": [],
+                                                "restart_needed": False}
+
+
+def test_setup_enables_and_asks_for_restart(monkeypatch):
+    monkeypatch.setattr(lifecycle, "listening_host", lifecycle.HOST)
+    monkeypatch.setattr(mobile, "lan_addresses", lambda: ["192.168.1.20"])
+    body = client.post("/api/m/setup", json={"enabled": True, "password": "kodikos1"}).json()
+    assert body["enabled"] and body["password_set"] and body["restart_needed"] is True
+    assert body["urls"] == [f"http://192.168.1.20:{lifecycle.PORT}/m/"]
+    assert login().status_code == 200
+    monkeypatch.setattr(lifecycle, "listening_host", "0.0.0.0")  # after the restart
+    assert client.get("/api/m/info").json()["restart_needed"] is False
+    # turning it off logs the phones out and asks for a restart again
+    token = login().json()["token"]
+    off = client.post("/api/m/setup", json={"enabled": False}).json()
+    assert off["enabled"] is False and off["restart_needed"] is True and off["urls"] == []
+    assert not mobile.token_valid(token) and login().status_code == 403
+
+
+def test_new_password_logs_phones_out():
+    client.post("/api/m/setup", json={"enabled": True, "password": "kodikos1"})
+    token = login().json()["token"]
+    client.post("/api/m/setup", json={"enabled": True, "password": "neos-kodikos"})
+    assert not mobile.token_valid(token)
+    assert login().status_code == 401 and login("neos-kodikos").status_code == 200
+    assert "neos-kodikos" not in settings.SETTINGS_FILE.read_text(encoding="utf-8")
+
+
+def test_server_listens_on_the_network_only_when_mobile_is_on():
+    assert lifecycle.listen_host() == "127.0.0.1"
+    settings.save_mobile({"mobile_enabled": True})  # no password yet: still closed
+    assert lifecycle.listen_host() == "127.0.0.1"
+    enable()
+    assert lifecycle.listen_host() == "0.0.0.0"
+    settings.save_mobile({"mobile_enabled": False})
+    assert lifecycle.listen_host() == "127.0.0.1"
+
+
+def test_lan_addresses_are_not_loopback():
+    assert all(not a.startswith("127.") for a in mobile.lan_addresses())
