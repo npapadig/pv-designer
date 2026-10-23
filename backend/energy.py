@@ -7,7 +7,15 @@ cloudiness factor. The fallback is rough and is labelled as such.
 """
 from __future__ import annotations
 
+import json
+import time
+from pathlib import Path
+
 import httpx
+
+CACHE_DIR = Path(__file__).resolve().parent.parent / "data" / "cache"
+PVGIS_TIMEOUT = 5.0  # short, so a blocked PVGIS does not freeze the app
+RETRY_BACKOFF = 0.5
 
 PVGIS_URLS = [
     "https://re.jrc.ec.europa.eu/api/v5_3/PVcalc",
@@ -19,7 +27,20 @@ PVGIS_URLS = [
 OFFLINE_CLOUD_FACTOR = 0.75
 
 
-def pvgis_estimate(lat, lon, kwp, tilt, azimuth, loss_pct, timeout=30.0) -> dict:
+def _cache_file(lat, lon, kwp, tilt, azimuth, loss_pct) -> Path:
+    name = f"pvcalc_{lat:.3f}_{lon:.3f}_{kwp:g}_{tilt:g}_{azimuth:g}_{loss_pct:g}.json"
+    return CACHE_DIR / name
+
+
+def pvgis_estimate(lat, lon, kwp, tilt, azimuth, loss_pct, timeout=PVGIS_TIMEOUT) -> dict:
+    cache = _cache_file(lat, lon, kwp, tilt, azimuth, loss_pct)
+    try:
+        if cache.exists():
+            res = json.loads(cache.read_text(encoding="utf-8"))
+            res["notice"] = "Χρησιμοποιήθηκαν αποθηκευμένα αποτελέσματα PVGIS για αυτή την τοποθεσία (χωρίς internet)."
+            return res
+    except Exception:
+        pass  # unreadable cache file: ask PVGIS instead
     params = {
         "lat": lat,
         "lon": lon,
@@ -31,11 +52,19 @@ def pvgis_estimate(lat, lon, kwp, tilt, azimuth, loss_pct, timeout=30.0) -> dict
         "outputformat": "json",
     }
     last_err = None
-    for url in PVGIS_URLS:
+    for i, url in enumerate(PVGIS_URLS):  # second URL = the single retry
+        if i:
+            time.sleep(RETRY_BACKOFF)
         try:
             r = httpx.get(url, params=params, timeout=timeout)
             r.raise_for_status()
-            return parse_pvgis(r.json(), kwp, loss_pct)
+            res = parse_pvgis(r.json(), kwp, loss_pct)
+            try:
+                CACHE_DIR.mkdir(parents=True, exist_ok=True)
+                cache.write_text(json.dumps(res), encoding="utf-8")
+            except OSError:
+                pass  # cache is optional
+            return res
         except Exception as e:  # try the next API version
             last_err = e
     raise RuntimeError(f"PVGIS δεν απάντησε: {last_err}")

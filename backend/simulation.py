@@ -37,7 +37,7 @@ def _cache_path(lat: float, lon: float) -> Path:
     return WEATHER_DIR / f"tmy_{lat:.2f}_{lon:.2f}.json"
 
 
-def fetch_pvgis_tmy(lat: float, lon: float, timeout: float = 60.0) -> dict:
+def fetch_pvgis_tmy(lat: float, lon: float, timeout: float = 5.0) -> dict:
     last_err = None
     for url in PVGIS_TMY_URLS:
         try:
@@ -84,14 +84,17 @@ def clearsky_weather(lat: float, lon: float) -> pd.DataFrame:
 def get_weather(lat: float, lon: float) -> tuple[pd.DataFrame, str, str | None]:
     """(hourly weather, source label, warning or None)."""
     cache = _cache_path(lat, lon)
+    if cache.exists():  # saved copy first: no internet needed, nothing to wait for
+        try:
+            return parse_pvgis_tmy(json.loads(cache.read_text(encoding="utf-8"))), "PVGIS TMY", None
+        except Exception:
+            pass  # damaged copy: fetch again
     try:
         raw = fetch_pvgis_tmy(lat, lon)
         WEATHER_DIR.mkdir(parents=True, exist_ok=True)
         cache.write_text(json.dumps(raw), encoding="utf-8")
         return parse_pvgis_tmy(raw), "PVGIS TMY", None
     except Exception as e:
-        if cache.exists():
-            return parse_pvgis_tmy(json.loads(cache.read_text(encoding="utf-8"))), "PVGIS TMY", None
         return clearsky_weather(lat, lon), "offline", (
             "Δεν ήταν δυνατή η σύνδεση με το PVGIS, οπότε η προσομοίωση έγινε με πρόχειρο καιρό "
             f"χωρίς internet. Το αποτέλεσμα είναι λιγότερο ακριβές. ({e})"
