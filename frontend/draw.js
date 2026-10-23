@@ -1,6 +1,29 @@
 // Drawing aids on the map: the length of every side of the drawn areas and obstacles, live while
 // drawing and afterwards. Loaded after app.js and uses its map, areas, keepouts, drawControl and fmt.
 (() => {
+  // Greek texts of the Leaflet.draw parts app.js and faces.js do not set (the app does not show them now, but
+  // none may ever come out in English). Each Greek text has its English twin in lang/en.js.
+  const D = L.drawLocal;
+  D.draw.toolbar.buttons.polyline = "Σχεδίαση γραμμής";
+  D.draw.toolbar.buttons.circle = "Σχεδίαση κύκλου";
+  D.draw.toolbar.buttons.marker = "Τοποθέτηση σημείου";
+  D.draw.toolbar.buttons.circlemarker = "Τοποθέτηση κυκλικού σημείου";
+  D.draw.handlers.circle.tooltip.start = "Πάτα και σύρε για να σχεδιάσεις κύκλο.";
+  D.draw.handlers.circle.radius = "Ακτίνα";
+  D.draw.handlers.circlemarker.tooltip.start = "Κάνε κλικ στον χάρτη για να βάλεις κυκλικό σημείο.";
+  D.draw.handlers.marker.tooltip.start = "Κάνε κλικ στον χάρτη για να βάλεις σημείο.";
+  D.edit.toolbar.actions.save = { title: "Αποθήκευση αλλαγών", text: "Αποθήκευση" };
+  D.edit.toolbar.actions.cancel = { title: "Ακύρωση της επεξεργασίας, χάνονται όλες οι αλλαγές", text: "Ακύρωση" };
+  D.edit.toolbar.actions.clearAll = { title: "Σβήσιμο όλων των σχημάτων", text: "Σβήσε τα όλα" };
+  D.edit.toolbar.buttons = {
+    edit: "Επεξεργασία σχημάτων", editDisabled: "Δεν υπάρχουν σχήματα για επεξεργασία",
+    remove: "Σβήσιμο σχημάτων", removeDisabled: "Δεν υπάρχουν σχήματα για σβήσιμο",
+  };
+  D.edit.handlers.edit.tooltip = { text: "Σύρε τις λαβές ή τους δείκτες για να αλλάξεις το σχήμα.", subtext: "Πάτα «Ακύρωση» για να αναιρέσεις." };
+  D.edit.handlers.remove.tooltip.text = "Κάνε κλικ σε ένα σχήμα για να το σβήσεις.";
+})();
+
+(() => {
   // ---------- Distances ----------
   // Local metres on the WGS84 ellipsoid (meridian and prime-vertical radii at the mean latitude):
   // millimetre-accurate for the short sides of a roof.
