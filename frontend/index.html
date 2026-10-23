@@ -14,6 +14,7 @@
   <link rel="stylesheet" href="options.css?v=__VERSION__">
   <link rel="stylesheet" href="help.css?v=__VERSION__">
   <link rel="stylesheet" href="i18n.css?v=__VERSION__">
+  <link rel="stylesheet" href="mobile-settings.css?v=__VERSION__">
   <script src="lang/en.js?v=__VERSION__"></script>
   <script src="i18n.js?v=__VERSION__"></script>
   <script>
@@ -54,7 +55,8 @@
         <div class="logo"><svg class="ic"><use href="#i-sun"/></svg></div>
         <div class="home-title"><h1>PV Designer <small id="homeVersion" class="version"></small></h1>
           <p class="muted">Σχεδιασμός φωτοβολταϊκών συστημάτων</p></div>
-        <button id="homeTheme" class="icon-btn ghost" type="button" title="Σκούρο / φωτεινό θέμα" aria-label="Σκούρο / φωτεινό θέμα"><svg class="ic"><use href="#i-moon"/></svg><svg class="ic"><use href="#i-sun"/></svg></button>
+        <button id="homeMobile" class="icon-btn ghost" type="button" title="Κινητό" aria-label="Κινητό"><svg class="ic" viewBox="0 0 24 24"><rect width="14" height="20" x="5" y="2" rx="2" ry="2"/><path d="M12 18h.01"/></svg></button>
+        <button id="homeTheme"class="icon-btn ghost" type="button" title="Σκούρο / φωτεινό θέμα" aria-label="Σκούρο / φωτεινό θέμα"><svg class="ic"><use href="#i-moon"/></svg><svg class="ic"><use href="#i-sun"/></svg></button>
       </header>
       <div id="homeStart" class="home-cards">
         <button id="homeNew" class="home-card new" type="button"><span class="home-ic"><svg class="ic"><use href="#i-plus"/></svg></span>
@@ -477,6 +479,8 @@
   <script src="search.js?v=__VERSION__"></script>
   <script src="plan.js?v=__VERSION__"></script>
   <script src="home.js?v=__VERSION__"></script>
+  <script src="vendor/qr/qr.js"></script>
+  <script src="mobile-settings.js?v=__VERSION__"></script>
   <script src="helptexts.js?v=__VERSION__"></script>
   <script src="help.js?v=__VERSION__"></script>
 </body>

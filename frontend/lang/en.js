@@ -1266,7 +1266,22 @@ window.I18N_EN =
 "Αναφορά": "Report",
 "Μονογραμμικό": "Single-line diagram",
 "Τεχνική περιγραφή": "Technical description",
-"Παράρτημα Ι": "Appendix I"
+"Παράρτημα Ι": "Appendix I",
+// ---------------------------------------------------------------- mobile app: desktop panel
+"Κινητό": "Mobile",
+"Η λειτουργία «Κινητό» δεν είναι διαθέσιμη σε αυτή την έκδοση.": "The “Mobile” feature is not available in this version.",
+"Δες τα έργα σου στο κινητό (μόνο ανάγνωση): χάρτης και έγγραφα PDF. Το κινητό πρέπει να είναι στο ίδιο Wi-Fi με τον υπολογιστή.": "See your projects on your phone (read only): map and PDF documents. The phone must be on the same Wi-Fi as the computer.",
+"Κλείσε και άνοιξε ξανά την εφαρμογή για να ισχύσει η αλλαγή.": "Close and reopen the app for the change to take effect.",
+"Ενεργοποίηση για κινητό": "Turn on for mobile",
+"Νέος κωδικός (κενό = ο ίδιος)": "New password (empty = keep the same)",
+"Κωδικός για το κινητό": "Password for the phone",
+"Έχει οριστεί κωδικός.": "A password is set.",
+"Δεν έχει οριστεί κωδικός ακόμα.": "No password is set yet.",
+"Βάλε πρώτα έναν κωδικό.": "Enter a password first.",
+"Αποθηκεύτηκε.": "Saved.",
+"Σκάναρε με την κάμερα του κινητού ή γράψε τη διεύθυνση:": "Scan with the phone camera or type the address:",
+"Μετά πάτα «Προσθήκη στην αρχική οθόνη» στον browser του κινητού.": "Then tap “Add to home screen” in the phone browser.",
+"Δεν βρέθηκε διεύθυνση δικτύου. Έλεγξε ότι ο υπολογιστής είναι συνδεδεμένος στο Wi-Fi.": "No network address found. Check that the computer is connected to Wi-Fi."
 },
 "rules": [
 // mobile app: chip on a project card
@@ -1379,6 +1394,7 @@ window.I18N_EN =
 [" m Δ(?=,|$)", " m W"],
 ["\\((\\d+) τμήματα\\)", "($1 segments)"],
 ["Χάρακας · ", "Ruler · "],
+["Κάτι πήγε στραβά \\(","Something went wrong ("],
 // last, after the longer pieces that contain it
 [" και ", " and "]
 ]
