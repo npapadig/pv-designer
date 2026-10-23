@@ -13,6 +13,7 @@ from datetime import date
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A3, A4, landscape
 from reportlab.lib.units import mm
+from pyproj import Transformer
 from reportlab.pdfgen import canvas as rl_canvas
 
 from . import i18n, report
@@ -49,6 +50,14 @@ def _nice_length(m: float) -> float:
         if f * p <= m:
             return f * p
     return p
+
+
+def egsa87(lat: float, lon: float) -> tuple[float, float]:
+    """(x, y) in metres in the Greek grid ΕΓΣΑ87 (EPSG:2100), as used by Greek topographic diagrams."""
+    return _EGSA.transform(lon, lat)
+
+
+_EGSA = Transformer.from_crs("EPSG:4326", "EPSG:2100", always_xy=True)
 
 
 def _poly_path(c: rl_canvas.Canvas, pts: list[tuple[float, float]]):
@@ -236,6 +245,17 @@ def _build(project: dict, paper: str) -> bytes:
             c.drawCentredString(0, -2.5, f"{num(length, 2)} m")
             c.restoreState()
 
+    # vertex numbers K1, K2, ... (match the coordinates table on page 2)
+    c.setFont("DejaVu-Bold", 7)
+    c.setFillColor(colors.HexColor("#b91c1c"))
+    n_vertex = 0
+    for poly in a_m:
+        for p in poly:
+            n_vertex += 1
+            x, y = pt(p)
+            c.circle(x, y, 1.1, stroke=0, fill=1)
+            c.drawString(x + 2, y + 2, f"K{n_vertex}")
+    c.setFillColor(INK)
     _north_arrow(c, margin + 14 * mm, page_h - margin - 24 * mm, 12 * mm)
     _scale_bar(c, margin + 8 * mm, margin + 9 * mm, scale)
     # legend
@@ -275,8 +295,48 @@ def _build(project: dict, paper: str) -> bytes:
     rows.append((tr("Επιφάνεια πάνελ"), f"{num(layout.get('module_area_m2'), 1)} m²"))
     _title_block(c, page_w - margin - BLOCK_W, margin, BLOCK_W, page_h - 2 * margin, rows, project, scale, info)
     c.showPage()
+    if areas:
+        _coords_page(c, areas, project, page_w, page_h, margin)
     c.save()
     return buf.getvalue()
+
+
+def _coords_page(c, areas: list, project: dict, page_w: float, page_h: float, margin: float):
+    """Page 2: coordinates (ΕΓΣΑ87 and WGS84) of the corners of the installation area."""
+    tr, num = report.tr, report.num
+    c.setStrokeColor(INK)
+    c.setLineWidth(1.2)
+    c.rect(margin, margin, page_w - 2 * margin, page_h - 2 * margin)
+    c.setFillColor(INK)
+    c.setFont("DejaVu-Bold", 13)
+    y = page_h - margin - 14 * mm
+    c.drawString(margin + 10 * mm, y, tr("Συντεταγμένες κορυφών περιοχής εγκατάστασης"))
+    c.setFont("DejaVu", 8)
+    y -= 6 * mm
+    c.drawString(margin + 10 * mm, y, f"{project.get('name') or ''}   ·   {tr('ΕΓΣΑ87 (EPSG:2100) σε μέτρα· WGS84 σε μοίρες')}")
+    cols = [margin + 10 * mm, margin + 30 * mm, margin + 80 * mm, margin + 130 * mm, margin + 180 * mm]
+    y -= 10 * mm
+    c.setFont("DejaVu-Bold", 8)
+    for x, head in zip(cols, ["", "X (ΕΓΣΑ87)", "Y (ΕΓΣΑ87)", tr("Γεωγρ. πλάτος"), tr("Γεωγρ. μήκος")]):
+        c.drawString(x, y, head)
+    c.line(margin + 10 * mm, y - 2, page_w - margin - 10 * mm, y - 2)
+    c.setFont("DejaVu", 8)
+    i = 0
+    for poly in areas:
+        for lat, lon in poly:
+            i += 1
+            y -= 5.5 * mm
+            if y < margin + 12 * mm:
+                break
+            ex, ey = egsa87(lat, lon)
+            for x, text in zip(cols, [f"K{i}", f"{ex:,.2f}".replace(",", " "), f"{ey:,.2f}".replace(",", " "),
+                                      f"{lat:.6f}", f"{lon:.6f}"]):
+                c.drawString(x, y, text)
+    c.setFont("DejaVu", 7)
+    c.setFillColor(colors.HexColor("#4b5563"))
+    c.drawString(margin + 10 * mm, margin + 7 * mm, tr("Οι συντεταγμένες προκύπτουν από το σχέδιο στο χάρτη (ενδεικτικές, ακρίβεια εικόνας χάρτη)· "
+                                                      "δεν αντικαθιστούν το σφραγισμένο τοπογραφικό διάγραμμα."))
+    c.showPage()
 
 
 def filename(project: dict, lang: str = "el") -> str:

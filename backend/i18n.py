@@ -53,6 +53,11 @@ EN: dict[str, str] = {
     "Κλίμακα": "Scale",
     "north|Β": "N",
     "Κάτοψη ΦΒ - {name}.pdf": "PV floor plan - {name}.pdf",
+    "Συντεταγμένες κορυφών περιοχής εγκατάστασης": "Corner coordinates of the installation area",
+    "ΕΓΣΑ87 (EPSG:2100) σε μέτρα· WGS84 σε μοίρες": "Greek grid EGSA87 (EPSG:2100) in metres; WGS84 in degrees",
+    "Γεωγρ. πλάτος": "Latitude",
+    "Γεωγρ. μήκος": "Longitude",
+    "Οι συντεταγμένες προκύπτουν από το σχέδιο στο χάρτη (ενδεικτικές, ακρίβεια εικόνας χάρτη)· δεν αντικαθιστούν το σφραγισμένο τοπογραφικό διάγραμμα.": "The coordinates come from the drawing on the map (indicative, limited by the map image accuracy); they do not replace the sealed topographic diagram.",
     # compass
     "Βόρειος": "North", "Βορειοανατολικός": "Northeast", "Ανατολικός": "East", "Νοτιοανατολικός": "Southeast",
     "Νότιος": "South", "Νοτιοδυτικός": "Southwest", "Δυτικός": "West", "Βορειοδυτικός": "Northwest",

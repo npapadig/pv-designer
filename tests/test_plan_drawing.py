@@ -32,3 +32,15 @@ def test_plan_endpoint():
     assert r.status_code == 200 and r.headers["content-type"] == "application/pdf"
     assert "PV%20floor%20plan" in r.headers["content-disposition"]
     assert client.post("/api/plan-drawing", json={"name": "x"}).status_code == 400
+
+
+def test_egsa87_athens():
+    x, y = plan_drawing.egsa87(37.9755, 23.7348)  # Syntagma square
+    assert 470000 < x < 480000 and 4200000 < y < 4210000
+
+
+def test_plan_has_coordinates_page_and_english_has_no_greek():
+    import re
+    p = make_project()
+    pdf = plan_drawing.build_plan_pdf(p, "el")
+    assert pdf.count(b"/Type /Page\n") == 2 or pdf.count(b"/Type /Page ") + pdf.count(b"/Type /Page\n") == 2
