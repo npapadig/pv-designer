@@ -71,3 +71,13 @@ def test_breaker_sizes():
     assert abs(single_line.ac_current(5000, 1) - 21.74) < 0.01
     assert single_line.breaker_for(21.74) == 25
     assert single_line.breaker_for(7.2) == 10
+
+
+def test_tech_description_pdf_and_endpoint():
+    from backend import tech_description
+    p = make_project(electrical={"design": _design(), "inputs": {"modVoc": "49", "modIsc": "10", "modVmp": "41", "modImp": "9.8"}})
+    for lang in ("el", "en"):
+        assert tech_description.build_tech_description_pdf(p, lang).startswith(b"%PDF")
+    r = client.post("/api/tech-description", json={**p, "lang": "en"})
+    assert r.status_code == 200 and "technical" in r.headers["content-disposition"].lower()
+    assert client.post("/api/tech-description", json=make_project()).status_code == 400

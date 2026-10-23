@@ -708,6 +708,33 @@ async function downloadSingleLine() {
   setTimeout(() => URL.revokeObjectURL(url), 60000);
   toast("Το μονογραμμικό κατέβηκε στα «Λήψεις» (Downloads).", 5000);
 }
+// Technical description of the electrical installation (needs the electrical design).
+async function downloadTechDesc() {
+  if (!state.electrical) {
+    toast("Κάνε πρώτα τον ηλεκτρολογικό σχεδιασμό στο βήμα «Inverter».", 6000);
+    return;
+  }
+  toast("Ετοιμάζεται η τεχνική περιγραφή…", 15000);
+  const r = await fetch("/api/tech-description", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ...collectProject(), lang: window.I18N?.lang || "el" }),
+  });
+  if (!r.ok) {
+    const data = await r.json().catch(() => ({}));
+    throw new Error(typeof data.detail === "string" ? data.detail : "Η τεχνική περιγραφή δεν δημιουργήθηκε.");
+  }
+  const url = URL.createObjectURL(await r.blob());
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `Τεχνική περιγραφή ΦΒ - ${$("projectName").value || "έργο"}.pdf`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
+  toast("Η τεχνική περιγραφή κατέβηκε στα «Λήψεις» (Downloads).", 5000);
+}
+$("btnTechDesc").onclick = () => withBusy($("btnTechDesc"), downloadTechDesc);
 $("btnSingleLine").onclick = () => withBusy($("btnSingleLine"), downloadSingleLine);
 $("btnPlanPdf").onclick = () => withBusy($("btnPlanPdf"), downloadPlanPdf);
 $("btnReport").onclick = () => withBusy($("btnReport"), downloadReport);
