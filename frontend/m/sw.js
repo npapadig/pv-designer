@@ -1,7 +1,7 @@
 // Service worker of the mobile app: keeps the app shell so it opens fast and offline.
 // Data (/api/m/*) is never cached: it is private and must be fresh.
 const CACHE = "pv-m-shell-1";
-const SHELL = ["./", "m.css", "m.js", "mock.js", "manifest.webmanifest", "icon.svg", "../i18n.js", "../lang/en.js",
+const SHELL = ["./", "m.css", "m.js", "screens.js", "mock.js", "manifest.webmanifest", "icon.svg", "../i18n.js", "../lang/en.js",
   "../vendor/leaflet/leaflet.css", "../vendor/leaflet/leaflet.js"];
 
 self.addEventListener("install", (e) => {

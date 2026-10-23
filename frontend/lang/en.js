@@ -1237,9 +1237,27 @@ window.I18N_EN =
 "Όρισε κωδικό για το «Κινητό» στην εφαρμογή του υπολογιστή και ξαναδοκίμασε.": "Set a password for “Mobile” in the computer app and try again.",
 "Κωδικός": "Password",
 "Λάθος κωδικός.": "Wrong password.",
-"Βάλε τον κωδικό που όρισες στον υπολογιστή.": "Enter the password you set on the computer."
+"Βάλε τον κωδικό που όρισες στον υπολογιστή.": "Enter the password you set on the computer.",
+// ---------------------------------------------------------------- mobile app: projects
+"Έργα": "Projects",
+"Αναζήτηση έργου…": "Search projects…",
+"Αναζήτηση έργου": "Search projects",
+"Κανένα έργο δεν ταιριάζει.": "No project matches.",
+"Δεν υπάρχουν ακόμα έργα. Φτιάξε το πρώτο στον υπολογιστή.": "There are no projects yet. Create the first one on the computer.",
+"Ανανέωση": "Refresh",
+"Αποσύνδεση": "Sign out",
+"Ισχύς": "Power",
+"Ετήσια παραγωγή": "Annual production",
+"Διεύθυνση": "Address",
+"Ενημερώθηκε": "Updated",
+"Έγγραφα PDF": "PDF documents",
+"Ο χάρτης δεν φορτώθηκε.": "The map did not load.",
+"Δορυφορικός": "Satellite",
+"Χάρτης (OSM)": "Map (OSM)"
 },
 "rules": [
+// mobile app: chip on a project card
+["^(\\d+) πάνελ$", "$1 panels"],
 // numbers and names inside texts
 ["^Βήμα (\\d+) από (\\d+)$", "Step $1 of $2"],
 ["^Εμπόδιο (\\d+)$", "Obstacle $1"],

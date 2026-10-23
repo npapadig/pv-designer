@@ -50,3 +50,9 @@ button.big[disabled], a.big[aria-disabled=true] { opacity: .45; pointer-events: 
 .searchbar input { margin: 0; }
 .spin { text-align: center; padding: 32px; color: var(--muted); }
 .logout { margin-top: 24px; }
+.facts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 12px 16px; }
+.facts div { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 8px 12px; display: grid; }
+.facts span { font-size: 13px; }
+.facts b { font-size: 16px; overflow-wrap: anywhere; }
+.map { height: 55vh; min-height: 280px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.leaflet-control-layers, .leaflet-bar a { color: #111; }
