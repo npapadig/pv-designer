@@ -384,6 +384,7 @@ window.I18N_EN =
 "kWh/έτος": "kWh/year",
 "PVGIS (ΕΕ)": "PVGIS (EU)",
 "πρόχειρο μοντέλο χωρίς internet": "rough model without internet",
+"Χρησιμοποιήθηκαν αποθηκευμένα αποτελέσματα PVGIS για αυτή την τοποθεσία (χωρίς internet).": "Saved PVGIS results for this location were used (no internet needed).",
 "και": "and",
 // ---------------------------------------------------------------- added in step 3 (home, drawing tools, help)
 "Σε νέο κτίριο": "On a new building",
