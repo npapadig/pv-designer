@@ -5,6 +5,9 @@ market. The user can also enter the values of any real model in the app.
 """
 from __future__ import annotations
 
+import json
+from pathlib import Path
+
 from pydantic import BaseModel, Field
 
 
@@ -47,3 +50,39 @@ INVERTERS: list[Inverter] = [
     _inv("Τριφασικός 50 kW (4 MPPT)", 3, 50, 1100, 200, 1000, 250, 4, 3, 40, 50, 98.4),
     _inv("Τριφασικός 100 kW (10 MPPT)", 3, 100, 1100, 200, 1000, 250, 10, 2, 32, 40, 98.5),
 ]
+
+
+# ---------- Real-product catalog (public manufacturer datasheets) ----------
+# Kept apart from INVERTERS on purpose: the "auto" design only tries the generic models above,
+# so the real products are choices for the user, not silent candidates.
+CATALOG_DIR = Path(__file__).parent / "catalog"
+
+
+class CatalogPanel(BaseModel):
+    name: str
+    power_w: float = Field(..., gt=0, lt=2000)
+    length_m: float = Field(..., gt=0, lt=4)
+    width_m: float = Field(..., gt=0, lt=3)
+    voc: float = Field(..., gt=0, lt=200)
+    isc: float = Field(..., gt=0, lt=50)
+    vmp: float = Field(..., gt=0, lt=200)
+    imp: float = Field(..., gt=0, lt=50)
+    temp_coeff_voc_pct: float = Field(..., ge=-1, le=0)
+    temp_coeff_isc_pct: float = Field(..., ge=0, le=0.2)
+    temp_coeff_pmax_pct: float = Field(..., ge=-1, le=0)
+    source: str = Field(..., min_length=5)
+
+
+class CatalogInverter(Inverter):
+    source: str = Field(..., min_length=5)
+
+
+def _load(name: str, model):
+    with open(CATALOG_DIR / name, encoding="utf-8") as f:
+        return [model(**row) for row in json.load(f)]
+
+
+CATALOG_PANELS: list[CatalogPanel] = _load("panels.json", CatalogPanel)
+CATALOG_INVERTERS: list[CatalogInverter] = _load("inverters.json", CatalogInverter)
+# What the inverter drop-down offers: generic models first, then the real ones.
+PRESET_INVERTERS: list[Inverter] = [*INVERTERS, *CATALOG_INVERTERS]
