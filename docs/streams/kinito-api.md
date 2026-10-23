@@ -59,5 +59,5 @@ line endings ή άσχετα αρχεία. Ενημέρωνε τον πίνακ�
 |---|---|
 | 1 | ΕΤΟΙΜΟ (auth: κωδικός scrypt, token, lockout· 8 τεστ· σύνολο 335 OK) |
 | 2 | ΕΤΟΙΜΟ (middleware loopback· 15 νέα τεστ στο test_mobile_api.py) |
-| 3 | |
+| 3 | ΕΤΟΙΜΟ (projects + 5 PDF· 36 τεστ στο test_mobile_api.py) |
 | 4 | |

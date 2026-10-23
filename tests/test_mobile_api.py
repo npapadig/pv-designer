@@ -114,3 +114,92 @@ def test_path_tricks_do_not_open_the_gate():
     for path in ("/m/../api/projects", "/m/%2e%2e/api/projects", "/api/m/../projects"):
         r = LAN.get(path)
         assert r.status_code in (403, 404) and r.status_code != 200
+
+
+
+# ---------- Step 3: projects and documents (fake projects in a temp folder) ----------
+from backend import mapimage, storage  # noqa: E402
+from tests.test_plan_drawing import _design  # noqa: E402
+from tests.test_report import make_project  # noqa: E402
+
+
+@pytest.fixture
+def phone(tmp_path, monkeypatch):
+    """A logged-in phone client from the Wi-Fi, and three fake projects (never the real data/)."""
+    from PIL import Image
+    monkeypatch.setattr(storage, "DATA_DIR", tmp_path / "projects")
+    monkeypatch.setattr(mapimage, "_native_zoom", lambda c, src, lat, lon: 20)
+    monkeypatch.setattr(mapimage, "_fetch_tile", lambda c, src, z, x, y: Image.new("RGB", (256, 256), (80, 110, 70)))
+    enable()
+    c = TestClient(app, client=("192.168.1.50", 50000))
+    c.headers["Authorization"] = "Bearer " + c.post("/api/m/login", json={"password": "kodikos1"}).json()["token"]
+    c.full = storage.save_project(make_project(electrical={"design": _design()}))["id"]
+    c.plain = storage.save_project(make_project(name="Χωρίς inverter"))["id"]
+    c.empty = storage.save_project({"name": "Κενό"})["id"]
+    return c
+
+
+def test_mobile_routes_need_a_token(phone):
+    anon = TestClient(app, client=("192.168.1.50", 50000))
+    for path in ("/api/m/projects", f"/api/m/projects/{phone.full}", f"/api/m/projects/{phone.full}/documents",
+                 f"/api/m/projects/{phone.full}/documents/report"):
+        assert anon.get(path).status_code == 401
+
+
+def test_project_list(phone):
+    items = {i["id"]: i for i in phone.get("/api/m/projects").json()}
+    assert set(items) == {phone.full, phone.plain, phone.empty}
+    item = items[phone.full]
+    assert set(item) == {"id", "name", "updated", "kwp", "panels", "address", "client"}
+    assert item["client"] == "Γιώργος" and item["address"] == "Ερμού 1, Αθήνα" and item["panels"] > 0
+
+
+def test_project_detail_is_summary_and_has_no_secrets(phone):
+    d = phone.get(f"/api/m/projects/{phone.full}").json()
+    assert d["electrical_ready"] is True
+    assert phone.get(f"/api/m/projects/{phone.plain}").json()["electrical_ready"] is False
+    assert d["areas"] and d["layout"]["panels"] and d["report_info"]["client"] == "Γιώργος"
+    assert isinstance(d["energy"]["annual_kwh"], (int, float))
+    assert all(not isinstance(v, (list, dict)) for v in d["energy"].values())
+    assert "electrical" not in d and "plan" not in d
+    assert "scrypt" not in str(d) and "google" not in str(d).lower()
+
+
+def test_unknown_or_bad_project_id_is_404(phone):
+    assert phone.get("/api/m/projects/" + "0" * 32).status_code == 404
+    assert phone.get("/api/m/projects/..%2F..%2Fsettings").status_code == 404
+
+
+def test_document_list_says_why_not(phone):
+    full = {d["kind"]: d for d in phone.get(f"/api/m/projects/{phone.full}/documents").json()}
+    assert list(full) == ["report", "plan", "single-line", "tech", "appendix-i"]
+    assert all(d["available"] and not d["reason"] for d in full.values())
+    plain = {d["kind"]: d for d in phone.get(f"/api/m/projects/{phone.plain}/documents").json()}
+    assert plain["report"]["available"] and plain["plan"]["available"]
+    for k in ("single-line", "tech", "appendix-i"):
+        assert not plain[k]["available"] and "inverter" in plain[k]["reason"]
+    empty = {d["kind"]: d for d in phone.get(f"/api/m/projects/{phone.empty}/documents").json()}
+    assert not empty["report"]["available"] and empty["report"]["reason"]
+
+
+@pytest.mark.parametrize("kind", ["report", "plan", "single-line", "tech", "appendix-i"])
+def test_all_five_pdfs(phone, kind):
+    for lang in ("el", "en"):
+        r = phone.get(f"/api/m/projects/{phone.full}/documents/{kind}?lang={lang}")
+        assert r.status_code == 200 and r.content.startswith(b"%PDF")
+        assert r.headers["content-type"] == "application/pdf"
+
+
+def test_pdf_refused_when_not_available(phone):
+    assert phone.get(f"/api/m/projects/{phone.plain}/documents/tech").status_code == 400
+    assert phone.get(f"/api/m/projects/{phone.empty}/documents/report").status_code == 400
+    assert phone.get(f"/api/m/projects/{phone.full}/documents/nope").status_code == 404
+
+
+def test_phone_cannot_change_or_delete_anything(phone):
+    assert phone.delete(f"/api/projects/{phone.full}").status_code == 403
+    assert phone.put(f"/api/projects/{phone.full}", json={"name": "x"}).status_code == 403
+    for method in ("post", "put", "delete", "patch"):
+        r = getattr(phone, method)(f"/api/m/projects/{phone.full}")
+        assert r.status_code in (404, 405)
+    assert storage.get_project(phone.full)["name"] == "Σπίτι Αθήνα"

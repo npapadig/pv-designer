@@ -12,12 +12,13 @@ import hmac
 import secrets
 import threading
 import time
+from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, Field
 
-from . import settings
+from . import appendix_i, plan_drawing, report, settings, single_line, storage, tech_description
 
 TOKEN_DAYS = 30
 MAX_FAILURES = 5
@@ -125,6 +126,107 @@ def login(req: LoginRequest, request: Request):
 def logout(token: str = Depends(require_token)):
     revoke_token(token)
     return {"ok": True}
+
+
+
+# ---------- Projects and documents (read-only) ----------
+def _project(project_id: str) -> dict:
+    try:
+        return storage.get_project(project_id)
+    except KeyError:
+        raise HTTPException(404, "Το έργο δεν βρέθηκε.")
+
+
+def _electrical_ready(project: dict) -> bool:
+    d = (project.get("electrical") or {}).get("design")
+    return bool(d and d.get("per_inverter"))
+
+
+def _has_layout(project: dict) -> bool:
+    return bool(project.get("areas") or (project.get("layout") or {}).get("panels"))
+
+
+def _summary(energy: dict | None) -> dict | None:
+    """The numbers of the energy result, without the long monthly/hourly tables."""
+    if not energy:
+        return None
+    return {k: v for k, v in energy.items() if isinstance(v, (int, float, str, bool)) or v is None}
+
+
+@router.get("/projects")
+def projects(_: str = Depends(require_token)):
+    out = []
+    for p in storage.list_projects():
+        try:
+            full = storage.get_project(p["id"])
+        except KeyError:
+            continue
+        layout = full.get("layout") or {}
+        out.append({"id": p["id"], "name": p["name"], "updated": p["updated_at"], "kwp": layout.get("kwp"),
+                    "panels": layout.get("count"), "address": p["address"],
+                    "client": (full.get("report_info") or {}).get("client", "")})
+    return out
+
+
+@router.get("/projects/{project_id}")
+def project(project_id: str, _: str = Depends(require_token)):
+    p = _project(project_id)
+    return {"id": p["id"], "name": p.get("name", ""), "updated": p.get("updated_at", ""),
+            "areas": p.get("areas") or [], "keepouts": p.get("keepouts") or [],
+            "layout": p.get("layout") or {}, "settings": p.get("settings") or {},
+            "report_info": p.get("report_info") or {}, "energy": _summary(p.get("energy")),
+            "electrical_ready": _electrical_ready(p)}
+
+
+DOCUMENTS = (  # kind, title, needs the electrical design
+    ("report", "Αναφορά", False), ("plan", "Κάτοψη", False), ("single-line", "Μονογραμμικό", True),
+    ("tech", "Τεχνική περιγραφή", True), ("appendix-i", "Παράρτημα Ι", True),
+)
+NO_DESIGN = "Λείπει ο σχεδιασμός inverter (βήμα «Inverter»)."
+NO_LAYOUT = "Δεν έχει σχεδιαστεί περιοχή με πάνελ."
+
+
+def _unavailable(project: dict, needs_electrical: bool) -> str:
+    if needs_electrical:
+        return "" if _electrical_ready(project) else NO_DESIGN
+    return "" if _has_layout(project) else NO_LAYOUT
+
+
+@router.get("/projects/{project_id}/documents")
+def documents(project_id: str, _: str = Depends(require_token)):
+    p = _project(project_id)
+    out = []
+    for kind, title, needs_electrical in DOCUMENTS:
+        why = _unavailable(p, needs_electrical)
+        out.append({"kind": kind, "title": title, "available": not why, "reason": why})
+    return out
+
+
+@router.get("/projects/{project_id}/documents/{kind}")
+def document(project_id: str, kind: str, lang: str = "el", _: str = Depends(require_token)):
+    p = _project(project_id)
+    spec = next((d for d in DOCUMENTS if d[0] == kind), None)
+    if not spec:
+        raise HTTPException(404, "Άγνωστο έγγραφο.")
+    why = _unavailable(p, spec[2])
+    if why:
+        raise HTTPException(400, why)
+    lang = lang if lang in ("el", "en") else "el"
+    try:
+        if kind == "report":
+            pdf, name = report.build_pdf(p, lang=lang), report.filename(p, lang)
+        elif kind == "plan":
+            pdf, name = plan_drawing.build_plan_pdf(p, lang, "a4"), plan_drawing.filename(p, lang)
+        elif kind == "single-line":
+            pdf, name = single_line.build_single_line_pdf(p, lang), single_line.filename(p, lang)
+        elif kind == "tech":
+            pdf, name = tech_description.build_tech_description_pdf(p, lang), tech_description.filename(p, lang)
+        else:
+            pdf, name = appendix_i.build_appendix_i_pdf(p), appendix_i.filename(p)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    disposition = f"inline; filename={kind}.pdf; filename*=UTF-8''" + quote(name)
+    return Response(pdf, media_type="application/pdf", headers={"Content-Disposition": disposition})
 
 
 # ---------- Who may reach what ----------
