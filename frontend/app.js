@@ -658,6 +658,31 @@ async function downloadReport() {
   setTimeout(() => URL.revokeObjectURL(url), 60000);
   toast("Η αναφορά κατέβηκε στα «Λήψεις» (Downloads).", 5000);
 }
+// Clean floor plan (white, to scale, no satellite picture) for permit applications such as DEDDIE.
+async function downloadPlanPdf() {
+  if (!state.layout || !state.layout.count) await runLayout();
+  if (!state.layout.count) return;
+  toast("Ετοιμάζεται η κάτοψη…", 15000);
+  const r = await fetch("/api/plan-drawing", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ...collectProject(), lang: window.I18N?.lang || "el" }),
+  });
+  if (!r.ok) {
+    const data = await r.json().catch(() => ({}));
+    throw new Error(typeof data.detail === "string" ? data.detail : "Η κάτοψη δεν δημιουργήθηκε.");
+  }
+  const url = URL.createObjectURL(await r.blob());
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `Κάτοψη ΦΒ - ${$("projectName").value || "έργο"}.pdf`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
+  toast("Η κάτοψη κατέβηκε στα «Λήψεις» (Downloads).", 5000);
+}
+$("btnPlanPdf").onclick = () => withBusy($("btnPlanPdf"), downloadPlanPdf);
 $("btnReport").onclick = () => withBusy($("btnReport"), downloadReport);
 
 // The author is usually the same for every project, so remember it on this computer.

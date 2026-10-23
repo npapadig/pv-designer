@@ -46,6 +46,13 @@ EN: dict[str, str] = {
     "Διεύθυνση": "Address",
     "Συντεταγμένες": "Coordinates",
     "Ημερομηνία αναφοράς": "Report date",
+    # floor-plan drawing (plan_drawing.py)
+    "ΚΑΤΟΨΗ ΦΩΤΟΒΟΛΤΑΪΚΟΥ ΣΥΣΤΗΜΑΤΟΣ": "PHOTOVOLTAIC SYSTEM FLOOR PLAN",
+    "Κάτοψη φωτοβολταϊκού συστήματος": "Photovoltaic system floor plan",
+    "Διάταξη πάνελ": "Panel layout",
+    "Κλίμακα": "Scale",
+    "north|Β": "N",
+    "Κάτοψη ΦΒ - {name}.pdf": "PV floor plan - {name}.pdf",
     # compass
     "Βόρειος": "North", "Βορειοανατολικός": "Northeast", "Ανατολικός": "East", "Νοτιοανατολικός": "Southeast",
     "Νότιος": "South", "Νοτιοδυτικός": "Southwest", "Δυτικός": "West", "Βορειοδυτικός": "Northwest",

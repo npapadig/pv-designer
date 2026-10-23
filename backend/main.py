@@ -12,7 +12,7 @@ from fastapi.responses import Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from . import electrical, energy, finance, report, settings, shading, simulation, storage
+from . import electrical, energy, finance, plan_drawing, report, settings, shading, simulation, storage
 from . import lifecycle
 from .equipment import INVERTERS, Inverter
 from .layout import LayoutParams, compute_faces_layout, compute_layout, split_area
@@ -336,6 +336,18 @@ def _pdf_response(project: dict, lang: str = "el") -> Response:
 def report_from_data(data: dict):
     """PDF report of the project as currently shown (saved or not); "lang": "en" for English."""
     return _pdf_response(data, data.get("lang") or "el")
+
+
+@app.post("/api/plan-drawing")
+def plan_drawing_from_data(data: dict):
+    """Clean floor-plan PDF (panels to scale, no satellite picture); "lang": "en", "paper": "a4" | "a3"."""
+    if not data.get("areas") and not (data.get("layout") or {}).get("panels"):
+        raise HTTPException(400, "Σχεδίασε πρώτα μια περιοχή και τοποθέτησε πάνελ.")
+    lang = data.get("lang") or "el"
+    pdf = plan_drawing.build_plan_pdf(data, lang, data.get("paper") or "a4")
+    name = quote(plan_drawing.filename(data, lang))
+    return Response(pdf, media_type="application/pdf",
+                    headers={"Content-Disposition": f"attachment; filename=plan.pdf; filename*=UTF-8''{name}"})
 
 
 @app.get("/api/projects/{project_id}/report")
