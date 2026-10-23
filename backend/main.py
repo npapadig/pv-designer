@@ -14,7 +14,7 @@ from pydantic import BaseModel, Field
 
 from . import electrical, energy, finance, plan_drawing, report, single_line, tech_description, appendix_i, settings, shading, simulation, storage
 from . import lifecycle
-from .equipment import INVERTERS, Inverter
+from .equipment import CATALOG_PANELS, PRESET_INVERTERS, Inverter
 from .layout import LayoutParams, compute_faces_layout, compute_layout, split_area
 
 # Windows may not know these types; set them so the browser gets the right header.
@@ -261,7 +261,12 @@ def finance_analysis(req: FinanceRequest):
 
 @app.get("/api/inverters")
 def inverters():
-    return [i.model_dump() for i in INVERTERS]
+    return [i.model_dump() for i in PRESET_INVERTERS]
+
+
+@app.get("/api/panels")
+def panels():
+    return [p.model_dump() for p in CATALOG_PANELS]
 
 
 @app.post("/api/electrical")

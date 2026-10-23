@@ -69,6 +69,7 @@ function fillModuleElectrics() {
   const p = PANEL_PRESETS[$("panelPreset").value];
   if (!p || !p.voc) return;
   $("modVoc").value = p.voc; $("modIsc").value = p.isc; $("modVmp").value = p.vmp; $("modImp").value = p.imp;
+  if (p.betaVoc != null) { $("modBetaVoc").value = p.betaVoc; $("modGammaP").value = p.gammaP; }
 }
 $("panelPreset").addEventListener("change", () => { fillModuleElectrics(); elec.reset(); });
 fillModuleElectrics();
@@ -118,6 +119,17 @@ function toggleLossInputs() {
 }
 $("energyMethod").onchange = toggleLossInputs;
 toggleLossInputs();
+
+// Real panels from manufacturer datasheets. They go AFTER "Δικό μου" so the saved preset numbers of old projects stay valid.
+api("/api/panels").then((list) => {
+  list.forEach((p) => {
+    PANEL_PRESETS.push({
+      name: p.name, power: p.power_w, width: p.width_m, length: p.length_m, voc: p.voc, isc: p.isc, vmp: p.vmp, imp: p.imp,
+      betaVoc: p.temp_coeff_voc_pct, gammaP: p.temp_coeff_pmax_pct,
+    });
+    $("panelPreset").add(new Option(p.name, PANEL_PRESETS.length - 1));
+  });
+}).catch(() => {});
 
 api("/api/inverters").then((list) => {
   inverterLibrary = list;
