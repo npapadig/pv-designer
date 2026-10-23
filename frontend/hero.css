@@ -8,6 +8,6 @@
 #heroScene.on { opacity: 0.96; transform: none; }
 /* The content sits above the scene, so cards and buttons are never covered. */
 #home .home-wrap { position: relative; z-index: 1; }
-/* Only where the corner is really free. */
-@media (max-width: 1099px), (max-height: 620px) { #heroScene { display: none; } }
+/* Only where the corner is free (narrow windows); a low window or browser zoom must not hide it. */
+@media (max-width: 899px) { #heroScene { display: none; } }
 @media (prefers-reduced-motion: reduce) { #heroScene { transition: none; } }
