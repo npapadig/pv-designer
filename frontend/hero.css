@@ -1,13 +1,30 @@
-/* Start-screen diorama (hero.js): a tiny living scene in the bottom-right corner. Decorative only. */
+/* Start-screen energy card (hero.js): glass card, bottom-right. Decorative only. */
 #heroScene {
-  position: fixed; right: 28px; bottom: 28px; z-index: 0; width: 360px; height: 220px;
-  border-radius: 26px; border: 1px solid var(--line-strong); box-shadow: var(--shadow);
-  pointer-events: none; opacity: 0; transform: translateY(14px) scale(0.97);
-  transition: opacity 0.9s ease 0.3s, transform 0.9s cubic-bezier(0.2, 0.8, 0.2, 1) 0.3s;
+  --rx: 0deg; --ry: 0deg; --gx: 50%;
+  position: fixed; right: 32px; bottom: 32px; z-index: 0; width: 400px; height: 270px;
+  border-radius: 24px; overflow: hidden; pointer-events: none;
+  box-shadow: 0 30px 70px -20px rgba(0, 0, 0, 0.6), 0 2px 8px rgba(0, 0, 0, 0.25);
+  opacity: 0; translate: 0 18px; scale: 0.97;
+  transform: perspective(1000px) rotateX(var(--rx)) rotateY(var(--ry));
+  transition: opacity 1.1s ease 0.25s, translate 1.2s cubic-bezier(0.16, 1, 0.3, 1) 0.25s, scale 1.2s cubic-bezier(0.16, 1, 0.3, 1) 0.25s;
 }
-#heroScene.on { opacity: 0.96; transform: none; }
-/* The content sits above the scene, so cards and buttons are never covered. */
+#heroScene.on { opacity: 1; translate: 0 0; scale: 1; }
+#heroScene canvas { display: block; width: 100%; height: 100%; }
+/* hairline glass border with a highlight that follows the pointer */
+#heroScene::after {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1px;
+  background: linear-gradient(150deg, rgba(255, 255, 255, 0.28), rgba(255, 255, 255, 0.04) 38%, rgba(255, 255, 255, 0.02) 62%, rgba(255, 181, 71, 0.3)),
+    radial-gradient(260px 160px at var(--gx) 0%, rgba(255, 255, 255, 0.35), transparent 70%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor; mask-composite: exclude;
+}
+:root[data-theme="light"] #heroScene { box-shadow: 0 30px 60px -24px rgba(15, 23, 42, 0.28), 0 1px 3px rgba(15, 23, 42, 0.08); }
+:root[data-theme="light"] #heroScene::after {
+  background: linear-gradient(150deg, rgba(255, 255, 255, 1), rgba(17, 24, 39, 0.08) 40%, rgba(17, 24, 39, 0.1) 70%, rgba(255, 138, 61, 0.35)),
+    radial-gradient(260px 160px at var(--gx) 0%, rgba(255, 255, 255, 0.9), transparent 70%);
+}
+/* The content sits above the card, so cards and buttons are never covered. */
 #home .home-wrap { position: relative; z-index: 1; }
 /* Only where the corner is free (narrow windows); a low window or browser zoom must not hide it. */
 @media (max-width: 899px) { #heroScene { display: none; } }
-@media (prefers-reduced-motion: reduce) { #heroScene { transition: none; } }
+@media (prefers-reduced-motion: reduce) { #heroScene, #heroScene.on { transition: none; } }
