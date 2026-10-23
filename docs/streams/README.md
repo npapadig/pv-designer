@@ -16,6 +16,8 @@ goal, files it owns, numbered items, checks to run, and a status table. Max 2 st
 | arxi | `arxi.md` | `home.js/.css`, `plan.js`, `faces.js`, app.js «Search»/«Google», launcher, `lifecycle.py` | ΤΕΛΟΣ (v0.12.1) |
 | voitheia | `voitheia.md` | `help.js/.css`, `helptexts.js` | ΤΕΛΟΣ (v0.12.1) |
 | glossa | `glossa.md` | `i18n.js`, `lang/en.js`, `report.py`, `backend/i18n.py` | ΤΕΛΟΣ (v0.12.1) |
+| kinito-api | `kinito-api.md` | `backend/mobile.py`, `settings.py`, `lifecycle.py`, include στο `main.py`, `tests/test_mobile_api.py` | ΤΡΕΧΕΙ (2026-10-23) |
+| kinito-ui | `kinito-ui.md` | `frontend/m/*`, `frontend/mobile-settings.js`, `lang/en.js`, 1 tag στο `index.html` | ΤΡΕΧΕΙ (2026-10-23) |
 
 2026-10-22 (τελικό): το πολύ 2 ροές μαζί· κάθε ροή που τελειώνει αρχειοθετείται πριν ξεκινήσει η επόμενη (CLAUDE.md §5).
 
