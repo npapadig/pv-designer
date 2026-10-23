@@ -1223,7 +1223,21 @@ window.I18N_EN =
 "Αντιγραφή του επιλεγμένου σχήματος (Ctrl+C)": "Copy the selected shape (Ctrl+C)",
 "Επικόλληση αντιγράφου (Ctrl+V)": "Paste a copy (Ctrl+V)",
 "Διαγραφή του επιλεγμένου σχήματος (Delete)": "Delete the selected shape (Delete)",
-"Σύρε το για να το μετακινήσεις · σύρε μια κορυφή για να την αλλάξεις · Delete = διαγραφή · Ctrl+C και Ctrl+V = αντίγραφο · Ctrl+Z = αναίρεση · Esc = τέλος.": "Drag it to move it · drag a corner to change it · Delete = delete · Ctrl+C and Ctrl+V = copy · Ctrl+Z = undo · Esc = finish."
+"Σύρε το για να το μετακινήσεις · σύρε μια κορυφή για να την αλλάξεις · Delete = διαγραφή · Ctrl+C και Ctrl+V = αντίγραφο · Ctrl+Z = αναίρεση · Esc = τέλος.": "Drag it to move it · drag a corner to change it · Delete = delete · Ctrl+C and Ctrl+V = copy · Ctrl+Z = undo · Esc = finish.",
+// ---------------------------------------------------------------- mobile app (frontend/m)
+"Δεν υπάρχει σύνδεση με τον υπολογιστή. Δοκίμασε ξανά όταν είσαι στο ίδιο Wi-Fi.": "There is no connection to the computer. Try again when you are on the same Wi-Fi.",
+"Φόρτωση…": "Loading…",
+"Δοκίμασε ξανά": "Try again",
+"Δεν υπάρχει σύνδεση με τον υπολογιστή.": "There is no connection to the computer.",
+"Η σύνδεση έληξε. Συνδέσου ξανά.": "The session expired. Sign in again.",
+"Πολλές προσπάθειες. Περίμενε λίγο και δοκίμασε ξανά.": "Too many attempts. Wait a little and try again.",
+"Το Κινητό είναι απενεργοποιημένο": "Mobile is turned off",
+"Άνοιξε την εφαρμογή στον υπολογιστή και ενεργοποίησε το «Κινητό» από την αρχική οθόνη.": "Open the app on the computer and turn on “Mobile” from the start screen.",
+"Δεν έχει οριστεί κωδικός": "No password has been set",
+"Όρισε κωδικό για το «Κινητό» στην εφαρμογή του υπολογιστή και ξαναδοκίμασε.": "Set a password for “Mobile” in the computer app and try again.",
+"Κωδικός": "Password",
+"Λάθος κωδικός.": "Wrong password.",
+"Βάλε τον κωδικό που όρισες στον υπολογιστή.": "Enter the password you set on the computer."
 },
 "rules": [
 // numbers and names inside texts
