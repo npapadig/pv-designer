@@ -13,7 +13,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from . import electrical, energy, finance, plan_drawing, report, single_line, tech_description, appendix_i, settings, shading, simulation, storage
-from . import lifecycle
+from . import lifecycle, mobile
 from .equipment import INVERTERS, Inverter
 from .layout import LayoutParams, compute_faces_layout, compute_layout, split_area
 
@@ -28,6 +28,7 @@ FRONTEND_DIR = ROOT_DIR / "frontend"
 VERSION = (ROOT_DIR / "VERSION").read_text(encoding="utf-8").strip()
 
 app = FastAPI(title="PV Designer", version=VERSION)
+app.include_router(mobile.router)  # phone app API (read-only, own token)
 app.include_router(lifecycle.router)  # hello/ping/bye of the pages; before the "/" mount, which would hide it
 
 
