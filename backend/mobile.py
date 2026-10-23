@@ -14,6 +14,7 @@ import threading
 import time
 
 from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
 from . import settings
@@ -124,3 +125,21 @@ def login(req: LoginRequest, request: Request):
 def logout(token: str = Depends(require_token)):
     revoke_token(token)
     return {"ok": True}
+
+
+# ---------- Who may reach what ----------
+LOOPBACK = {"127.0.0.1", "::1", "testclient"}  # "testclient" is Starlette's TestClient; no socket gives that name
+OPEN_TO_NETWORK = ("/m/", "/api/m/")
+
+
+def allowed_for_network(path: str) -> bool:
+    return path in ("/m", "/api/version") or path.startswith(OPEN_TO_NETWORK)
+
+
+async def loopback_only_outside_mobile(request: Request, call_next):
+    """Anyone not on this computer sees only the phone app: everything else (delete a project, the
+    Google key, ...) is for the computer itself."""
+    host = request.client.host if request.client else ""
+    if host not in LOOPBACK and not allowed_for_network(request.url.path):
+        return JSONResponse({"detail": "Αυτή η διεύθυνση είναι μόνο για τον υπολογιστή."}, status_code=403)
+    return await call_next(request)

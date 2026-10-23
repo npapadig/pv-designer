@@ -82,3 +82,35 @@ def test_settings_endpoint_never_shows_mobile_secrets():
     assert set(body) == {"google_maps_key"}
     assert set(client.put("/api/settings", json={"google_maps_key": "k"}).json()) == {"google_maps_key"}
     assert settings.load_mobile()["mobile_password_hash"]  # a settings save keeps the mobile fields
+
+
+# ---------- Step 2: only the computer itself reaches the rest ----------
+LAN = TestClient(app, client=("192.168.1.50", 50000))
+
+
+@pytest.mark.parametrize("method,path", [
+    ("get", "/api/projects"), ("get", "/api/settings"), ("put", "/api/settings"),
+    ("delete", "/api/projects/" + "a" * 32), ("post", "/api/report"), ("get", "/api/health"),
+    ("post", "/api/lifecycle/bye?page=x"), ("get", "/"), ("get", "/index.html"), ("get", "/app.js"),
+    ("get", "/api/m-evil"), ("get", "/docs"), ("get", "/openapi.json"),
+])
+def test_foreign_sender_is_refused_outside_mobile(method, path):
+    assert getattr(LAN, method)(path).status_code == 403
+
+
+def test_foreign_sender_reaches_mobile_and_version():
+    assert LAN.get("/api/version").status_code == 200
+    assert LAN.get("/api/m/status").status_code == 200
+    assert LAN.get("/m/").status_code != 403
+    assert LAN.get("/m/nothing-here.js").status_code != 403  # 404 is fine: it passed the gate
+
+
+def test_ipv6_loopback_and_local_pass():
+    for host in ("127.0.0.1", "::1"):
+        assert TestClient(app, client=(host, 1)).get("/api/projects").status_code == 200
+
+
+def test_path_tricks_do_not_open_the_gate():
+    for path in ("/m/../api/projects", "/m/%2e%2e/api/projects", "/api/m/../projects"):
+        r = LAN.get(path)
+        assert r.status_code in (403, 404) and r.status_code != 200

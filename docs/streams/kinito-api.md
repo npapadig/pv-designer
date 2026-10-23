@@ -58,6 +58,6 @@ line endings ή άσχετα αρχεία. Ενημέρωνε τον πίνακ�
 | Βήμα | Κατάσταση |
 |---|---|
 | 1 | ΕΤΟΙΜΟ (auth: κωδικός scrypt, token, lockout· 8 τεστ· σύνολο 335 OK) |
-| 2 | |
+| 2 | ΕΤΟΙΜΟ (middleware loopback· 15 νέα τεστ στο test_mobile_api.py) |
 | 3 | |
 | 4 | |

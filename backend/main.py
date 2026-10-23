@@ -28,6 +28,7 @@ FRONTEND_DIR = ROOT_DIR / "frontend"
 VERSION = (ROOT_DIR / "VERSION").read_text(encoding="utf-8").strip()
 
 app = FastAPI(title="PV Designer", version=VERSION)
+app.middleware("http")(mobile.loopback_only_outside_mobile)  # outside the computer only /m, /api/m, /api/version
 app.include_router(mobile.router)  # phone app API (read-only, own token)
 app.include_router(lifecycle.router)  # hello/ping/bye of the pages; before the "/" mount, which would hide it
 
