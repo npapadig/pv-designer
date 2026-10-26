@@ -68,9 +68,10 @@ def auto_row_gap(along_slope_m: float, tilt_deg: float, lat_deg: float) -> float
     return height / math.tan(math.radians(elev))
 
 
-def _usable_with_ridge(area: Polygon, neighbours: list, p: LayoutParams) -> Polygon:
-    """The area minus a strip of p.ridge_gap_m along the edges shared with neighbours and of p.setback_m
-    along its other edges. An edge is shared when it mostly lies on the outline of a neighbour."""
+def edge_cuts(area: Polygon, neighbours: list, p: LayoutParams):
+    """The two strips kept clear along the outline of area: (along its free edges by p.setback_m,
+    along the edges shared with neighbours by p.ridge_gap_m). An edge is shared when it mostly lies on
+    the outline of a neighbour."""
     near = unary_union([n.boundary.buffer(0.05) for n in neighbours]) if neighbours else None
     coords = list(area.exterior.coords)
     free, shared = [], []
@@ -79,8 +80,16 @@ def _usable_with_ridge(area: Polygon, neighbours: list, p: LayoutParams) -> Poly
         on_neighbour = near is not None and seg.length > 0 and seg.intersection(near).length >= 0.9 * seg.length
         (shared if on_neighbour else free).append(seg)
     cut = unary_union(free).buffer(p.setback_m, join_style="mitre") if free else Polygon()
-    if shared:
-        cut = cut.union(unary_union(shared).buffer(p.ridge_gap_m, cap_style="flat"))
+    ridge = unary_union(shared).buffer(p.ridge_gap_m, cap_style="flat") if shared else Polygon()
+    return cut, ridge
+
+
+def _usable_with_ridge(area: Polygon, neighbours: list, p: LayoutParams) -> Polygon:
+    """The area minus a strip of p.ridge_gap_m along the edges shared with neighbours and of p.setback_m
+    along its other edges."""
+    cut, ridge = edge_cuts(area, neighbours, p)
+    if not ridge.is_empty:
+        cut = cut.union(ridge)
     return area.difference(cut)
 
 

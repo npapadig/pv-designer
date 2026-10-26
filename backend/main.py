@@ -13,7 +13,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from . import electrical, energy, finance, plan_drawing, report, single_line, tech_description, appendix_i, settings, shading, simulation, storage
-from . import lifecycle, mobile
+from . import lifecycle, manual, mobile
 from .equipment import CATALOG_PANELS, PRESET_INVERTERS, Inverter
 from .layout import LayoutParams, compute_faces_layout, compute_layout, remove_shaded, split_area
 
@@ -218,6 +218,37 @@ def layout_faces(req: FacesLayoutRequest):
     params = LayoutParams(**req.model_dump(exclude={"area", "faces", "obstacles", "avoid_shaded", "max_shade_pct"}))
     try:
         return _avoid_shaded(req, compute_faces_layout([f.model_dump() for f in req.faces], params), params)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+class CheckRequest(BaseModel):
+    """A (hand-edited) set of panels and the rules to check it against; the settings are those of LayoutRequest."""
+    panels: list[list[list[float]]]
+    areas: list[list[list[float]]] = Field(..., min_length=1)  # the drawn areas, or the roof faces
+    use_ridge: bool = False  # the areas are roof faces: their shared edges are kept clear by ridge_gap_m
+    keepouts: list[list[list[float]]] = []
+    setback_m: float = Field(0.5, ge=0, le=20)
+    ridge_gap_m: float | None = Field(None, ge=0, le=20)
+    obstacle_gap_m: float | None = Field(None, ge=0, le=20)
+    check_shade: bool = False
+    max_shade_pct: float = Field(10, ge=0, le=100)
+    obstacles: list[Obstacle] = []
+    tilt_deg: float = Field(30, ge=0, le=90)
+    azimuth_deg: float = Field(180, ge=0, le=360)
+    mounting: Literal["flush", "rack"] = "flush"
+    faces: list[Face] | None = None
+    panel_face: list[int] | None = None
+
+
+@app.post("/api/layout/check")
+def layout_check(req: CheckRequest):
+    params = LayoutParams(setback_m=req.setback_m, ridge_gap_m=req.ridge_gap_m, obstacle_gap_m=req.obstacle_gap_m,
+                          keepouts=req.keepouts)
+    try:
+        return manual.check_layout(
+            req.panels, req.areas, params, req.use_ridge, [o.model_dump() for o in req.obstacles], req.check_shade,
+            req.max_shade_pct, req.tilt_deg, req.azimuth_deg, req.mounting, _faces(req), req.panel_face)
     except ValueError as e:
         raise HTTPException(400, str(e))
 
