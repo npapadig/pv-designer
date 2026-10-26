@@ -159,6 +159,7 @@ window.I18N_EN =
 "pvlib (βιβλιοθήκη προσομοίωσης)": "pvlib (simulation library)",
 "Τα αποτελέσματα είναι εκτιμήσεις και δεν αποτελούν εγγύηση παραγωγής.": "The results are estimates and are not a guarantee of production.",
 "Πρόταση αζιμουθίου": "Suggest azimuth",
+"Σύρε για να στρίψεις την κατεύθυνση της κλίσης": "Drag to turn the slope direction",
 "ΟΚ": "OK",
 "Κατεύθυνση": "Direction",
 "Κλίση σε μοίρες": "Tilt in degrees",

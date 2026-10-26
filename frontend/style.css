@@ -385,3 +385,10 @@ table.losses tr.total:last-child td { color: var(--teal); }
 .found-pin-tip { max-width: 240px; white-space: normal; font-weight: 650; }
 .face-box button.primary { background: var(--sun-2, #ff6a3d); border-color: transparent; color: #fff; font-weight: 700; }
 .face-box button.primary:hover { filter: brightness(1.06); background: var(--sun-2, #ff6a3d); }
+
+/* Slope arrow of a roof face (faces.js): the head is the grip */
+.face-arrow-head i { display: block; width: 26px; height: 26px; cursor: grab; transform: rotate(var(--az, 0deg)); transition: transform 0.05s linear; }
+.face-arrow-head i::before { content: ""; position: absolute; left: 3px; top: 0; border-left: 10px solid transparent; border-right: 10px solid transparent; border-bottom: 22px solid #0f766e; filter: drop-shadow(0 0 2px #fff) drop-shadow(0 1px 3px rgba(0, 0, 0, 0.5)); }
+.face-arrow-head:active i { cursor: grabbing; }
+.face-arrow-head.off { display: none; }
+.face-arrow-line { stroke-linecap: round; filter: drop-shadow(0 0 2px #fff); }

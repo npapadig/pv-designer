@@ -26,7 +26,89 @@
       { permanent: true, direction: "center", className: "face-label" });
   }
 
+  // ---------- Slope arrows: an arrow on every face points down the slope (= the azimuth of its panels);
+  // drag its head to turn it ----------
+  const arrows = new Map(); // layer -> { line, head, len, dragging }
+  const mPerDeg = 111320;
+
+  function centerOf(layer) { // centre of the outline (average of the corners), inside for normal faces
+    const pts = layer.getLatLngs()[0];
+    const n = pts.length;
+    return L.latLng(pts.reduce((s, p) => s + p.lat, 0) / n, pts.reduce((s, p) => s + p.lng, 0) / n);
+  }
+  function headAt(c, az, m) { // the point m metres from c towards azimuth az
+    const r = (az * Math.PI) / 180;
+    return L.latLng(c.lat + (Math.cos(r) * m) / mPerDeg, c.lng + (Math.sin(r) * m) / (mPerDeg * Math.cos((c.lat * Math.PI) / 180)));
+  }
+  function azimuthTo(c, p) {
+    const dx = (p.lng - c.lng) * Math.cos((c.lat * Math.PI) / 180), dy = p.lat - c.lat;
+    return ((Math.round((Math.atan2(dx, dy) * 180) / Math.PI) % 360) + 360) % 360;
+  }
+  const turn = (a, az) => { a.head.getElement()?.style.setProperty("--az", `${az + (map.getBearing ? map.getBearing() : 0)}deg`); };
+
+  function placeArrow(layer, a, az) {
+    const c = centerOf(layer), tip = headAt(c, az, a.len);
+    a.line.setLatLngs([c, tip]);
+    a.head.setLatLng(tip);
+    turn(a, az);
+  }
+
+  function dropArrow(layer) {
+    const a = arrows.get(layer);
+    if (!a) return;
+    a.line.remove(); a.head.remove();
+    arrows.delete(layer);
+  }
+
+  function syncArrows() {
+    const flat = state.projectType === "park" || state.roofType === "flat";
+    for (const layer of [...arrows.keys()]) if (!areas.hasLayer(layer) || !layer.pvFace || flat) dropArrow(layer);
+    if (flat) return;
+    for (const layer of areas.getLayers()) {
+      if (!layer.pvFace) continue;
+      let a = arrows.get(layer);
+      if (!a) {
+        a = { len: 1, line: L.polyline([[0, 0], [0, 0]], { color: "#0f766e", weight: 3, opacity: 0.95, interactive: false, className: "face-arrow-line" }).addTo(map),
+          head: L.marker([0, 0], { icon: L.divIcon({ className: "face-arrow-head", html: "<i></i>", iconSize: [26, 26], iconAnchor: [13, 13] }), keyboard: false, zIndexOffset: 900 }).addTo(map) };
+        a.head.bindTooltip("Σύρε για να στρίψεις την κατεύθυνση της κλίσης", { direction: "top", offset: [0, -12] });
+        arrows.set(layer, a);
+        L.DomEvent.on(a.head.getElement(), "mousedown touchstart", (e) => startTurn(layer, a, e));
+      }
+      a.len = Math.max(1.2, Math.min(4, Math.sqrt(areaM2(layer)) * 0.3)); // metres
+      if (!a.dragging) placeArrow(layer, a, layer.pvFace.azimuth_deg);
+    }
+  }
+  const areaM2 = (layer) => { try { return window.L.GeometryUtil ? L.GeometryUtil.geodesicArea(layer.getLatLngs()[0]) : Math.abs(layer.getBounds().getNorth() - layer.getBounds().getSouth()) * mPerDeg * 5; } catch { return 25; } };
+
+  function startTurn(layer, a, e0) {
+    L.DomEvent.stop(e0);
+    a.dragging = true;
+    map.dragging.disable();
+    let az = layer.pvFace.azimuth_deg;
+    const c = centerOf(layer);
+    const move = (e) => {
+      const ev = e.touches ? e.touches[0] : e;
+      az = azimuthTo(c, map.mouseEventToLatLng(ev));
+      if (e.shiftKey) az = Math.round(az / 5) * 5; // Shift = in steps of 5°
+      placeArrow(layer, a, az);
+      layer.setTooltipContent?.(`Πλευρά ${faceNo(layer)}<br>${fmt(layer.pvFace.tilt_deg)}° · ${fmt(az)}° ${compass(az)}`);
+    };
+    const up = () => {
+      document.removeEventListener("mousemove", move); document.removeEventListener("touchmove", move);
+      document.removeEventListener("mouseup", up); document.removeEventListener("touchend", up);
+      map.dragging.enable();
+      a.dragging = false;
+      window.pvFaces.set(layer, layer.pvFace.tilt_deg, az); // saves, refreshes the labels and the list
+    };
+    document.addEventListener("mousemove", move); document.addEventListener("touchmove", move, { passive: true });
+    document.addEventListener("mouseup", up); document.addEventListener("touchend", up);
+  }
+
+  map.on("rotate", () => arrows.forEach((a, layer) => turn(a, layer.pvFace?.azimuth_deg ?? 0)));
+  map.on("zoomend", syncArrows);
+
   function refresh() {
+    syncArrows();
     map.fire("pv:faces"); // the area list in the side panel shows the tilt and azimuth
     areas.getLayers().forEach(label);
     const n = areas.getLayers().filter((l) => l.pvFace).length;
@@ -110,11 +192,12 @@
 
   areas.on("layeradd", (e) => {
     e.layer.on("click", (ev) => openBox(e.layer, ev.latlng));
+    e.layer.on("edit editdrag pv:moved", syncArrows); // the arrow follows its face
     refresh();
   });
   areas.on("layerremove", refresh);
-  map.on("draw:editstart draw:deletestart", () => (editing = true));
-  map.on("draw:editstop draw:deletestop", () => (editing = false));
+  map.on("draw:editstart draw:deletestart", () => { editing = true; arrows.forEach((a) => a.head.getElement()?.classList.add("off")); });
+  map.on("draw:editstop draw:deletestop", () => { editing = false; arrows.forEach((a) => a.head.getElement()?.classList.remove("off")); });
 
   // ---------- Cutting ----------
   function showCutting(on) {
