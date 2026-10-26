@@ -40,7 +40,10 @@
     $("homeRoof").hidden = name !== "roof";
     $("homeBack").hidden = name !== "choose"; // «Πίσω» sits in the top-left corner of the screen
     $("homeRoofBack").hidden = name !== "roof";
+    hero(name === "roof" ? "town" : "overview"); // the roof question is about a building: the 3D scene shows the town
   }
+  // The 3D start scene (hero.js) flies to the part of the planet that fits the choice: town or solar park.
+  const hero = (where, soft) => window.heroScene && window.heroScene.focus(where, soft);
 
   async function show() {
     screen("start");
@@ -145,11 +148,18 @@
 
   // A park on a field: flat ground, panels on racks (the layout proposals of the "Πάνελ" step).
   $("homePark").onclick = () => {
+    hero("park");
     if (!begin("park", "flat")) return;
     $("searchBox").focus();
     toast("Βρες το χωράφι και σχεδίασε το περίγραμμά του με το εργαλείο πολυγώνου. Στο βήμα «Πάνελ» θα βρεις έτοιμες προτάσεις διάταξης σε βάσεις.", 8000);
   };
 
+  // Pointer (or keyboard focus) resting on a choice: the scene already looks at the town or at the park.
+  [["homeBuilding", "town"], ["homeNewBuilding", "town"], ["homePark", "park"]].forEach(([id, where]) => {
+    const back = () => { if (!$("homeChoose").hidden) hero("overview", true); };
+    for (const ev of ["pointerenter", "focus"]) $(id).addEventListener(ev, () => hero(where, true));
+    for (const ev of ["pointerleave", "blur"]) $(id).addEventListener(ev, back);
+  });
   $("homeNew").onclick = () => screen("choose");
   $("homeBack").onclick = () => screen("start");
   $("homeRoofBack").onclick = () => screen("choose");
