@@ -38,6 +38,8 @@
     $("homeStart").hidden = name !== "start";
     $("homeChoose").hidden = name !== "choose";
     $("homeRoof").hidden = name !== "roof";
+    $("homeBack").hidden = name !== "choose"; // «Πίσω» sits in the top-left corner of the screen
+    $("homeRoofBack").hidden = name !== "roof";
   }
 
   async function show() {

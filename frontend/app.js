@@ -210,6 +210,11 @@ function updateShapesInfo() {
 async function search() {
   const q = $("searchBox").value.trim();
   if (!q) return;
+  const m = q.match(/^\(?\s*(-?\d{1,3}(?:[.,]\d+)?)\s*[,;\s]\s*(-?\d{1,3}(?:[.,]\d+)?)\s*\)?$/); // "lat, lng"
+  if (m) {
+    const la = +m[1].replace(",", "."), lo = +m[2].replace(",", ".");
+    if (Math.abs(la) <= 90 && Math.abs(lo) <= 180) return showFound(L.latLng(la, lo), q);
+  }
   try {
     const r = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(q)}`);
     const res = await r.json();
@@ -226,8 +231,22 @@ function showFound(at, label) {
   if (!$("projectAddress").value) $("projectAddress").value = label;
   if (window.plan) plan.centerOn(at, 19);
   else map.setView(at, 19);
+  showFoundPin(at, label);
   document.dispatchEvent(new CustomEvent("pv:found", { detail: at }));
 }
+// A pin marks the searched address / coordinates until the user starts using any tool.
+let foundPin = null;
+function showFoundPin(at, label) {
+  clearFoundPin();
+  foundPin = L.marker(at, {
+    interactive: false, keyboard: false,
+    icon: L.divIcon({ className: "found-pin", html: "<i></i>", iconSize: [28, 28], iconAnchor: [14, 28] }),
+  }).addTo(map);
+  if (label) foundPin.bindTooltip(label, { permanent: true, direction: "top", offset: [0, -28], className: "found-pin-tip" });
+}
+function clearFoundPin() { if (foundPin) { foundPin.remove(); foundPin = null; } }
+map.on("draw:drawstart draw:editstart draw:deletestart", clearFoundPin); // every tool fires drawstart
+
 $("btnSearch").onclick = search;
 $("searchBox").addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.defaultPrevented) search(); });
 
