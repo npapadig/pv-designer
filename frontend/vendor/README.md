@@ -4,6 +4,7 @@
 |---|---|---|
 | `leaflet/` | Leaflet (maps) | BSD-2-Clause (`leaflet/LICENSE`) |
 | `leaflet-draw/` | Leaflet.draw (drawing tools) | MIT |
+| `leaflet-rotate/` | leaflet-rotate 0.2.8 (map rotation, view only) | GPL-3.0 (`leaflet-rotate/LICENSE`) |
 | `chartjs/` | Chart.js (charts) | MIT (`chartjs/LICENSE.md`) |
 | `inter/` | Inter font | SIL OFL 1.1 (`inter/LICENSE`) |
 | `qr/qr.js` | Small QR code generator (byte mode, level M, versions 1-10), used by the "Mobile" panel | Written for PV Designer (own code, not copied from a package), MIT licence. The method follows the public QR Code standard (ISO/IEC 18004: Reed-Solomon over GF(256), function patterns, 8 masks) |

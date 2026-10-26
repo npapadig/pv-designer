@@ -18,7 +18,8 @@ let financeChart = null;
 
 // ---------- Map ----------
 const MAX_ZOOM = 23;
-const map = L.map("map", { maxZoom: MAX_ZOOM }).setView([37.9838, 23.7275], 17);
+// rotate: view-only map rotation (leaflet-rotate); the compass control in draw.js drives it, never saved in a project.
+const map = L.map("map", { maxZoom: MAX_ZOOM, rotate: true, touchRotate: true, shiftKeyRotate: true, rotateControl: false }).setView([37.9838, 23.7275], 17);
 
 // Esri imagery is sharper in some places than others (zoom 17 in rural areas, up to
 // 21+ in cities). Above the best available level Esri serves "Map data not yet
