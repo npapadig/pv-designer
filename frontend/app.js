@@ -356,6 +356,7 @@ function shadeOptions() {
 // ---------- Layout ----------
 function clearLayout() {
   panelsLayer.clearLayers();
+  window.manual?.reset();
   state.layout = null;
   clearShading();
   window.elec?.reset();
@@ -370,6 +371,7 @@ const NO_FIT = "Δεν χωράει κανένα πάνελ. Δοκίμασε μ
 // Show a computed layout (panels + totals) on the map; also used by options.js for a chosen proposal.
 function setLayout(panels, res) {
   panelsLayer.clearLayers();
+  window.manual?.reset();
   panels.forEach((p) => addPanel(p));
   state.layout = res;
   clearShading();
@@ -384,6 +386,7 @@ async function runLayout() {
   const s = settings();
   const ko = keepouts.getLayers().map(latlngsOf);
   panelsLayer.clearLayers();
+  window.manual?.reset();
 
   // Roof faces with their own tilt/azimuth: one request for all, with the face of every panel.
   if (window.faces?.active()) {
@@ -418,8 +421,9 @@ async function runLayout() {
   else if (total.removed_shaded) toast(`${total.removed_shaded} θέσεις παραλείφθηκαν γιατί σκιάζονται πάνω από το όριο.`, 6000);
 }
 // The main button shows the three proposals (options.js); the second one uses the settings as they are.
-$("btnLayout").onclick = () => withBusy($("btnLayout"), () => (window.options ? options.show() : runLayout()));
-$("btnLayoutCustom").onclick = () => withBusy($("btnLayoutCustom"), runLayout);
+const replaceOk = () => window.manual?.confirmReplace() ?? true; // hand-moved panels are replaced only after a yes
+$("btnLayout").onclick = () => replaceOk() && withBusy($("btnLayout"), () => (window.options ? options.show() : runLayout()));
+$("btnLayoutCustom").onclick = () => replaceOk() && withBusy($("btnLayoutCustom"), runLayout);
 
 // ---------- Shading ----------
 function shadingInput() {
@@ -911,6 +915,7 @@ function loadProject(p) {
     const { panels, ...rest } = p.layout;
     state.layout = rest;
   }
+  window.manual?.loaded();
   for (const [id, key] of Object.entries(FINANCE_FIELDS)) {
     const v = (p.finance_settings || {})[key];
     if (v !== undefined) $(id).value = v ?? "";

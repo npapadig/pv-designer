@@ -1,0 +1,19 @@
+/* Moving panels by hand and the list of rules they break (manual.js). */
+.manual-list { margin-top: 8px; font-size: 0.82rem; }
+.manual-list .ok { color: var(--muted); }
+.manual-list .bad { color: #ef4444; font-weight: 700; margin: 0 0 4px; }
+.manual-list ul { list-style: none; margin: 0; padding: 0; }
+.manual-list li { margin: 0; }
+.manual-list li button {
+  display: flex; gap: 6px; width: 100%; text-align: left; padding: 3px 6px; margin: 1px 0; height: auto;
+  background: transparent; border: 1px solid transparent; border-radius: 8px; color: var(--text); font-size: 0.8rem;
+}
+.manual-list li button:hover { background: var(--field-hover); border-color: var(--line-strong); }
+.manual-list li b { min-width: 3.4em; color: #ef4444; font-variant-numeric: tabular-nums; }
+.manual-list .more { color: var(--muted); padding: 3px 6px; }
+.manual-moving .leaflet-interactive { cursor: grab; }
+.manual-dragging, .manual-dragging .leaflet-interactive { cursor: grabbing !important; }
+.manual-btns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; margin: 8px 0; }
+.manual-btns button { margin: 0; white-space: normal; height: auto; padding: 7px 8px; font-size: 0.8rem; }
+.manual-list li button { justify-content: flex-start; align-items: baseline; }
+.manual-list hr { border: 0; border-top: 1px solid var(--line-strong); margin: 6px 0; }

@@ -25,6 +25,25 @@ window.I18N_EN =
 "Χωρίς όνομα": "Untitled",
 "κάτοψη": "floor plan",
 "Η κάτοψη δεν είναι ακόμα διαθέσιμη.": "The floor plan is not available yet.",
+// ---------------------------------------------------------------- moving panels by hand
+"Χειροκίνητη μετακίνηση πάνελ": "Move panels by hand",
+"Μετακίνηση πάνελ με το ποντίκι": "Move panels with the mouse",
+"Πάτα ένα πάνελ και σύρε το. Με Shift ή Ctrl προσθέτεις πάνελ στην επιλογή και σέρνονται όλα μαζί. Πάτα στο κενό για να καθαρίσει η επιλογή.": "Press a panel and drag it. With Shift or Ctrl you add panels to the selection and they all move together. Press the empty map to clear the selection.",
+"Κόλλημα στις γωνίες των διπλανών πάνελ": "Snap to the corners of nearby panels",
+"Επιλογή όλων": "Select all",
+"Καθαρισμός επιλογής": "Clear selection",
+"Αναίρεση μετακίνησης": "Undo move",
+"Έλεγχος περιορισμών": "Check the rules",
+"Εκτός περιγράμματος": "Outside the outline",
+"Κοντά στο περίγραμμα": "Too close to the outline",
+"Κοντά στη γραμμή διαχωρισμού πλευρών": "Too close to the line between roof faces",
+"Κοντά σε εμπόδιο": "Too close to an obstacle",
+"Επικάλυψη με άλλο πάνελ": "Overlaps another panel",
+"Υπερβολική σκίαση": "Too much shading",
+"Η διάταξη άλλαξε· ξαναϋπολόγισε σκιάσεις και παραγωγή όταν τελειώσεις.": "The layout changed; recalculate shading and production when you are done.",
+"Κανένα πάνελ δεν παραβιάζει περιορισμούς.": "No panel breaks any rule.",
+"Έχεις μετακινήσει πάνελ με το χέρι. Η νέα τοποθέτηση θα τα αντικαταστήσει. Να συνεχίσω;": "You have moved panels by hand. The new layout will replace them. Continue?",
+"Κάνε πρώτα τοποθέτηση πάνελ για να τα μετακινήσεις.": "Place the panels first, then you can move them.",
 // ---------------------------------------------------------------- steps and header
 "Βήματα": "Steps",
 "Έργο": "Project",
@@ -1334,6 +1353,8 @@ window.I18N_EN =
 "Δεν βρέθηκε διεύθυνση δικτύου. Έλεγξε ότι ο υπολογιστής είναι συνδεδεμένος στο Wi-Fi.": "No network address found. Check that the computer is connected to Wi-Fi."
 },
 "rules": [
+["^Πάνελ που παραβιάζουν περιορισμούς: (\\d+)$", "Panels breaking rules: $1"],
+["^… (\\d+) ακόμα$", "… $1 more"],
 // mobile app: chip on a project card
 ["^(\\d+) πάνελ$", "$1 panels"],
 ["^(\\d+) θέσεις παραλείφθηκαν γιατί σκιάζονται πάνω από το όριο\\.$", "$1 positions were skipped because they are shaded above the limit."],

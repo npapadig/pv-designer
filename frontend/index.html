@@ -13,6 +13,7 @@
   <link rel="stylesheet" href="draw.css?v=__VERSION__">
   <link rel="stylesheet" href="shapes.css?v=__VERSION__">
   <link rel="stylesheet" href="options.css?v=__VERSION__">
+  <link rel="stylesheet" href="manual.css?v=__VERSION__">
   <link rel="stylesheet" href="help.css?v=__VERSION__">
   <link rel="stylesheet" href="i18n.css?v=__VERSION__">
   <link rel="stylesheet" href="mobile-settings.css?v=__VERSION__">
@@ -307,6 +308,20 @@
       <p class="muted small">«Τοποθέτηση πάνελ» δείχνει 3 έτοιμες προτάσεις και τις δικές σου ρυθμίσεις, για να διαλέξεις. «Με τις ρυθμίσεις μου»
         τοποθετεί τα πάνελ ακριβώς με τις τιμές παραπάνω.</p>
       <div id="layoutOptions"></div>
+      <details id="manualBox">
+        <summary>Χειροκίνητη μετακίνηση πάνελ</summary>
+        <label class="radio switch"><input type="checkbox" id="manualOn"> Μετακίνηση πάνελ με το ποντίκι</label>
+        <p class="muted small">Πάτα ένα πάνελ και σύρε το. Με Shift ή Ctrl προσθέτεις πάνελ στην επιλογή και σέρνονται όλα μαζί.
+          Πάτα στο κενό για να καθαρίσει η επιλογή.</p>
+        <label class="radio switch"><input type="checkbox" id="manualSnap" checked> Κόλλημα στις γωνίες των διπλανών πάνελ</label>
+        <div class="manual-btns">
+          <button id="manualAll" class="secondary" type="button">Επιλογή όλων</button>
+          <button id="manualNone" class="secondary" type="button">Καθαρισμός επιλογής</button>
+          <button id="manualUndo" class="secondary" type="button" disabled>Αναίρεση μετακίνησης</button>
+          <button id="manualCheck" class="secondary" type="button">Έλεγχος περιορισμών</button>
+        </div>
+        <div id="manualList" class="manual-list"></div>
+      </details>
     </section>
 
     <section id="electrical" class="step">
@@ -493,6 +508,7 @@
   <script src="ruler.js?v=__VERSION__"></script>
   <script src="faces.js?v=__VERSION__"></script>
   <script src="options.js?v=__VERSION__"></script>
+  <script src="manual.js?v=__VERSION__"></script>
   <script src="electrical.js?v=__VERSION__"></script>
   <script src="ui.js?v=__VERSION__"></script>
   <script src="search.js?v=__VERSION__"></script>

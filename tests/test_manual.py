@@ -97,3 +97,20 @@ def test_endpoint():
     assert r.json()["by_reason"] == {"outside": 1}
     assert client.post("/api/layout/check", json={**body, "areas": []}).status_code == 422
     assert client.post("/api/layout/check", json={**body, "panels": []}).json()["count_bad"] == 0
+
+
+def test_manual_layout_is_saved_with_the_project(tmp_path, monkeypatch):
+    from backend import storage
+    monkeypatch.setattr(storage, "DATA_DIR", tmp_path)
+    moved = rect(-4, -4, -3, -2)
+    saved = client.post("/api/projects", json={"name": "t", "layout": {"count": 1, "manual": True, "panels": [moved]}}).json()
+    got = client.get(f"/api/projects/{saved['id']}").json()
+    assert got["layout"]["manual"] is True and got["layout"]["panels"] == [moved]
+
+
+def test_page_loads_the_script_after_app_js():
+    from pathlib import Path
+    html = (Path(__file__).resolve().parent.parent / "frontend" / "index.html").read_text(encoding="utf-8")
+    assert html.index("app.js") < html.index("manual.js") < html.index("ui.js")
+    for ident in ("manualOn", "manualSnap", "manualAll", "manualNone", "manualUndo", "manualCheck", "manualList"):
+        assert f'id="{ident}"' in html
