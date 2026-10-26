@@ -1,59 +1,72 @@
-// Start-screen scene: a house with solar panels, a battery and an EV charger that fills the free part of the start
-// screen. The light theme is day (sun; the panels charge the battery and feed the house and the car); the dark theme
-// is night (moon; the battery feeds the house). Pure canvas, no assets. Stops itself when the tab or the screen is hidden.
+// Start-screen scene: a small painted planet (about a fifth of it shows, bottom right) with a little electrified town
+// of modern white houses with solar roofs, EV chargers and cars, and, further away, a solar park with big batteries
+// connected to the town by pylons. Energy travels only through cables. The theme decides day (light: sun, the park
+// charges the batteries and feeds the town) or night (dark: moon, batteries feed the town). A click on the planet zooms
+// in towards the town; another click or Esc zooms out. Pure canvas, no assets. Stops itself when the tab or the screen
+// is hidden and is drawn once, still, with prefers-reduced-motion.
 (() => {
   const home = document.getElementById("home");
   if (!home) return;
   const root = document.documentElement;
-  const GW = 360, GH = 220; // the scene is drawn in these units, then scaled to the window
   const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
   const cv = document.createElement("canvas");
   cv.id = "heroScene";
   cv.setAttribute("aria-hidden", "true");
   home.prepend(cv);
   const g = cv.getContext("2d");
-  let VW = 0, VH = 0, S = 1, OX = 0, OY = 0;
 
   const TAU = Math.PI * 2;
   const clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v));
   const mix = (a, b, t) => a + (b - a) * t;
-  const hex = (s) => [1, 3, 5].map((i) => parseInt(s.slice(i, i + 2), 16));
-  const lerpCol = (a, b, t) => `rgb(${a.map((v, i) => Math.round(mix(v, b[i], t))).join(",")})`;
   const rnd = (n) => { const x = Math.sin(n * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); };
   const isLight = () => root.dataset.theme === "light";
+  const hexCache = new Map();
+  const hex = (s) => { let v = hexCache.get(s); if (!v) { v = [1, 3, 5].map((i) => parseInt(s.slice(i, i + 2), 16)); hexCache.set(s, v); } return v; };
+  const rgbMix = (a, b, t) => a.map((v, i) => Math.round(mix(v, b[i], t)));
+  const lerpCol = (a, b, t) => `rgb(${rgbMix(a, b, t).join(",")})`;
 
-  const DAY = [hex("#3d8fe8"), hex("#c9ecff")], NIGHT = [hex("#070b22"), hex("#17224f")];
+  let VW = 0, VH = 0, R = 400, k = 0.57, CX = 0, CY = 0;
+  let night = isLight() ? 0 : 1; // 0 = day, 1 = night; eases when the theme changes
+  let zt = 0, z = 0; // zoom target and current (0 = whole view, 1 = close to the town)
+  let lv = night ? 0.9 : 0.3; // battery level: charges by day, drains by night
+  let pulses = [], last = 0, raf = 0;
+  const C = (d, n, amount = 1) => lerpCol(hex(d), hex(n), night * amount); // colour for the current time of day
 
-  // Cables as polylines: panels -> junction -> house / battery / charger; at night battery -> house / charger.
-  const WIRES = {
-    panel: [[150, 116], [161, 124], [161, 176]],
-    house: [[161, 176], [161, 131], [120, 131], [120, 135]], // up the wall, along the ceiling to the lamp
-    batt: [[161, 176], [215, 176], [215, 171]],
-    car: [[161, 176], [260, 176], [260, 171]],
-    nHouse: [[215, 171], [215, 176], [161, 176], [161, 131], [120, 131], [120, 135]],
-    nCar: [[215, 171], [215, 176], [260, 176], [260, 171]],
-  };
-  const lens = (w) => { let tot = 0; const c = [0]; for (let k = 1; k < w.length; k++) { tot += Math.hypot(w[k][0] - w[k - 1][0], w[k][1] - w[k - 1][1]); c.push(tot); } return { c, tot }; };
-  Object.keys(WIRES).forEach((k) => { WIRES[k] = { pts: WIRES[k], ...lens(WIRES[k]) }; });
+  // Layout on the planet, by angle from the top (radians); the planet is drawn in a frame centred on its middle.
+  const CITY0 = -0.05, CITY_STEP = 0.1, HOUSES = 6, CITY_MID = CITY0 + CITY_STEP * (HOUSES - 1) / 2;
+  const PYLONS = [-0.5, -0.4, -0.3, -0.2, -0.1];
+  const PARK0 = -0.9, PARK_STEP = 0.0235, PANELS = 12, BATT = [-0.65, -0.6, -0.55];
+  const houseAngle = (i) => CITY0 + i * CITY_STEP;
+  const pol = (a, r) => [r * Math.sin(a), -r * Math.cos(a)];
+
+  // Cables as polylines in the planet frame (rebuilt when the size changes).
+  let PARKBUS, MAIN, TWIN, TAPS;
+  const lens = (pts) => { let tot = 0; const c = [0]; for (let j = 1; j < pts.length; j++) { tot += Math.hypot(pts[j][0] - pts[j - 1][0], pts[j][1] - pts[j - 1][1]); c.push(tot); } return { pts, c, tot }; };
+  const arc = (a0, a1, r) => { const n = Math.max(2, Math.ceil(Math.abs(a1 - a0) / 0.008)), o = []; for (let j = 0; j <= n; j++) o.push(pol(mix(a0, a1, j / n), r)); return o; };
+  const sagging = (r, drop) => { const o = []; for (let p = 0; p < PYLONS.length - 1; p++) for (let j = 0; j < 10; j++) { const s = j / 10; o.push(pol(mix(PYLONS[p], PYLONS[p + 1], s), r - drop * Math.sin(Math.PI * s))); } o.push(pol(PYLONS[PYLONS.length - 1], r)); return o; };
+  function buildPaths() {
+    const under = R - 6 * k, top = R + 38 * k;
+    PARKBUS = lens(arc(PARK0, -0.53, under));
+    MAIN = lens([...arc(-0.53, PYLONS[0], under), pol(PYLONS[0], top), ...sagging(top, 4 * k), pol(PYLONS[PYLONS.length - 1], under), ...arc(PYLONS[PYLONS.length - 1], houseAngle(HOUSES - 1) + 0.05, under)]);
+    TWIN = sagging(R + 31 * k, 4 * k);
+    TAPS = Array.from({ length: HOUSES }, (_, i) => { const a = houseAngle(i) - 24 * k / R; return lens([pol(a, under), pol(a, R + 33 * k)]); });
+  }
   const along = (w, f) => {
-    const d = clamp(f) * w.tot; let k = 1;
-    while (k < w.pts.length - 1 && w.c[k] < d) k++;
-    const u = (d - w.c[k - 1]) / ((w.c[k] - w.c[k - 1]) || 1), a = w.pts[k - 1], b = w.pts[k];
+    const d = clamp(f) * w.tot; let j = 1;
+    while (j < w.pts.length - 1 && w.c[j] < d) j++;
+    const u = (d - w.c[j - 1]) / ((w.c[j] - w.c[j - 1]) || 1), a = w.pts[j - 1], b = w.pts[j];
     return [mix(a[0], b[0], u), mix(a[1], b[1], u)];
   };
-
-  let parts = [], last = 0, raf = 0;
-  let night = isLight() ? 0 : 1; // 0 = day, 1 = night; eases when the theme changes
-  let lamp = 0; // ceiling lamp: lights up when energy arrives
-  let lv = night ? 0.9 : 0.3; // battery level: charges by day, drains by night
 
   function resize() {
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
     VW = innerWidth; VH = innerHeight;
     cv.width = Math.round(VW * dpr); cv.height = Math.round(VH * dpr);
-    S = clamp(Math.min(VW * 0.7 / GW, VH * 0.85 / GH), 0.8, 4.5);
-    OX = VW - GW * S - Math.min(VW * 0.03, 40); OY = VH - GH * S;
+    R = clamp(Math.min(VH * 0.95, VW * 0.62), 260, 1100);
+    k = R / 560;
+    CX = VW * 0.64; CY = VH + R * 0.5;
     g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    buildPaths();
   }
 
   function glow(x, y, r, col, a) {
@@ -63,154 +76,241 @@
     g.fillStyle = gr;
     g.fillRect(x - r, y - r, r * 2, r * 2);
   }
-  function rr(x, y, w, h, r) { g.beginPath(); g.roundRect(x, y, w, h, r); }
+  const rr = (x, y, w, h, r) => { g.beginPath(); g.roundRect(x, y, w, h, r); };
+  const quad = (pts) => { g.beginPath(); pts.forEach(([x, y], j) => (j ? g.lineTo(x, y) : g.moveTo(x, y))); g.closePath(); };
+  // Draws something standing on the planet at angle a, in units where 1 = k pixels, ground at y = 0, up is negative.
+  const place = (a, fn, ...args) => { g.save(); g.rotate(a); g.translate(0, -R); g.scale(k, k); fn(...args); g.restore(); };
+
+  // ---- things on the planet (local units) ----
+  function tree(s, sh) {
+    g.fillStyle = C("#7a5636", "#2a2030"); g.fillRect(-0.9 * s, -5 * s, 1.8 * s, 5 * s);
+    [[0, -9, 5.2, "#3f9a52", "#14402e"], [-2.6, -7, 3.6, "#47a85a", "#184a34"], [2.8, -7.5, 3.8, "#37893f", "#123a28"]].forEach(([x, y, r, d, n]) => {
+      g.fillStyle = C(d, n); g.beginPath(); g.arc(x * s, y * s, r * s, 0, TAU); g.fill();
+    });
+    g.fillStyle = `rgba(255,220,120,${0.22 * (1 - night)})`; g.beginPath(); g.arc(1.8 * s, -10.5 * s, 2.6 * s, 0, TAU); g.fill();
+    if (sh) { g.fillStyle = "rgba(0,0,0,0.12)"; g.beginPath(); g.ellipse(0, 0.6, 5 * s, 1.2, 0, 0, TAU); g.fill(); }
+  }
+  function bush(r) { g.fillStyle = C("#3f9a52", "#164430"); g.beginPath(); g.arc(0, -r * 0.6, r, 0, TAU); g.fill(); g.fillStyle = C("#58b866", "#1d5538"); g.beginPath(); g.arc(-r * 0.3, -r, r * 0.55, 0, TAU); g.fill(); }
+  const CARS = [["#8a909a", "#3a4050"], ["#eceff5", "#6a7088"], ["#55657e", "#232c42"], ["#b9bfca", "#4a5066"]];
+  function car(i) {
+    const [d, n] = CARS[i % CARS.length];
+    g.fillStyle = C(d, n); rr(-12, -6.4, 24, 4.6, 2); g.fill();
+    g.beginPath(); g.moveTo(-7, -6.2); g.quadraticCurveTo(-4.5, -10.5, 0, -10.5); g.quadraticCurveTo(5, -10.5, 8, -6.2); g.fill();
+    g.fillStyle = C("#7fb3d6", "#1a2236"); g.beginPath(); g.moveTo(-5.4, -6.6); g.quadraticCurveTo(-3.6, -9.2, -0.3, -9.2); g.lineTo(-0.3, -6.6); g.fill();
+    g.beginPath(); g.moveTo(0.9, -6.6); g.lineTo(0.9, -9.2); g.quadraticCurveTo(4, -9.2, 5.8, -6.6); g.fill();
+    g.fillStyle = "#1a2036"; [-7, 7].forEach((x) => { g.beginPath(); g.arc(x, -1.8, 2.1, 0, TAU); g.fill(); });
+    g.fillStyle = "#aab3c8"; [-7, 7].forEach((x) => { g.beginPath(); g.arc(x, -1.8, 0.8, 0, TAU); g.fill(); });
+    if (night > 0.3) { g.fillStyle = `rgba(255,240,190,${night})`; g.fillRect(11.4, -5.4, 1.2, 1.2); }
+  }
+  function house(i) {
+    const flip = rnd(i * 3 + 5) > 0.5 ? -1 : 1;
+    const lit = clamp((night - 0.25 - 0.4 * rnd(i + 21)) * 3);
+    const wall = C("#f4f2ec", "#444c70", 0.8), wall2 = C("#e6e3da", "#3a4262", 0.8);
+    g.save(); g.scale(flip, 1);
+    // lower floor, upper floor
+    g.fillStyle = wall; g.fillRect(-22, -18, 44, 18); g.fillRect(-4, -34, 26, 16);
+    g.fillStyle = wall2; g.fillRect(-22, -2, 44, 2);
+    // flat roofs with a thin edge
+    g.fillStyle = C("#3b414c", "#1c2132"); g.fillRect(-5, -35.2, 28, 1.6); g.fillRect(-23, -19.2, 19, 1.4);
+    // garage door, wood cladding, charger on the wall, front door
+    g.fillStyle = C("#3a3f49", "#171b28"); rr(-20, -14, 14, 14, 1); g.fill();
+    g.strokeStyle = C("#565c68", "#262c40"); g.lineWidth = 0.5;
+    for (let j = 1; j < 4; j++) { g.beginPath(); g.moveTo(-20, -14 + j * 3.5); g.lineTo(-6, -14 + j * 3.5); g.stroke(); }
+    g.fillStyle = C("#a8703f", "#4a3030"); g.fillRect(-4, -34, 4, 34);
+    g.strokeStyle = C("#7e4f2b", "#33202a"); g.lineWidth = 0.4;
+    for (let x = -3; x < 0; x += 1) { g.beginPath(); g.moveTo(x, -34); g.lineTo(x, 0); g.stroke(); }
+    g.fillStyle = C("#3c4047", "#1b1e28"); rr(-5.8, -10, 1.8, 5, 0.6); g.fill();
+    g.strokeStyle = "#35e0cf"; g.lineWidth = 0.5; g.beginPath(); g.moveTo(-5.2, -9); g.lineTo(-4.4, -7.6); g.lineTo(-5.4, -7.4); g.lineTo(-4.6, -6); g.stroke();
+    // big glass surfaces with warm light
+    const glass = lerpCol(hex("#a9d2ea"), hex("#ffd27a"), clamp(0.15 + lit * 0.85));
+    g.fillStyle = glass; g.fillRect(1, -31, 19, 10); g.fillRect(2, -15.5, 18, 12);
+    g.fillStyle = `rgba(255,255,255,${0.35 * (1 - lit)})`;
+    g.beginPath(); g.moveTo(1, -31); g.lineTo(8, -31); g.lineTo(1, -23); g.fill();
+    g.fillStyle = C("#3b414c", "#1c2132"); g.fillRect(10.2, -31, 0.7, 10); g.fillRect(10.7, -15.5, 0.7, 12);
+    g.fillStyle = C("#6a4a30", "#2a2030"); g.fillRect(-26, -19.2, 22, 0.8); // terrace railing line
+    // solar panels: on the upper roof and on the terrace roof (low slope)
+    const panel = (x, y) => {
+      g.fillStyle = lerpCol(hex("#2c63c9"), hex("#17306b"), night * 0.8);
+      quad([[x, y], [x + 4, y - 1.4], [x + 4, y - 2.8], [x, y - 1.4]]); g.fill();
+      g.strokeStyle = `rgba(170,210,255,${0.55 - 0.3 * night})`; g.lineWidth = 0.3; g.stroke();
+    };
+    for (let j = 0; j < 5; j++) panel(-3 + j * 5, -35.2);
+    for (let j = 0; j < 3; j++) panel(-21 + j * 5.5, -19.2);
+    g.restore();
+    // car parked in front of the garage and bushes (not mirrored, so it stays in front of the same side)
+    g.save(); g.translate(-13 * flip, 2); g.scale(flip, 1); car(i + (rnd(i) > 0.5 ? 1 : 0)); g.restore();
+    g.save(); g.translate(24, 0); bush(3.3); g.restore();
+    g.save(); g.translate(-25, 0); bush(2.6); g.restore();
+    return lit;
+  }
+  function panelRow(j) {
+    const r = rnd(j + 40);
+    for (let row = 0; row < 2; row++) {
+      g.save();
+      if (row === 0) { g.translate(0, -3); g.scale(0.78, 0.78); } else g.translate(7, 0);
+      g.strokeStyle = C("#6b7385", "#2a3150"); g.lineWidth = 0.8; g.beginPath(); g.moveTo(-2.5, 0); g.lineTo(-2.5, -3.6); g.moveTo(3, 0); g.lineTo(3, -6); g.stroke();
+      g.fillStyle = lerpCol(hex(row ? "#2f67cc" : "#4a79d0"), hex(row ? "#162c63" : "#1f3a78"), night * 0.8);
+      quad([[-5.5, -3.4], [5.5, -7.2], [5.5, -9], [-5.5, -5.2]]); g.fill();
+      g.strokeStyle = `rgba(180,215,255,${0.5 - 0.3 * night})`; g.lineWidth = 0.3; g.stroke();
+      g.restore();
+    }
+    void r;
+  }
+  function battery(j, stack) {
+    for (let s = 0; s < stack; s++) {
+      const y = -s * 10.4;
+      g.fillStyle = C("#dfe3e9", "#4a5272", 0.8); rr(-12, y - 10, 24, 10, 0.8); g.fill();
+      g.fillStyle = "#2dd4bf"; g.fillRect(-12, y - 6, 24, 1.4);
+      g.strokeStyle = C("#aab1bd", "#2b3150"); g.lineWidth = 0.3;
+      for (let x = -9; x <= 9; x += 3) { g.beginPath(); g.moveTo(x, y - 9.4); g.lineTo(x, y - 6.8); g.moveTo(x, y - 4.4); g.lineTo(x, y - 0.6); g.stroke(); }
+      const led = lv > 0.3 ? "#4ade80" : "#ffb547";
+      g.fillStyle = led; g.fillRect(8.5, y - 9, 2, 1.2);
+    }
+  }
+  function pylon(a, t) {
+    place(a, () => {
+      g.strokeStyle = C("#6b7385", "#3a4260"); g.lineWidth = 0.9; g.lineCap = "round";
+      g.beginPath(); g.moveTo(-4, 0); g.lineTo(-1.2, -38); g.moveTo(4, 0); g.lineTo(1.2, -38);
+      g.moveTo(-9, -38); g.lineTo(9, -38); g.moveTo(-7, -31); g.lineTo(7, -31);
+      for (let y = 0; y > -30; y -= 10) { g.moveTo(-4 + y * -0.07, y); g.lineTo(4 + y * 0.07, y - 10); g.moveTo(4 + y * 0.07, y); g.lineTo(-4 + y * -0.07, y - 10); }
+      g.stroke();
+      if (night > 0.3) { const bl = 0.5 + 0.5 * Math.sin(t * 3 + a * 9); g.fillStyle = `rgba(255,80,80,${night * bl})`; g.beginPath(); g.arc(0, -40, 1.2, 0, TAU); g.fill(); }
+    });
+  }
+
+  function wire(pts, w, dark, light) {
+    g.beginPath(); pts.forEach(([x, y], j) => (j ? g.lineTo(x, y) : g.moveTo(x, y)));
+    g.strokeStyle = dark; g.lineWidth = w * 1.9; g.stroke();
+    g.strokeStyle = light; g.lineWidth = w * 0.8; g.stroke();
+  }
 
   function draw(t) {
-    const day = 1 - night, p = day; // panel output follows the day
-    const top = lerpCol(DAY[0], NIGHT[0], night), bot = lerpCol(DAY[1], NIGHT[1], night);
+    const e = z * z * (3 - 2 * z); // eased zoom
+    const day = 1 - night;
     g.clearRect(0, 0, VW, VH);
     // sky over the whole window (screen space)
-    const sg = g.createLinearGradient(0, 0, 0, VH - 50 * S);
-    sg.addColorStop(0, top); sg.addColorStop(1, bot);
+    const sg = g.createLinearGradient(0, 0, 0, VH);
+    sg.addColorStop(0, lerpCol(hex("#3d8fe8"), hex("#070b22"), night)); sg.addColorStop(1, lerpCol(hex("#c9ecff"), hex("#17224f"), night));
     g.fillStyle = sg; g.fillRect(0, 0, VW, VH);
     if (night > 0.02) {
       for (let i = 0; i < 90; i++) {
         const tw = 0.55 + 0.45 * Math.sin(t * 1.6 + i * 3.1);
         g.globalAlpha = night * tw * (0.35 + 0.5 * rnd(i + 9));
         g.fillStyle = "#fff";
-        g.beginPath(); g.arc(rnd(i) * VW, rnd(i + 50) * VH * 0.6, (0.5 + rnd(i + 99) * 0.9) * Math.max(1, S * 0.5), 0, TAU); g.fill();
+        g.beginPath(); g.arc(rnd(i) * VW, rnd(i + 50) * VH * 0.7, 0.6 + rnd(i + 99) * 1.1, 0, TAU); g.fill();
       }
       g.globalAlpha = 1;
     }
-
-    g.save();
-    g.translate(OX, OY); g.scale(S, S);
-    const L = -OX / S, R = (VW - OX) / S, B = (VH - OY) / S;
-
-    // sun (day) and moon (night), fixed in the sky; only the theme decides which one is up
-    const ax = 215, ay = 46;
+    // sun (day) / moon (night): fixed in the sky, only the theme decides which one is up
+    const ax = VW * 0.8, ay = VH * 0.27, sr = clamp(Math.min(VW, VH) * 0.045, 18, 52);
     if (day > 0.02) {
       g.globalAlpha = day;
-      glow(ax, ay, 90, "rgba(255,190,80,A)", 0.55);
-      g.fillStyle = "#ffd25e"; g.beginPath(); g.arc(ax, ay, 15, 0, TAU); g.fill();
-      g.strokeStyle = "rgba(255,214,110,0.55)"; g.lineWidth = 1.6; g.lineCap = "round";
+      glow(ax, ay, sr * 5, "rgba(255,190,80,A)", 0.5);
+      g.fillStyle = "#ffd25e"; g.beginPath(); g.arc(ax, ay, sr, 0, TAU); g.fill();
+      g.strokeStyle = "rgba(255,214,110,0.55)"; g.lineWidth = Math.max(1.5, sr * 0.1); g.lineCap = "round";
       for (let i = 0; i < 12; i++) {
-        const a = i / 12 * TAU + t * 0.25, r1 = 20 + (i % 2) * 2, r2 = 26 + (i % 2) * 5 + Math.sin(t * 2 + i) * 1.5;
+        const a = i / 12 * TAU + t * 0.2, r1 = sr * 1.3, r2 = sr * (1.65 + (i % 2) * 0.3 + Math.sin(t * 2 + i) * 0.08);
         g.beginPath(); g.moveTo(ax + Math.cos(a) * r1, ay + Math.sin(a) * r1); g.lineTo(ax + Math.cos(a) * r2, ay + Math.sin(a) * r2); g.stroke();
       }
       g.globalAlpha = 1;
     }
     if (night > 0.02) {
       g.globalAlpha = night;
-      glow(ax, ay, 60, "rgba(190,210,255,A)", 0.3);
-      g.save(); g.beginPath(); g.arc(ax, ay, 13, 0, TAU); g.clip(); // crescent: the disc minus an offset disc
-      g.fillStyle = "#eef2ff"; g.beginPath(); g.rect(ax - 20, ay - 20, 40, 40); g.arc(ax + 6, ay - 3, 12, 0, TAU); g.fill("evenodd"); g.restore();
+      glow(ax, ay, sr * 4, "rgba(190,210,255,A)", 0.28);
+      g.save(); g.beginPath(); g.arc(ax, ay, sr * 0.9, 0, TAU); g.clip();
+      g.fillStyle = "#eef2ff"; g.beginPath(); g.rect(ax - sr * 2, ay - sr * 2, sr * 4, sr * 4); g.arc(ax + sr * 0.45, ay - sr * 0.2, sr * 0.82, 0, TAU); g.fill("evenodd"); g.restore();
       g.globalAlpha = 1;
     }
-
     // clouds drifting slowly
-    g.fillStyle = `rgba(255,255,255,${0.1 + 0.55 * day})`;
-    g.beginPath(); // one path, so the puffs do not show their overlaps
+    g.fillStyle = `rgba(255,255,255,${0.08 + 0.5 * day})`;
+    g.beginPath();
     for (let c = 0; c < 3; c++) {
-      const cx = L + ((t * (3 + c) + c * 170) % (R - L + 120)) - 60, cy = 34 + c * 26;
-      [[0, 0, 15], [16, -6, 19], [34, 0, 14], [18, 5, 16]].forEach(([dx, dy, r]) => { g.moveTo(cx + dx + r, cy + dy); g.arc(cx + dx, cy + dy, r, 0, TAU); });
+      const u = Math.max(40, VW * 0.04), cx = ((t * (5 + c * 2) + c * VW * 0.4) % (VW + 6 * u)) - 3 * u, cy = VH * (0.12 + c * 0.14);
+      [[0, 0, 0.8], [0.9, -0.3, 1.0], [1.9, 0, 0.75], [1, 0.3, 0.85]].forEach(([dx, dy, r]) => { g.moveTo(cx + dx * u + r * u * 0.8, cy + dy * u); g.arc(cx + dx * u, cy + dy * u, r * u * 0.8, 0, TAU); });
     }
     g.fill();
 
-    // hills
-    g.fillStyle = lerpCol(hex("#2a7a58"), hex("#0c2a34"), night * 0.9);
-    g.beginPath(); g.moveTo(L, 160); g.quadraticCurveTo(70, 138, 150, 158); g.quadraticCurveTo(250, 178, R, 150); g.lineTo(R, B); g.lineTo(L, B); g.fill();
-    g.fillStyle = lerpCol(hex("#38996a"), hex("#12384a"), night * 0.9);
-    g.beginPath(); g.moveTo(L, 172); g.quadraticCurveTo(120, 160, 220, 172); g.quadraticCurveTo(300, 180, R, 168); g.lineTo(R, B); g.lineTo(L, B); g.fill();
+    // ---- planet, with the zoom towards the town ----
+    const pc = pol(CITY_MID, R), pcx = CX + pc[0], pcy = CY + pc[1];
+    const tx = VW * 0.66, ty = VH * 0.66;
+    g.save();
+    g.translate(mix(pcx, tx, e), mix(pcy, ty, e)); g.rotate(-CITY_MID * e); g.scale(mix(1, 2.7, e), mix(1, 2.7, e));
+    g.translate(-pcx, -pcy); g.translate(CX, CY);
 
-    // house
-    g.fillStyle = lerpCol(hex("#f4efe6"), hex("#3a4466"), night * 0.75); rr(82, 126, 76, 44, 3); g.fill();
-    g.fillStyle = lerpCol(hex("#b4543f"), hex("#4a2a3a"), night * 0.7);
-    g.beginPath(); g.moveTo(70, 129); g.lineTo(120, 92); g.lineTo(172, 129); g.closePath(); g.fill();
-    // panels on the right slope
-    const ux = 52 / 63.7, uy = 37 / 63.7, nx = -uy, ny = ux;
-    for (let i = 0; i < 3; i++) {
-      const t0 = 0.12 + i * 0.27, t1 = t0 + 0.24;
-      const P = (s, d) => [120 + ux * 63.7 * s + nx * d, 92 + uy * 63.7 * s + ny * d];
-      const q = [P(t0, 4), P(t1, 4), P(t1, 15), P(t0, 15)];
-      g.fillStyle = lerpCol(hex("#17306b"), hex("#2c63c9"), p);
-      g.beginPath(); q.forEach(([x, y], j) => (j ? g.lineTo(x, y) : g.moveTo(x, y))); g.closePath(); g.fill();
-      g.strokeStyle = `rgba(150,200,255,${0.35 + 0.4 * p})`; g.lineWidth = 0.7; g.stroke();
-      if (p > 0.1) { // glint sweeping over the cells
-        const gs = ((t * 0.35 + i * 0.2) % 1.6) - 0.3, gp = P(t0 + (t1 - t0) * gs, 9.5);
-        if (gs > 0 && gs < 1) glow(gp[0], gp[1], 9, "rgba(255,240,180,A)", 0.5 * p);
-      }
+    glow(0, 0, R * 1.16, `rgba(${rgbMix([130, 200, 255], [110, 120, 255], night).join(",")},A)`, 0.45 + 0.1 * day);
+    // body
+    const bg = g.createRadialGradient(R * 0.3, -R * 0.7, R * 0.1, 0, 0, R);
+    bg.addColorStop(0, C("#6cc77a", "#2a6a5e")); bg.addColorStop(0.6, C("#4aa860", "#1c5058")); bg.addColorStop(1, C("#2f8a55", "#123448"));
+    g.fillStyle = bg; g.beginPath(); g.arc(0, 0, R, 0, TAU); g.fill();
+    g.save(); g.beginPath(); g.arc(0, 0, R, 0, TAU); g.clip();
+    for (let i = 0; i < 40; i++) { // painted patches of fields and meadows
+      const a = -1.5 + rnd(i) * 3, rad = R * (0.9 + rnd(i + 70) * 0.09), [px, py] = pol(a, rad);
+      g.fillStyle = rnd(i + 3) > 0.5 ? C("#8fd486", "#1f5448") : C("#2e8a58", "#0d2e3a");
+      g.globalAlpha = 0.28; g.beginPath(); g.ellipse(px, py, R * (0.03 + rnd(i + 9) * 0.07), R * (0.012 + rnd(i + 17) * 0.02), a, 0, TAU); g.fill();
     }
-    // door and windows (lit by the battery at night)
-    g.fillStyle = lerpCol(hex("#7a4a35"), hex("#2a2038"), night * 0.6); rr(114, 148, 12, 22, 2); g.fill();
-    [[90, 136], [136, 136]].forEach(([x, y]) => {
-      g.fillStyle = lerpCol(hex("#8fc6ee"), hex("#ffcf70"), night); rr(x, y, 14, 12, 2); g.fill();
-      if (night > 0.2) glow(x + 7, y + 6, 26, "rgba(255,200,100,A)", 0.5 * night);
-    });
+    g.globalAlpha = 1;
+    g.restore();
+    g.strokeStyle = `rgba(255,226,140,${0.5 * day + 0.12})`; g.lineWidth = 2 * k; g.beginPath(); g.arc(0, 0, R - k, -1.25, 1.25); g.stroke();
 
-    // battery
-    g.fillStyle = "rgba(10,16,34,0.55)"; rr(204, 130, 22, 40, 5); g.fill();
-    g.fillStyle = lv > 0.3 ? "#2dd4bf" : "#ffb547";
-    rr(207, 133 + 34 * (1 - lv), 16, 34 * lv, 3); g.fill();
-    g.fillStyle = "#cfd6e8"; rr(211, 126, 8, 5, 1.5); g.fill();
-    glow(215, 150, 26, "rgba(45,212,191,A)", 0.12 + 0.1 * Math.sin(t * 3));
-
-    // EV charger and car
-    g.fillStyle = "#cfd6e8"; rr(256, 142, 8, 28, 3); g.fill();
-    g.fillStyle = p > 0.1 ? "#4ade80" : "#6b7692"; g.beginPath(); g.arc(260, 149, 2.2, 0, TAU); g.fill();
-    if (p > 0.1) glow(260, 149, 12, "rgba(74,222,128,A)", (0.5 + 0.3 * Math.sin(t * 4)) * p);
-    g.strokeStyle = "#8d97b0"; g.lineWidth = 1.5; g.beginPath(); g.moveTo(264, 160); g.quadraticCurveTo(272, 176, 280, 164); g.stroke();
-    g.fillStyle = "#e8ecf6"; rr(274, 150, 66, 18, 7); g.fill();
-    g.beginPath(); g.moveTo(286, 151); g.quadraticCurveTo(294, 136, 308, 136); g.quadraticCurveTo(322, 136, 328, 151); g.fill();
-    g.fillStyle = lerpCol(hex("#7fb3e6"), hex("#1c2440"), night * 0.8);
-    g.beginPath(); g.moveTo(291, 150); g.quadraticCurveTo(297, 140, 307, 140); g.lineTo(307, 150); g.fill();
-    g.beginPath(); g.moveTo(311, 150); g.lineTo(311, 140); g.quadraticCurveTo(320, 140, 324, 150); g.fill();
-    g.fillStyle = "#1a2036";
-    [290, 322].forEach((x) => { g.beginPath(); g.arc(x, 168, 6, 0, TAU); g.fill(); });
-    g.fillStyle = "#aab3c8";
-    [290, 322].forEach((x) => { g.beginPath(); g.arc(x, 168, 2.4, 0, TAU); g.fill(); });
-    if (night > 0.3) glow(341, 158, 18, "rgba(255,240,190,A)", 0.5 * night);
-
-    // cables
+    // scattered trees in the open stretches
+    for (let i = 0; i < 46; i++) {
+      const a = -1.35 + rnd(i + 200) * 2.5;
+      if ((a > -0.97 && a < -0.45) || (a > -0.12 && a < 0.58)) continue;
+      place(a, tree, 0.7 + rnd(i + 5) * 0.7, true);
+    }
+    // park: rows of panels and the big batteries
+    for (let j = 0; j < PANELS; j++) place(PARK0 + j * PARK_STEP, panelRow, j);
+    BATT.forEach((a, j) => place(a, battery, j, j === 1 ? 1 : 2));
+    // town
+    const litHouses = [];
+    for (let i = 0; i < HOUSES; i++) {
+      place(houseAngle(i), () => { litHouses[i] = house(i); });
+      if (i < HOUSES - 1) place(houseAngle(i) + CITY_STEP / 2, tree, 0.55 + rnd(i + 80) * 0.25, false);
+    }
+    place(houseAngle(HOUSES - 1) + CITY_STEP * 0.7, tree, 0.8, true);
+    place(houseAngle(0) - CITY_STEP * 0.6, tree, 0.75, true);
+    // pylons and cables
+    PYLONS.forEach((a) => pylon(a, t));
     g.lineCap = "round"; g.lineJoin = "round";
-    const wirePath = (w) => { g.beginPath(); w.pts.forEach(([x, y], k) => (k ? g.lineTo(x, y) : g.moveTo(x, y))); };
-    ["panel", "house", "batt", "car"].forEach((k) => {
-      wirePath(WIRES[k]); g.strokeStyle = lerpCol(hex("#2b3348"), hex("#0a0f1e"), night * 0.6); g.lineWidth = 2.6; g.stroke();
-      wirePath(WIRES[k]); g.strokeStyle = lerpCol(hex("#6d7893"), hex("#3a4666"), night); g.lineWidth = 1.2; g.stroke();
-    });
-    // ceiling lamp at the end of the house cable
-    g.strokeStyle = "#2b3348"; g.lineWidth = 1; g.beginPath(); g.moveTo(120, 135); g.lineTo(120, 136.5); g.stroke();
-    glow(120, 139, 30, "rgba(255,226,140,A)", 0.7 * lamp);
-    g.fillStyle = lerpCol(hex("#8a8f9c"), hex("#fff1b0"), lamp); g.beginPath(); g.arc(120, 139, 3.2, 0, TAU); g.fill();
-    // energy pulses travelling along the cables
-    for (const q of parts) {
-      const w = WIRES[q.path], col = q.path[0] === "n" ? "45,212,191" : "255,196,70";
+    const wd = C("#2b3348", "#0a0f1e", 0.6), wl = C("#7d88a4", "#46517a");
+    wire(TWIN, k * 0.55, "rgba(30,36,56,0.55)", "rgba(120,130,160,0.4)");
+    wire(MAIN.pts.filter((p) => Math.hypot(p[0], p[1]) > R + 3 * k), k * 0.7, wd, wl);
+    const hide = "rgba(20,28,40,0.5)", hl = "rgba(150,160,185,0.38)";
+    wire(PARKBUS.pts, k * 0.8, hide, hl);
+    wire(MAIN.pts.filter((p) => Math.hypot(p[0], p[1]) < R), k * 0.8, hide, hl);
+    TAPS.forEach((w) => wire(w.pts, k * 0.8, wd, wl));
+    // window light of the town at night
+    if (night > 0.2) litHouses.forEach((l, i) => { if (l > 0.05) { const [x, y] = pol(houseAngle(i), R + 22 * k); glow(x, y, 46 * k, "rgba(255,200,100,A)", 0.4 * l); } });
+    BATT.forEach((a) => { if (night > 0.3) { const [x, y] = pol(a, R + 8 * k); glow(x, y, 22 * k, "rgba(45,212,191,A)", 0.22 * night); } });
+    // energy pulses, only inside cables
+    const col = night > 0.5 ? "45,212,191" : "255,196,70";
+    for (const q of pulses) {
       for (let j = 0; j < 5; j++) {
-        const [x, y] = along(w, q.t - j * 0.012);
+        const f = q.dir > 0 ? q.t - j * 0.012 : 1 - q.t + j * 0.012;
+        if (f < 0 || f > 1) continue;
+        const [x, y] = along(q.w, f);
         g.fillStyle = `rgba(${col},${(1 - j * 0.2) * (j ? 0.55 : 1)})`;
-        g.beginPath(); g.arc(x, y, 1.9 - j * 0.2, 0, TAU); g.fill();
-        if (!j) glow(x, y, 6, `rgba(${col},A)`, 0.4);
+        g.beginPath(); g.arc(x, y, (1.7 - j * 0.2) * k, 0, TAU); g.fill();
+        if (!j) glow(x, y, 6 * k, `rgba(${col},A)`, 0.45);
       }
     }
     g.restore();
   }
 
   function step(dt) {
-    const target = isLight() ? 0 : 1;
-    night += clamp(target - night, -dt * 0.9, dt * 0.9);
-    const spawn = (path, n) => { if (Math.random() < n * dt) parts.push({ path, t: 0, v: 0.5 / WIRES[path].tot * 60 }); };
+    night += clamp((isLight() ? 0 : 1) - night, -dt * 0.9, dt * 0.9);
+    z += clamp(zt - z, -dt * 0.9, dt * 0.9);
+    const spawn = (w, rate, dir, speed) => { if (Math.random() < rate * dt) pulses.push({ w, t: 0, dir, v: speed * R / w.tot }); };
     if (night < 0.5) {
-      spawn("panel", 2.2); // the stretch from the roof to the junction; branches follow when it arrives
-      for (const q of parts) if (q.path === "panel" && !q.done && q.t > 0.98) {
-        q.done = true; // reached the junction: split to the house, the car and the battery (if not full)
-        parts.push({ path: "house", t: 0, v: 0.5 / WIRES.house.tot * 60 }, { path: "car", t: 0, v: 0.5 / WIRES.car.tot * 60 });
-        if (lv < 0.97) parts.push({ path: "batt", t: 0, v: 0.5 / WIRES.batt.tot * 60 });
-      }
+      spawn(PARKBUS, 2.4, 1, 0.16); spawn(MAIN, 1.4, 1, 0.18);
+      TAPS.forEach((w) => spawn(w, 0.3, -1, 0.1));
       if (lv < 0.97) lv = Math.min(0.97, lv + dt * 0.035);
-    } else if (lv > 0.22) { spawn("nHouse", 1.2); spawn("nCar", 1.2); lv = Math.max(0.2, lv - dt * 0.035); }
-    for (const q of parts) if ((q.path === "house" || q.path === "nHouse") && q.t > 0.92) lamp = 1;
-    lamp = Math.max(0, lamp - dt * 0.9);
-    parts = parts.filter((q) => (q.t += q.v * dt) < 1);
+    } else {
+      spawn(MAIN, 1.3, 1, 0.18);
+      TAPS.forEach((w, i) => spawn(w, 0.45 * clamp((night - 0.4 - 0.2 * rnd(i + 21)) * 4), 1, 0.1));
+      if (lv > 0.22) lv = Math.max(0.2, lv - dt * 0.035);
+    }
+    pulses = pulses.filter((q) => (q.t += q.v * dt) < 1.06);
   }
 
   const active = () => !document.hidden && !home.hidden && cv.getClientRects().length > 0;
@@ -225,12 +325,24 @@
     raf = requestAnimationFrame(frame);
   }
 
+  function still() { night = isLight() ? 0 : 1; z = zt; draw(0); }
   function wake() {
     if (!VW || VW !== innerWidth || VH !== innerHeight) resize();
-    if (reduce) { if (active()) { night = isLight() ? 0 : 1; draw(0); } cv.classList.add("on"); return; }
+    if (reduce) { if (active()) still(); cv.classList.add("on"); return; }
     if (!raf && active()) { last = performance.now(); raf = requestAnimationFrame(frame); }
     cv.classList.toggle("on", active());
   }
+
+  // Zoom: a click on the bare planet goes in; a click on bare background (or Esc) goes out. Cards and buttons are untouched.
+  const onPlanet = (e) => Math.hypot(e.clientX - CX, e.clientY - CY) <= R;
+  const bare = (e) => e.target === home || e.target === cv;
+  function setZoom(v) { zt = v; if (reduce && active()) still(); }
+  home.addEventListener("click", (e) => {
+    if (!bare(e) || cv.hidden || !cv.getClientRects().length) return;
+    if (zt) setZoom(0); else if (onPlanet(e)) setZoom(1);
+  });
+  home.addEventListener("pointermove", (e) => { home.style.cursor = bare(e) && (zt || onPlanet(e)) ? (zt ? "zoom-out" : "zoom-in") : ""; });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && zt && active()) setZoom(0); });
 
   document.addEventListener("visibilitychange", wake);
   addEventListener("resize", wake);
