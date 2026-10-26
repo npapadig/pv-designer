@@ -15,7 +15,7 @@ from pydantic import BaseModel, Field
 from . import electrical, energy, finance, plan_drawing, report, single_line, tech_description, appendix_i, settings, shading, simulation, storage
 from . import lifecycle, mobile
 from .equipment import CATALOG_PANELS, PRESET_INVERTERS, Inverter
-from .layout import LayoutParams, compute_faces_layout, compute_layout, split_area
+from .layout import LayoutParams, compute_faces_layout, compute_layout, remove_shaded, split_area
 
 # Windows may not know these types; set them so the browser gets the right header.
 mimetypes.add_type("font/woff2", ".woff2")
@@ -33,6 +33,11 @@ app.include_router(mobile.router)  # phone app API (read-only, own token)
 app.include_router(lifecycle.router)  # hello/ping/bye of the pages; before the "/" mount, which would hide it
 
 
+class Obstacle(BaseModel):
+    polygon: list[list[float]]
+    height_m: float = Field(0, ge=0, le=500)
+
+
 class LayoutRequest(BaseModel):
     area: list[list[float]] = Field(..., description="[[lat, lng], ...]")
     keepouts: list[list[list[float]]] = []
@@ -46,12 +51,20 @@ class LayoutRequest(BaseModel):
     row_spacing_m: float | None = Field(None, ge=0, le=20)
     col_spacing_m: float = Field(0.02, ge=0, le=5)
     setback_m: float = Field(0.5, ge=0, le=20)
+    ridge_gap_m: float | None = Field(None, ge=0, le=20)
+    obstacle_gap_m: float | None = Field(None, ge=0, le=20)
+    table_panels: int = Field(0, ge=0, le=200)
+    table_gap_m: float = Field(0.8, ge=0, le=10)
+    avoid_shaded: bool = False  # drop panel positions shaded more than max_shade_pct by the obstacles
+    max_shade_pct: float = Field(10, ge=0, le=100)
+    obstacles: list[Obstacle] = []  # the keepouts with their heights (for avoid_shaded)
 
 
 class FaceArea(BaseModel):
     """One roof face: its outline and, optionally, its own tilt and azimuth (else the common ones)."""
     area: list[list[float]] = Field(..., description="[[lat, lng], ...]")
-    tilt_deg: float | None = Field(None, ge=0, le=90)
+    tilt_deg: float | None = Field(None, ge=0, le=90)  # panel tilt; None = the roof slope (flush panels)
+    roof_tilt_deg: float | None = Field(None, ge=0, le=90)  # slope of the roof face itself
     azimuth_deg: float | None = Field(None, ge=0, le=360)
 
 
@@ -85,11 +98,6 @@ class EnergyRequest(BaseModel):
     source: Literal["auto", "pvgis", "offline"] = "auto"
     shading_monthly_pct: list[float] | None = Field(None, min_length=12, max_length=12)
     faces: list[EnergyFace] | None = None  # roof faces; then kwp/tilt/azimuth/shading come from each face
-
-
-class Obstacle(BaseModel):
-    polygon: list[list[float]]
-    height_m: float = Field(0, ge=0, le=500)
 
 
 class ShadingRequest(BaseModel):
@@ -187,20 +195,29 @@ def settings_put(req: SettingsUpdate):
     return settings.save(changes)
 
 
+def _avoid_shaded(req: LayoutRequest, res: dict, params: LayoutParams, plane=None) -> dict:
+    """With "avoid shaded positions" on, drop the panels the obstacles shade more than the limit."""
+    if not req.avoid_shaded or not res["count"]:
+        return res
+    tilt, az, mounting = plane or (params.tilt_deg, params.azimuth_deg, params.mounting)
+    return remove_shaded(res, [o.model_dump() for o in req.obstacles], tilt, az, mounting,
+                         req.max_shade_pct, params.panel_power_w, params.panel_width_m * params.panel_length_m)
+
+
 @app.post("/api/layout")
 def layout(req: LayoutRequest):
-    params = LayoutParams(**req.model_dump(exclude={"area"}))
+    params = LayoutParams(**req.model_dump(exclude={"area", "obstacles", "avoid_shaded", "max_shade_pct"}))
     try:
-        return compute_layout(req.area, params)
+        return _avoid_shaded(req, compute_layout(req.area, params), params)
     except ValueError as e:
         raise HTTPException(400, str(e))
 
 
 @app.post("/api/layout/faces")
 def layout_faces(req: FacesLayoutRequest):
-    params = LayoutParams(**req.model_dump(exclude={"area", "faces"}))
+    params = LayoutParams(**req.model_dump(exclude={"area", "faces", "obstacles", "avoid_shaded", "max_shade_pct"}))
     try:
-        return compute_faces_layout([f.model_dump() for f in req.faces], params)
+        return _avoid_shaded(req, compute_faces_layout([f.model_dump() for f in req.faces], params), params)
     except ValueError as e:
         raise HTTPException(400, str(e))
 
@@ -444,9 +461,11 @@ class OptionsRequest(LayoutRequest):
 def layout_options_route(req: OptionsRequest):
     # The cards compare installed power and how well each placement catches the sun (Νίκος, 2026-10-22):
     # no energy estimate and no PVGIS call here.
-    params = LayoutParams(**req.model_dump(exclude={"area", "areas", "east_west"}))
+    params = LayoutParams(**req.model_dump(exclude={"area", "areas", "east_west", "obstacles", "avoid_shaded", "max_shade_pct"}))
     try:
         options = layout_options(req.areas, params, req.east_west)
+        for o in options:
+            _avoid_shaded(req, o, params, plane=(o["tilt_deg"], o["azimuth_deg"], o["mounting"]))
     except ValueError as e:
         raise HTTPException(400, str(e))
     lat, lon = options[0]["center"]
@@ -466,9 +485,9 @@ class AreasLayoutRequest(LayoutRequest):
 @app.post("/api/layout/ew")
 def layout_east_west(req: AreasLayoutRequest):
     """East-west racks back to back over all areas: two faces (0 = east, 1 = west), like /api/layout/faces."""
-    params = LayoutParams(**req.model_dump(exclude={"area", "areas"}))
+    params = LayoutParams(**req.model_dump(exclude={"area", "areas", "obstacles", "avoid_shaded", "max_shade_pct"}))
     try:
-        return compute_ew_areas(req.areas, params)
+        return _avoid_shaded(req, compute_ew_areas(req.areas, params), params)
     except ValueError as e:
         raise HTTPException(400, str(e))
 

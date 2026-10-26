@@ -97,7 +97,7 @@
     box.innerHTML = `<p class="muted small">Υπολογισμός των προτάσεων…</p>`;
     try {
       const r = await api("/api/layout/options", "POST", {
-        ...s, areas: outlines, keepouts: keepouts.getLayers().map(latlngsOf), east_west: window.options.eastWest(),
+        ...s, ...shadeOptions(), areas: outlines, keepouts: keepouts.getLayers().map(latlngsOf), east_west: window.options.eastWest(),
       });
       shown = r.options;
     } catch (e) {

@@ -324,7 +324,7 @@ async function withBusy(btn, fn) {
 }
 
 function settings() {
-  const rowGap = $("rowGap").value;
+  const rowGap = $("rowGap").value, ridge = $("ridgeGap").value, obstacle = $("obstacleGap").value;
   return {
     panel_width_m: +$("panelWidth").value,
     panel_length_m: +$("panelLength").value,
@@ -336,6 +336,19 @@ function settings() {
     row_spacing_m: rowGap === "" ? null : +rowGap,
     col_spacing_m: +$("colGap").value,
     setback_m: +$("setback").value,
+    ridge_gap_m: ridge === "" ? null : +ridge,
+    obstacle_gap_m: obstacle === "" ? null : +obstacle,
+    table_panels: $("tablesOn").checked ? Math.max(1, Math.round(+$("tablePanels").value || 1)) : 0,
+    table_gap_m: +$("tableGap").value,
+  };
+}
+
+// "Avoid shaded positions" (step «Σκιές»): the obstacles with their heights go along with a layout request.
+function shadeOptions() {
+  if (!$("avoidShaded").checked) return {};
+  return {
+    avoid_shaded: true, max_shade_pct: +$("maxShade").value || 0,
+    obstacles: keepouts.getLayers().map((l) => ({ polygon: latlngsOf(l), height_m: l.pvHeight || 0 })),
   };
 }
 
@@ -361,6 +374,7 @@ function setLayout(panels, res) {
   clearShading();
   window.elec?.reset();
   if (!res.count) toast(NO_FIT, 6000);
+  else if (res.removed_shaded) toast(`${res.removed_shaded} θέσεις παραλείφθηκαν γιατί σκιάζονται πάνω από το όριο.`, 6000);
 }
 
 async function runLayout() {
@@ -372,18 +386,18 @@ async function runLayout() {
 
   // Roof faces with their own tilt/azimuth: one request for all, with the face of every panel.
   if (window.faces?.active()) {
-    const { panels, ...res } = await api("/api/layout/faces", "POST", { ...s, keepouts: ko, faces: faces.list() });
+    const { panels, ...res } = await api("/api/layout/faces", "POST", { ...s, ...shadeOptions(), keepouts: ko, faces: faces.list() });
     return setLayout(panels, res);
   }
   // East-west racks back to back: two faces (east, west), like roof faces.
   if (window.options?.eastWest()) {
-    const { panels, ...res } = await api("/api/layout/ew", "POST", { ...s, keepouts: ko, areas: areaLayers.map(latlngsOf) });
+    const { panels, ...res } = await api("/api/layout/ew", "POST", { ...s, ...shadeOptions(), keepouts: ko, areas: areaLayers.map(latlngsOf) });
     return setLayout(panels, res);
   }
 
   const total = { count: 0, kwp: 0, area_m2: 0, module_area_m2: 0, row_gap_m: null, center: null };
   for (const layer of areaLayers) {
-    const res = await api("/api/layout", "POST", { ...s, area: latlngsOf(layer), keepouts: ko });
+    const res = await api("/api/layout", "POST", { ...s, ...shadeOptions(), area: latlngsOf(layer), keepouts: ko });
     res.panels.forEach((p) =>
       addPanel(p)
     );
@@ -392,6 +406,7 @@ async function runLayout() {
     total.area_m2 += res.area_m2;
     total.module_area_m2 += res.module_area_m2;
     total.row_gap_m = res.row_gap_m;
+    total.removed_shaded = (total.removed_shaded || 0) + (res.removed_shaded || 0);
     total.center = total.center || res.center;
   }
   total.kwp = Math.round(total.kwp * 1000) / 1000;
@@ -399,6 +414,7 @@ async function runLayout() {
   clearShading();
   window.elec?.reset();
   if (!total.count) toast("Δεν χωράει κανένα πάνελ. Δοκίμασε μικρότερη απόσταση από τα άκρα ή οριζόντια πάνελ.", 6000);
+  else if (total.removed_shaded) toast(`${total.removed_shaded} θέσεις παραλείφθηκαν γιατί σκιάζονται πάνω από το όριο.`, 6000);
 }
 // The main button shows the three proposals (options.js); the second one uses the settings as they are.
 $("btnLayout").onclick = () => withBusy($("btnLayout"), () => (window.options ? options.show() : runLayout()));
@@ -797,7 +813,7 @@ function collectProject() {
     project_type: state.projectType || "existing",
     roof_type: state.roofType || "pitched",
     settings: {
-      ...settings(), loss_pct: +$("loss").value, preset: $("panelPreset").value,
+      ...settings(), avoid_shaded: $("avoidShaded").checked, max_shade_pct: +$("maxShade").value || 0, loss_pct: +$("loss").value, preset: $("panelPreset").value,
       panel_name: PANEL_PRESETS[$("panelPreset").value].power ? PANEL_PRESETS[$("panelPreset").value].name : null,
     },
     report_info: { client: $("clientName").value, address: $("projectAddress").value, author: $("reportAuthor").value },
@@ -860,6 +876,13 @@ function loadProject(p) {
   set("orientation", s.orientation); set("azimuth", s.azimuth_deg); set("tilt", s.tilt_deg);
   set("mounting", s.mounting); set("colGap", s.col_spacing_m); set("setback", s.setback_m); set("loss", s.loss_pct);
   $("rowGap").value = s.row_spacing_m == null ? "" : s.row_spacing_m;
+  $("ridgeGap").value = s.ridge_gap_m == null ? "" : s.ridge_gap_m;
+  $("obstacleGap").value = s.obstacle_gap_m == null ? "" : s.obstacle_gap_m;
+  $("avoidShaded").checked = !!s.avoid_shaded;
+  $("maxShade").value = s.max_shade_pct ?? 10;
+  $("tablesOn").checked = (s.table_panels || 0) > 0;
+  $("tablePanels").value = s.table_panels || 6;
+  $("tableGap").value = s.table_gap_m ?? 0.8;
   const info = p.report_info || {};
   $("clientName").value = info.client || "";
   $("projectAddress").value = info.address || "";

@@ -14,6 +14,8 @@ from shapely import affinity
 from shapely.geometry import LineString, Polygon, box
 from shapely.ops import split, unary_union
 
+from . import shading
+
 # Sun elevation at solar noon on the winter solstice is 90 - lat - 23.44.
 WINTER_SOLSTICE_DECLINATION = 23.44
 
@@ -38,7 +40,11 @@ class LayoutParams:
     mounting: str = "flush"            # "flush" (on pitched roof) | "rack" (flat roof / ground)
     row_spacing_m: float | None = None  # gap between rows; None = automatic
     col_spacing_m: float = 0.02        # gap between modules in a row
-    setback_m: float = 0.5             # keep-away distance from the area edge
+    setback_m: float = 0.5             # keep-away distance from the area (roof) outline
+    ridge_gap_m: float | None = None   # keep-away distance from the line between two roof faces; None = setback_m
+    obstacle_gap_m: float | None = None  # keep-away distance from obstacles (keepouts); None = setback_m
+    table_panels: int = 0              # panels per table in a row; 0 = no tables, one continuous row
+    table_gap_m: float = 0.8           # walkway gap between two tables of a row
     keepouts: list = field(default_factory=list)  # list of [[lat, lng], ...]
 
 
@@ -62,7 +68,25 @@ def auto_row_gap(along_slope_m: float, tilt_deg: float, lat_deg: float) -> float
     return height / math.tan(math.radians(elev))
 
 
-def compute_layout(area_latlngs: list, p: LayoutParams) -> dict:
+def _usable_with_ridge(area: Polygon, neighbours: list, p: LayoutParams) -> Polygon:
+    """The area minus a strip of p.ridge_gap_m along the edges shared with neighbours and of p.setback_m
+    along its other edges. An edge is shared when it mostly lies on the outline of a neighbour."""
+    near = unary_union([n.boundary.buffer(0.05) for n in neighbours]) if neighbours else None
+    coords = list(area.exterior.coords)
+    free, shared = [], []
+    for a, b in zip(coords, coords[1:]):
+        seg = LineString([a, b])
+        on_neighbour = near is not None and seg.length > 0 and seg.intersection(near).length >= 0.9 * seg.length
+        (shared if on_neighbour else free).append(seg)
+    cut = unary_union(free).buffer(p.setback_m, join_style="mitre") if free else Polygon()
+    if shared:
+        cut = cut.union(unary_union(shared).buffer(p.ridge_gap_m, cap_style="flat"))
+    return area.difference(cut)
+
+
+def compute_layout(area_latlngs: list, p: LayoutParams, neighbours: list | None = None) -> dict:
+    """Fill one area. neighbours: outlines of the other roof faces; the part of this outline that
+    touches them is kept clear by p.ridge_gap_m instead of p.setback_m."""
     if len(area_latlngs) < 3:
         raise ValueError("Η περιοχή χρειάζεται τουλάχιστον 3 σημεία.")
 
@@ -72,9 +96,12 @@ def compute_layout(area_latlngs: list, p: LayoutParams) -> dict:
 
     area = _to_xy(area_latlngs, fwd)
     usable = area.buffer(-p.setback_m, join_style="mitre")
+    if neighbours and p.ridge_gap_m is not None and p.ridge_gap_m != p.setback_m:
+        usable = _usable_with_ridge(area, [_to_xy(n, fwd) for n in neighbours if len(n) >= 3], p)
     if p.keepouts:
+        obstacle_gap = p.setback_m if p.obstacle_gap_m is None else p.obstacle_gap_m
         obstacles = unary_union([
-            _to_xy(k, fwd).buffer(p.setback_m, join_style="mitre")
+            _to_xy(k, fwd).buffer(obstacle_gap, join_style="mitre")
             for k in p.keepouts if len(k) >= 3
         ])
         usable = usable.difference(obstacles)
@@ -106,11 +133,15 @@ def compute_layout(area_latlngs: list, p: LayoutParams) -> dict:
         y = maxy - depth  # start at the back (north side in the rotated frame)
         while y >= miny - 1e-9:
             x = minx
+            in_row = 0
             while x + across <= maxx + 1e-9:
                 cell = box(x, y, x + across, y + depth)
                 if fit.contains(cell):
                     panels_xy.append(cell)
+                    in_row += 1
                     x += step_x
+                    if p.table_panels > 0 and in_row % p.table_panels == 0:
+                        x += p.table_gap_m  # walkway between two tables
                 else:
                     x += step_x / 4  # slide in smaller steps to pack edges tighter
             y -= step_y
@@ -137,16 +168,23 @@ def compute_layout(area_latlngs: list, p: LayoutParams) -> dict:
 def compute_faces_layout(faces: list, p: LayoutParams) -> dict:
     """Layout of several roof faces, each with its own tilt and azimuth (None = the common value in p).
 
-    faces: [{"area": [[lat, lng], ...], "tilt_deg": float | None, "azimuth_deg": float | None}, ...].
+    faces: [{"area": [[lat, lng], ...], "tilt_deg": float | None (panel tilt), "roof_tilt_deg": float | None
+    (slope of the face, used when tilt_deg is None), "azimuth_deg": float | None}, ...].
     Returns the totals, all panels in one list with the face index of each panel, and one entry per face.
     """
     if not faces:
         raise ValueError("Δεν υπάρχει καμία πλευρά στέγης.")
     panels, panel_face, per_face = [], [], []
     for i, f in enumerate(faces):
-        tilt = p.tilt_deg if f.get("tilt_deg") is None else f["tilt_deg"]
+        # Panels lie parallel to the face by default: no own panel tilt means the slope of the face.
+        tilt = f.get("tilt_deg")
+        if tilt is None:
+            tilt = f.get("roof_tilt_deg")
+        if tilt is None:
+            tilt = p.tilt_deg
         azimuth = p.azimuth_deg if f.get("azimuth_deg") is None else f["azimuth_deg"]
-        res = compute_layout(f["area"], replace(p, tilt_deg=tilt, azimuth_deg=azimuth))
+        others = [g["area"] for j, g in enumerate(faces) if j != i]
+        res = compute_layout(f["area"], replace(p, tilt_deg=tilt, azimuth_deg=azimuth), others)
         panels += res["panels"]
         panel_face += [i] * res["count"]
         per_face.append({"tilt_deg": tilt, "azimuth_deg": azimuth,
@@ -349,3 +387,32 @@ def layout_options(areas: list, p: LayoutParams, east_west: bool = False) -> lis
                 "orientation": p.orientation,
                 "row_spacing_m": p.row_spacing_m, "east_west": ew, **manual})
     return out
+
+
+def remove_shaded(res: dict, obstacles: list, tilt_deg: float, azimuth_deg: float, mounting: str,
+                  max_shade_pct: float, panel_power_w: float, panel_area_m2: float) -> dict:
+    """Drop the panels of a layout whose annual shading loss is above max_shade_pct (changes res in place).
+
+    obstacles: [{"polygon": [[lat, lng], ...], "height_m": float}, ...]. Without obstacles of any height
+    nothing casts a shadow on a flush roof, so only rack rows could shade one another (and the automatic row
+    gap already avoids that); the layout is returned as it is. res["removed_shaded"] counts the dropped panels.
+    """
+    res["removed_shaded"] = 0
+    if not res["panels"] or not any(o.get("height_m", 0) > 0 for o in obstacles):
+        return res
+    faces = [{"tilt_deg": f["tilt_deg"], "azimuth_deg": f["azimuth_deg"]} for f in res["faces"]] if res.get("faces") else None
+    analysis = shading.analyze(res["panels"], obstacles, tilt_deg, azimuth_deg, mounting, faces, res.get("panel_face"))
+    keep = [pct <= max_shade_pct for pct in analysis["panel_loss_pct"]]
+    res["removed_shaded"] = keep.count(False)
+    if res["removed_shaded"] == 0:
+        return res
+    res["panels"] = [p for p, k in zip(res["panels"], keep) if k]
+    if res.get("panel_face"):
+        res["panel_face"] = [f for f, k in zip(res["panel_face"], keep) if k]
+        for i, f in enumerate(res["faces"]):
+            f["count"] = res["panel_face"].count(i)
+            f["kwp"] = round(f["count"] * panel_power_w / 1000.0, 3)
+    res["count"] = len(res["panels"])
+    res["kwp"] = round(res["count"] * panel_power_w / 1000.0, 3)
+    res["module_area_m2"] = round(res["count"] * panel_area_m2, 1)
+    return res

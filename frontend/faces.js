@@ -46,9 +46,12 @@
     if (editing || cutter) return;
     const s = settings();
     const f = layer.pvFace || { tilt_deg: s.tilt_deg, azimuth_deg: s.azimuth_deg };
+    const roof0 = f.roof_tilt_deg ?? f.tilt_deg;
     const box = L.DomUtil.create("div", "face-box");
     box.innerHTML = `<b>Πλευρά ${faceNo(layer)}</b>
-      <label>Κλίση (°) <input name="tilt" type="number" min="0" max="90" step="1" value="${f.tilt_deg}"></label>
+      <label>Κλίση πλευράς (°) <input name="roof" type="number" min="0" max="90" step="1" value="${roof0}"></label>
+      <label class="radio switch"><input name="own" type="checkbox"${f.own_tilt ? " checked" : ""}> Άλλη κλίση για τα πάνελ (αλλιώς παράλληλα με την πλευρά)</label>
+      <label name="ownRow">Κλίση πάνελ (°) <input name="tilt" type="number" min="0" max="90" step="1" value="${f.tilt_deg}"></label>
       <label>Αζιμούθιο (°) <input name="az" type="number" min="0" max="360" step="1" value="${f.azimuth_deg}"></label>
       <p class="muted small">0 = Βορράς, 90 = Ανατολή, 180 = Νότος, 270 = Δύση.</p>
       <div class="row">
@@ -57,18 +60,28 @@
       </div>
       <button type="button" data-a="ok" class="primary">ΟΚ</button>`;
     const tilt = box.querySelector("[name=tilt]"), az = box.querySelector("[name=az]");
-    const save = () => setFace(layer, {
-      tilt_deg: Math.min(90, Math.max(0, +tilt.value || 0)),
-      azimuth_deg: ((+az.value || 0) % 360 + 360) % 360,
-    });
+    const roof = box.querySelector("[name=roof]"), own = box.querySelector("[name=own]");
+    const clamp = (v) => Math.min(90, Math.max(0, +v || 0));
+    const syncOwn = () => { box.querySelector("[name=ownRow]").hidden = !own.checked; if (!own.checked) tilt.value = clamp(roof.value); };
+    syncOwn();
+    const save = () => {
+      syncOwn();
+      setFace(layer, {
+        tilt_deg: own.checked ? clamp(tilt.value) : clamp(roof.value),
+        roof_tilt_deg: clamp(roof.value), own_tilt: own.checked,
+        azimuth_deg: ((+az.value || 0) % 360 + 360) % 360,
+      });
+    };
     tilt.onchange = save;
+    roof.onchange = save;
+    own.onchange = save;
     az.onchange = save;
     box.querySelector("[data-a=suggest]").onclick = () => {
       az.value = layer.pvSuggest ?? longEdgeAzimuth(layer);
       save();
     };
     box.querySelector("[data-a=ok]").onclick = () => { // take what was typed (even if the field is still focused) and close
-      const changed = +tilt.value !== f.tilt_deg || +az.value !== f.azimuth_deg;
+      const changed = +tilt.value !== f.tilt_deg || +az.value !== f.azimuth_deg || +roof.value !== roof0 || own.checked !== !!f.own_tilt;
       if (layer.pvFace || changed) save();
       map.closePopup();
     };
@@ -85,8 +98,11 @@
       return { ...f, dir: compass(f.azimuth_deg) };
     },
     set(layer, tilt, az) {
+      const t = Math.min(90, Math.max(0, +tilt || 0)), old = layer.pvFace || {};
+      // A face whose panels follow the roof keeps doing so: the typed tilt is then the slope of the face.
+      const own = !!old.own_tilt;
       setFace(layer, {
-        tilt_deg: Math.min(90, Math.max(0, +tilt || 0)),
+        tilt_deg: t, roof_tilt_deg: own ? (old.roof_tilt_deg ?? t) : t, own_tilt: own,
         azimuth_deg: ((+az || 0) % 360 + 360) % 360,
       });
     },
@@ -131,7 +147,7 @@
         const part = L.polygon(piece.area);
         if (layer.pvNudge) part.pvNudge = [...layer.pvNudge]; // so "Επαναφορά" also moves the pieces back
         part.pvSuggest = piece.azimuth_deg;
-        part.pvFace = { tilt_deg: layer.pvFace ? layer.pvFace.tilt_deg : tilt, azimuth_deg: piece.azimuth_deg };
+        part.pvFace = { ...(layer.pvFace || { tilt_deg: tilt, roof_tilt_deg: tilt, own_tilt: false }), azimuth_deg: piece.azimuth_deg };
         addShape(part, "area");
       }
       areas.removeLayer(layer);
@@ -226,7 +242,7 @@
     load(list) {
       areas.getLayers().forEach((l, i) => {
         const f = (list || [])[i];
-        l.pvFace = f ? { tilt_deg: f.tilt_deg, azimuth_deg: f.azimuth_deg } : null;
+        l.pvFace = f ? { tilt_deg: f.tilt_deg, roof_tilt_deg: f.roof_tilt_deg ?? f.tilt_deg, own_tilt: !!f.own_tilt, azimuth_deg: f.azimuth_deg } : null;
         l.pvSuggest = f && f.suggest_deg != null ? f.suggest_deg : undefined;
       });
       refresh();

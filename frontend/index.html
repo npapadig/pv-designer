@@ -97,8 +97,8 @@
     <button id="btnHome" class="logo" type="button" title="Αρχική οθόνη" aria-label="Αρχική οθόνη"><svg class="ic"><use href="#i-sun"/></svg><svg class="ic"><use href="#i-house"/></svg></button>
     <a href="#secProject" data-step="secProject"><b><svg class="ic"><use href="#i-folder"/></svg><i>1</i></b><span>Έργο</span></a>
     <a href="#secSite" data-step="secSite"><b><svg class="ic"><use href="#i-pin"/></svg><i>2</i></b><span>Χώρος</span></a>
-    <a href="#secPanels" data-step="secPanels"><b><svg class="ic"><use href="#i-grid"/></svg><i>3</i></b><span>Πάνελ</span></a>
-    <a href="#secShading" data-step="secShading"><b><svg class="ic"><use href="#i-cloud-sun"/></svg><i>4</i></b><span>Σκιές</span></a>
+    <a href="#secShading" data-step="secShading"><b><svg class="ic"><use href="#i-cloud-sun"/></svg><i>3</i></b><span>Σκιές</span></a>
+    <a href="#secPanels" data-step="secPanels"><b><svg class="ic"><use href="#i-grid"/></svg><i>4</i></b><span>Πάνελ</span></a>
     <a href="#electrical" data-step="electrical"><b><svg class="ic"><use href="#i-plug"/></svg><i>5</i></b><span>Inverter</span></a>
     <a href="#secEnergy" data-step="secEnergy"><b><svg class="ic"><use href="#i-zap"/></svg><i>6</i></b><span>Παραγωγή</span></a>
     <a href="#finance" data-step="finance"><b><svg class="ic"><use href="#i-euro"/></svg><i>7</i></b><span>Οικονομικά</span></a>
@@ -228,6 +228,32 @@
       </details>
     </section>
 
+    <section id="secShading" class="step">
+      <h2>Σκιάσεις</h2>
+      <p class="muted small">Υπολογίζει πόση ηλιακή ενέργεια χάνεται τον χρόνο από τις σκιές των εμποδίων
+        και των σειρών πάνελ μεταξύ τους. Το αποτέλεσμα μπαίνει αυτόματα στην παραγωγή.</p>
+      <label class="radio switch"><input type="checkbox" id="avoidShaded"> Να μη μπουν πάνελ σε θέσεις που σκιάζονται από εμπόδια</label>
+      <label>Όριο σκίασης ανά πάνελ (%) <input id="maxShade" type="number" value="10" step="1" min="0" max="100"></label>
+      <p class="muted small">Ισχύει όταν βάλεις ύψος στα εμπόδια (βήμα «Χώρος»). Η τοποθέτηση των πάνελ παραλείπει τις θέσεις
+        που χάνουν πάνω από το όριο ενέργειας τον χρόνο λόγω σκιάς.</p>
+      <button id="btnShading" class="primary"><svg class="ic"><use href="#i-cloud-sun"/></svg>Ανάλυση σκιάσεων</button>
+      <p id="shadingInfo" class="muted small"></p>
+      <div id="shadingLegend" class="legend small" hidden>
+        <span><i style="background:#1e3a8a"></i>&lt;1%</span>
+        <span><i style="background:#facc15"></i>1–5%</span>
+        <span><i style="background:#f97316"></i>5–10%</span>
+        <span><i style="background:#dc2626"></i>&gt;10%</span>
+        <span class="muted">απώλεια ανά πάνελ</span>
+      </div>
+      <label class="radio switch"><input type="checkbox" id="showShadows"> Δείξε τις σκιές στον χάρτη</label>
+      <div class="grid2" id="shadowControls" hidden>
+        <label>Μήνας <select id="shadowMonth"></select></label>
+        <label>Ώρα <span id="shadowHourLabel"></span>
+          <input id="shadowHour" type="range" min="6" max="20" step="0.5" value="10"></label>
+      </div>
+      <p id="sunInfo" class="muted small"></p>
+    </section>
+
     <section id="secPanels" class="step">
       <h2>Πάνελ και τοποθέτηση</h2>
       <label>Μοντέλο πάνελ
@@ -258,38 +284,29 @@
         <a href="#" id="btnAutoAz">Ευθυγράμμιση με την περιοχή</a></p>
       <label class="radio switch" id="ewRow" hidden><input type="checkbox" id="ewMode">
         Ανατολή-δύση «πλάτη με πλάτη» (οι σειρές κοιτάζουν εναλλάξ ανατολή και δύση· το αζιμούθιο δεν χρησιμοποιείται)</label>
-      <div class="grid3">
-        <label>Απόσταση από άκρα (m) <input id="setback" type="number" value="0.5" step="0.1" min="0"></label>
-        <label>Κενό μεταξύ πάνελ (m) <input id="colGap" type="number" value="0.02" step="0.01" min="0"></label>
-        <label>Κενό σειρών (m) <input id="rowGap" type="number" step="0.1" min="0" placeholder="αυτόματο"></label>
-      </div>
+      <details id="gapsBox" open>
+        <summary>Αποστάσεις</summary>
+        <div class="grid2">
+          <label>Από το περίγραμμα της στέγης (m) <input id="setback" type="number" value="0.5" step="0.1" min="0"></label>
+          <label>Από τη γραμμή διαχωρισμού πλευρών (m) <input id="ridgeGap" type="number" step="0.1" min="0" placeholder="όπως το περίγραμμα"></label>
+          <label>Από εμπόδια (m) <input id="obstacleGap" type="number" step="0.1" min="0" placeholder="όπως το περίγραμμα"></label>
+          <label>Μεταξύ πάνελ, στήλη (m) <input id="colGap" type="number" value="0.02" step="0.01" min="0"></label>
+          <label>Κενό σειρών (m) <input id="rowGap" type="number" step="0.1" min="0" placeholder="αυτόματο"></label>
+        </div>
+      </details>
+      <details id="tablesBox">
+        <summary>Τραπέζια πάνελ</summary>
+        <label class="radio switch"><input type="checkbox" id="tablesOn"> Χώρισε κάθε σειρά σε τραπέζια με διάδρομο</label>
+        <div class="grid2">
+          <label>Πάνελ ανά τραπέζι <input id="tablePanels" type="number" value="6" step="1" min="1"></label>
+          <label>Κενό διαδρόμου (m) <input id="tableGap" type="number" value="0.8" step="0.1" min="0"></label>
+        </div>
+      </details>
       <button id="btnLayout" class="primary"><svg class="ic"><use href="#i-grid"/></svg>Τοποθέτηση πάνελ</button>
       <button id="btnLayoutCustom" class="secondary">Με τις ρυθμίσεις μου</button>
       <p class="muted small">«Τοποθέτηση πάνελ» δείχνει 3 έτοιμες προτάσεις και τις δικές σου ρυθμίσεις, για να διαλέξεις. «Με τις ρυθμίσεις μου»
         τοποθετεί τα πάνελ ακριβώς με τις τιμές παραπάνω.</p>
       <div id="layoutOptions"></div>
-    </section>
-
-    <section id="secShading" class="step">
-      <h2>Σκιάσεις</h2>
-      <p class="muted small">Υπολογίζει πόση ηλιακή ενέργεια χάνεται τον χρόνο από τις σκιές των εμποδίων
-        και των σειρών πάνελ μεταξύ τους. Το αποτέλεσμα μπαίνει αυτόματα στην παραγωγή.</p>
-      <button id="btnShading" class="primary"><svg class="ic"><use href="#i-cloud-sun"/></svg>Ανάλυση σκιάσεων</button>
-      <p id="shadingInfo" class="muted small"></p>
-      <div id="shadingLegend" class="legend small" hidden>
-        <span><i style="background:#1e3a8a"></i>&lt;1%</span>
-        <span><i style="background:#facc15"></i>1–5%</span>
-        <span><i style="background:#f97316"></i>5–10%</span>
-        <span><i style="background:#dc2626"></i>&gt;10%</span>
-        <span class="muted">απώλεια ανά πάνελ</span>
-      </div>
-      <label class="radio switch"><input type="checkbox" id="showShadows"> Δείξε τις σκιές στον χάρτη</label>
-      <div class="grid2" id="shadowControls" hidden>
-        <label>Μήνας <select id="shadowMonth"></select></label>
-        <label>Ώρα <span id="shadowHourLabel"></span>
-          <input id="shadowHour" type="range" min="6" max="20" step="0.5" value="10"></label>
-      </div>
-      <p id="sunInfo" class="muted small"></p>
     </section>
 
     <section id="electrical" class="step">

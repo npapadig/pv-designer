@@ -293,3 +293,13 @@ def test_pdf_with_roof_faces(monkeypatch):
     texts = " ".join(getattr(f, "text", "") for f in flow)
     assert "Πλευρές στέγης" in texts
     assert report.build_pdf(project, imagery=False).startswith(b"%PDF")
+
+
+def test_face_without_panel_tilt_follows_the_roof_slope():
+    """Panels lie parallel to the face: no own tilt means the slope of the face (decision 2026-10-26)."""
+    p = LayoutParams(setback_m=0.3, tilt_deg=30)
+    res = compute_faces_layout([{"area": SOUTH, "roof_tilt_deg": 20}], p)
+    assert res["faces"][0]["tilt_deg"] == 20
+    assert res["panels"] == compute_layout(SOUTH, LayoutParams(setback_m=0.3, tilt_deg=20))["panels"]
+    own = compute_faces_layout([{"area": SOUTH, "roof_tilt_deg": 20, "tilt_deg": 10}], p)
+    assert own["faces"][0]["tilt_deg"] == 10
