@@ -8,6 +8,7 @@
   const LINE = { pane: "pvRuler", interactive: false, color: TEAL, weight: 3, dashArray: "8 6", lineCap: "round" };
   const DOT = { pane: "pvRuler", interactive: false, radius: 4.5, color: "#0f766e", weight: 2, fillColor: "#fff", fillOpacity: 1 };
   const drawn = L.layerGroup().addTo(map);
+  const kept = L.layerGroup().addTo(map); // finished measurements stay on the map until «Καθάρισμα»
 
   let on = false;
   let pts = [];
@@ -15,15 +16,20 @@
 
   const lengthOf = (list) => list.reduce((sum, p, i) => (i ? sum + drawTools.meters(list[i - 1], p) : 0), 0);
 
+  // The line, the dots and the length labels of a measurement, into a layer group.
+  function build(group, list, live) {
+    const all = live && list.length ? [...list, live] : list;
+    if (all.length > 1) group.addLayer(L.polyline(all, LINE));
+    list.forEach((p) => group.addLayer(L.circleMarker(p, DOT)));
+    for (let i = 0; i + 1 < all.length; i++) {
+      const m = drawTools.edgeLabel(all[i], all[i + 1], live && i === all.length - 2 ? "ruler live" : "ruler");
+      if (m) group.addLayer(m);
+    }
+  }
+
   function draw() {
     drawn.clearLayers();
-    const all = mouse && pts.length ? [...pts, mouse] : pts;
-    if (all.length > 1) drawn.addLayer(L.polyline(all, LINE));
-    pts.forEach((p) => drawn.addLayer(L.circleMarker(p, DOT)));
-    for (let i = 0; i + 1 < all.length; i++) {
-      const m = drawTools.edgeLabel(all[i], all[i + 1], mouse && i === all.length - 2 ? "ruler live" : "ruler");
-      if (m) drawn.addLayer(m);
-    }
+    build(drawn, pts, mouse);
     const parts = pts.length - 1;
     total.textContent = parts < 1 ? "κάνε κλικ σε δύο σημεία"
       : `${fmt(lengthOf(pts), 2)} m${parts > 1 ? ` (${parts} τμήματα)` : ""}`;
@@ -49,6 +55,7 @@
   function stop(handover) {
     if (!on) return;
     on = false;
+    if (pts.length > 1) build(kept, pts, null); // it stays on the map
     pts = [];
     mouse = null;
     drawn.clearLayers();
@@ -91,13 +98,13 @@
   bar.dataset.help = "bar-ruler";
   bar.innerHTML = `<div class="pv-editbar-text"><b>Χάρακας · <span data-total></span></b>
       <span>Κλικ σε σημεία του χάρτη, π.χ. στις άκρες ενός μήκους που ξέρεις · Backspace = σβήσε το τελευταίο ·
-      Esc = τέλος. Δεν αποθηκεύεται στο έργο.</span></div>
+      Esc = τέλος (το μέτρο μένει στον χάρτη). Δεν αποθηκεύεται στο έργο.</span></div>
     <div class="pv-editbar-actions"><button type="button" class="secondary" data-a="clear">Καθάρισμα</button>
       <button type="button" data-a="done"><svg class="ic"><use href="#i-check"/></svg>Τέλος</button></div>`;
   const total = bar.querySelector("[data-total]");
   L.DomEvent.disableClickPropagation(bar);
   L.DomEvent.disableScrollPropagation(bar);
-  bar.querySelector("[data-a=clear]").onclick = () => { pts = []; draw(); };
+  bar.querySelector("[data-a=clear]").onclick = () => { pts = []; kept.clearLayers(); draw(); };
   bar.querySelector("[data-a=done]").onclick = () => stop();
 
   window.ruler = { start, stop, get on() { return on; } };

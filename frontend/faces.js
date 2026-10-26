@@ -27,6 +27,7 @@
   }
 
   function refresh() {
+    map.fire("pv:faces"); // the area list in the side panel shows the tilt and azimuth
     areas.getLayers().forEach(label);
     const n = areas.getLayers().filter((l) => l.pvFace).length;
     $("facesElec").hidden = !n;
@@ -53,7 +54,8 @@
       <div class="row">
         <button type="button" data-a="suggest" class="secondary">Πρόταση αζιμουθίου</button>
         ${layer.pvFace ? '<button type="button" data-a="common" class="ghost">Κοινές ρυθμίσεις</button>' : ""}
-      </div>`;
+      </div>
+      <button type="button" data-a="ok" class="primary">ΟΚ</button>`;
     const tilt = box.querySelector("[name=tilt]"), az = box.querySelector("[name=az]");
     const save = () => setFace(layer, {
       tilt_deg: Math.min(90, Math.max(0, +tilt.value || 0)),
@@ -65,10 +67,30 @@
       az.value = layer.pvSuggest ?? longEdgeAzimuth(layer);
       save();
     };
+    box.querySelector("[data-a=ok]").onclick = () => { // take what was typed (even if the field is still focused) and close
+      const changed = +tilt.value !== f.tilt_deg || +az.value !== f.azimuth_deg;
+      if (layer.pvFace || changed) save();
+      map.closePopup();
+    };
     const common = box.querySelector("[data-a=common]");
     if (common) common.onclick = () => { map.closePopup(); setFace(layer, null); };
     L.popup().setLatLng(latlng || layer.getBounds().getCenter()).setContent(box).openOn(map);
   }
+
+  // For the area list (shapes.js): the face of an area (its own or the common one) and a setter.
+  window.pvFaces = {
+    get(layer) {
+      if (!areas.hasLayer(layer) || state.projectType === "park" || state.roofType === "flat") return null;
+      const s = settings(), f = layer.pvFace || { tilt_deg: s.tilt_deg, azimuth_deg: s.azimuth_deg };
+      return { ...f, dir: compass(f.azimuth_deg) };
+    },
+    set(layer, tilt, az) {
+      setFace(layer, {
+        tilt_deg: Math.min(90, Math.max(0, +tilt || 0)),
+        azimuth_deg: ((+az || 0) % 360 + 360) % 360,
+      });
+    },
+  };
 
   areas.on("layeradd", (e) => {
     e.layer.on("click", (ev) => openBox(e.layer, ev.latlng));

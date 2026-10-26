@@ -382,7 +382,11 @@
       <input name="name" maxlength="40" autocomplete="off" placeholder="${kind === "area" ? "π.χ. νότια στέγη" : "π.χ. δέντρο, φράχτης"}">
       ${kind === "area" ? '<span class="shape-num shape-m2"></span>'
         : '<label class="shape-num"><input name="height" type="number" min="0" step="0.5" aria-label="Ύψος σε μέτρα"><span>m</span></label>'}
-      <button type="button" class="ghost icon-btn shape-del" title="Διαγραφή" aria-label="Διαγραφή">${ICONS.remove}</button>`;
+      <button type="button" class="ghost icon-btn shape-del" title="Διαγραφή" aria-label="Διαγραφή">${ICONS.remove}</button>
+      ${kind === "area" ? `<div class="shape-face">
+        <label>Κλίση <input name="tilt" type="number" min="0" max="90" step="1" aria-label="Κλίση σε μοίρες"><span>°</span></label>
+        <label>Κατεύθυνση <input name="az" type="number" min="0" max="360" step="1" aria-label="Κατεύθυνση (αζιμούθιο) σε μοίρες"><span>°</span></label>
+        <small class="muted shape-dir"></small></div>` : ""}`;
     return row;
   }
 
@@ -403,7 +407,17 @@
       row.querySelector(".shape-no").textContent = `${title} ${i + 1}`;
       row.querySelector("[name=name]").setAttribute("aria-label", `Όνομα: ${title} ${i + 1}`);
       setValue(row.querySelector("[name=name]"), l.pvName || "");
-      if (kind === "area") row.querySelector(".shape-m2").textContent = `${fmt(m2(l), 1)} m²`;
+      if (kind === "area") {
+        row.querySelector(".shape-m2").textContent = `${fmt(m2(l), 1)} m²`;
+        const fc = window.pvFaces?.get(l); // own tilt / azimuth, or the common ones of the «Πάνελ» step
+        row.querySelector(".shape-face").hidden = !fc;
+        if (fc) {
+          setValue(row.querySelector("[name=tilt]"), fc.tilt_deg);
+          setValue(row.querySelector("[name=az]"), fc.azimuth_deg);
+          row.querySelector(".shape-dir").textContent = fc.dir;
+          row.querySelector(".shape-face").classList.toggle("common", !l.pvFace);
+        }
+      }
       else setValue(row.querySelector("[name=height]"), l.pvHeight ?? 0);
       row.classList.toggle("on", l === selected);
     });
@@ -423,7 +437,7 @@
   keepouts.on("layeradd layerremove", showLists);
   areas.on("layeradd layerremove", showLists);
   areas.on("layeradd", (e) => e.layer.on("edit editdrag pv:moved", showLists)); // the m² while it changes
-  map.on("pv:shapes pv:restored", showLists);
+  map.on("pv:shapes pv:restored pv:faces", showLists);
 
   for (const { box } of Object.values(LISTS)) {
     const layerOf = (el) => el.closest(".shape-row")?.pvLayer;
@@ -451,6 +465,11 @@
     box.addEventListener("change", (e) => {
       const layer = layerOf(e.target);
       if (!layer) return;
+      if ((e.target.name === "tilt" || e.target.name === "az") && e.target.closest(".shape-row.area")) {
+        const row = e.target.closest(".shape-row");
+        window.pvFaces?.set(layer, row.querySelector("[name=tilt]").value, row.querySelector("[name=az]").value);
+        return;
+      }
       if (e.target.name === "height") {
         setObstacleHeight(layer, e.target.value);
         clearShading();

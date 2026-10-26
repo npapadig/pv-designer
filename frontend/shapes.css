@@ -54,3 +54,11 @@
 /* Three mode buttons side by side: keep «Περιοχή πάνελ» on one line. */
 #drawModes label.radio { padding: 9px 4px; font-size: 0.8rem; white-space: nowrap; }
 .shape-m2 { justify-content: flex-end; min-width: 62px; color: var(--muted); font-weight: 600; font-variant-numeric: tabular-nums; }
+
+/* tilt and direction of an area, under its name */
+.shape-row .shape-face { grid-column: 1 / -1; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 0 4px 2px 0; font-size: 0.76rem; }
+.shape-face[hidden] { display: none; }
+.shape-face label { display: flex; align-items: center; gap: 5px; margin: 0; }
+.shape-face input { width: 62px; }
+.shape-dir { white-space: nowrap; }
+.shape-face.common input { opacity: 0.7; }

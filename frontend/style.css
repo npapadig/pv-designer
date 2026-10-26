@@ -383,3 +383,5 @@ table.losses tr.total:last-child td { color: var(--teal); }
 .found-pin i { display: block; width: 28px; height: 28px; background: var(--sun-2, #ff6a3d); border: 3px solid #fff; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); box-shadow: 0 3px 10px rgba(0, 0, 0, 0.45); }
 .found-pin i::after { content: ""; position: absolute; left: 8px; top: 8px; width: 6px; height: 6px; border-radius: 50%; background: #fff; }
 .found-pin-tip { max-width: 240px; white-space: normal; font-weight: 650; }
+.face-box button.primary { background: var(--sun-2, #ff6a3d); border-color: transparent; color: #fff; font-weight: 700; }
+.face-box button.primary:hover { filter: brightness(1.06); background: var(--sun-2, #ff6a3d); }
