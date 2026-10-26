@@ -92,6 +92,24 @@
       <div id="homeProjects" class="home-grid"></div>
       <p id="homeEmpty" class="muted small" hidden>Δεν υπάρχουν ακόμα αποθηκευμένα έργα. Πάτα «Νέο έργο» για να ξεκινήσεις.</p>
     </div>
+    <button id="homeSources" class="ghost home-sources" type="button"><svg class="ic"><use href="#i-sun"/></svg>Πηγή δεδομένων: PVGIS και καιρός</button>
+    <div id="homeSourcesBox" class="home-sources-box" hidden role="dialog" aria-label="Πηγές δεδομένων">
+      <div class="home-sources-card">
+        <button id="homeSourcesClose" class="ghost icon-btn home-sources-x" type="button" aria-label="Κλείσιμο"><span aria-hidden="true">×</span></button>
+        <h3>Από πού έρχονται τα δεδομένα της προσομοίωσης</h3>
+        <h4>PVGIS</h4>
+        <p>Το PVGIS (Photovoltaic Geographical Information System) είναι δωρεάν εργαλείο του Κοινού Κέντρου Ερευνών (JRC) της Ευρωπαϊκής Επιτροπής. Υπολογίζει την ηλιακή ακτινοβολία και την παραγωγή φωτοβολταϊκών για οποιοδήποτε σημείο, με βάση δορυφορικές μετρήσεις πολλών ετών.</p>
+        <p>Η εφαρμογή το χρησιμοποιεί για τη γρήγορη εκτίμηση παραγωγής και για τον «τυπικό μετεωρολογικό χρόνο» (TMY) της τοποθεσίας σου.</p>
+        <p><a href="https://joint-research-centre.ec.europa.eu/photovoltaic-geographical-information-system-pvgis_en" target="_blank" rel="noopener noreferrer">Ιστοσελίδα του PVGIS (Ευρωπαϊκή Επιτροπή)</a><br>
+          <a href="https://re.jrc.ec.europa.eu/pvg_tools/en/" target="_blank" rel="noopener noreferrer">Το εργαλείο PVGIS στο διαδίκτυο</a></p>
+        <h4>Καιρικές συνθήκες</h4>
+        <p>Για κάθε τοποθεσία χρησιμοποιείται ο τυπικός μετεωρολογικός χρόνος (TMY) του PVGIS: 8.760 ωριαίες τιμές ακτινοβολίας, θερμοκρασίας και ανέμου που αντιπροσωπεύουν ένα «τυπικό» έτος, όχι πρόβλεψη για συγκεκριμένο έτος.</p>
+        <p>Η αναλυτική προσομοίωση (ώρα με την ώρα) γίνεται με τη βιβλιοθήκη pvlib. Μετά την πρώτη λήψη ο καιρός αποθηκεύεται στον υπολογιστή σου και δεν χρειάζεται ξανά internet για την ίδια τοποθεσία.</p>
+        <p>Αν το PVGIS δεν είναι προσβάσιμο, η εφαρμογή χρησιμοποιεί πρόχειρο καιρό «καθαρού ουρανού» και σε προειδοποιεί ότι το αποτέλεσμα είναι λιγότερο ακριβές.</p>
+        <p><a href="https://pvlib-python.readthedocs.io/" target="_blank" rel="noopener noreferrer">pvlib (βιβλιοθήκη προσομοίωσης)</a></p>
+        <p class="muted small">Τα αποτελέσματα είναι εκτιμήσεις και δεν αποτελούν εγγύηση παραγωγής.</p>
+      </div>
+    </div>
   </div>
   <main id="map"></main>
   <nav id="rail" aria-label="Βήματα">

@@ -163,6 +163,12 @@
     else if (!$("homeChoose").hidden) screen("start");
     else if (!$("homeContinue").hidden) hide();
   });
+  // Where the simulation data comes from (PVGIS, weather)
+  const srcBox = $("homeSourcesBox");
+  $("homeSources").onclick = () => { srcBox.hidden = false; };
+  $("homeSourcesClose").onclick = () => { srcBox.hidden = true; };
+  srcBox.addEventListener("click", (e) => { if (e.target === srcBox) srcBox.hidden = true; });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !srcBox.hidden) { srcBox.hidden = true; e.stopImmediatePropagation(); } }, true);
   api("/api/version").then((v) => { $("homeVersion").textContent = `v${v.version}`; }).catch(() => {});
 
   window.home = { show, hide };
