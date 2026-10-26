@@ -62,3 +62,5 @@ Repo: github.com/npapadig/pv-designer, single `main` branch, several Claude thre
   calls (negative exit codes), and never delete `.venv` when a reinstall suffices (OneDrive/AV file locks).
 - The owner's folder was under OneDrive; the updater warns about it.
 
+
+- Αρχική οθόνη (v0.25): 3D σκηνή με three.js (`frontend/hero.js`, `hero-world.js`, `hero-kit.js`, `vendor/three/`), API `window.heroScene.focus("town"|"park"|"overview")` που καλεί το `home.js`.
