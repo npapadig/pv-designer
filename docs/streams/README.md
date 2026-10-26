@@ -21,8 +21,8 @@ goal, files it owns, numbered items, checks to run, and a status table. Max 2 st
 | ellinika-draw | `extra-2026-10-23.md` | `frontend/draw.js` (L.drawLocal), `lang/en.js` | ΤΕΛΟΣ (v0.17.0) |
 | pvgis-cache | `extra-2026-10-23.md` | `backend/energy.py`, `simulation.py`, τεστ | ΤΕΛΟΣ (v0.17.0) |
 | equipment-catalog | `extra-2026-10-23.md` | `backend/equipment.py`, `backend/catalog/*`, presets στο `electrical.js` | ΤΕΛΟΣ (v0.18.0) |
-| topothetisi | `topothetisi.md` | `layout.py`, `shading.py`, endpoint διάταξης, `options.js`, app.js «Layout», index.html secPanels/secShade | ΤΡΕΧΕΙ |
-| peristrofi | `peristrofi.md` | `vendor/leaflet-rotate`, app.js «Map», πυξίδα | ΤΡΕΧΕΙ |
+| topothetisi | `topothetisi.md` | `layout.py`, `shading.py`, endpoint διάταξης, `options.js`, app.js «Layout», index.html secPanels/secShade | ΤΕΛΟΣ (v0.22.0) |
+| peristrofi | `peristrofi.md` | `vendor/leaflet-rotate`, app.js «Map», πυξίδα | ΤΕΛΟΣ (v0.22.0) |
 | xeirokiniti | `xeirokiniti.md` | drag πάνελ + έλεγχος περιορισμών | ΑΝΑΜΟΝΗ (μετά τη topothetisi) |
 
 2026-10-22 (τελικό): το πολύ 2 ροές μαζί· κάθε ροή που τελειώνει αρχειοθετείται πριν ξεκινήσει η επόμενη (CLAUDE.md §5).
