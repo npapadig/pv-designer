@@ -1,10 +1,10 @@
-/* Start-screen scene (hero.js): fills the free part of the screen behind the cards. Decorative only. */
+/* Start-screen scene (hero.js, painted planet): fills the free part of the screen behind the cards. Decorative only. */
 #heroScene {
   position: fixed; inset: 0; z-index: 0; width: 100vw; height: 100vh; pointer-events: none;
   opacity: 0; transition: opacity 1s ease 0.2s;
   /* fades out towards the top-left so the cards and texts stay easy to read */
-  -webkit-mask-image: radial-gradient(ellipse 95% 95% at 100% 100%, #000 38%, rgba(0, 0, 0, 0.85) 55%, transparent 100%);
-  mask-image: radial-gradient(ellipse 95% 95% at 100% 100%, #000 38%, rgba(0, 0, 0, 0.85) 55%, transparent 100%);
+  -webkit-mask-image: radial-gradient(ellipse 95% 95% at 100% 100%, #000 52%, rgba(0, 0, 0, 0.85) 70%, transparent 100%);
+  mask-image: radial-gradient(ellipse 95% 95% at 100% 100%, #000 52%, rgba(0, 0, 0, 0.85) 70%, transparent 100%);
 }
 #heroScene.on { opacity: 1; }
 /* The content sits above the scene, so cards and buttons are never covered. */
