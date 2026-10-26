@@ -187,7 +187,7 @@ function setup(home) {
     camera.aspect = base.aspect = W / H;
     if (world) place(base, shotPose("overview"), 0);
   }
-  let warm = 0, acc = 0, count = 0, fast = 0, ceiling = 1.08; // ceiling: just below the level that was too slow
+  let warm = 0, acc = 0, count = 0;
   function watchSpeed(dt) { // too slow for a while: draw fewer pixels (first down to the screen's 1:1, then a bit below)
     warm += dt;
     if (warm < 4) return;
@@ -197,14 +197,9 @@ function setup(home) {
     const avg = acc / count;
     acc = count = 0;
     const dpr = Math.min(window.devicePixelRatio || 1, 2), floor = (dpr * quality > 1.01 ? 1 : 0.75) / dpr;
-    fast = avg < 1 / 57 ? fast + 1 : 0;
-    if (avg > 1 / 45 && quality > floor + 0.001) { ceiling = quality; quality = Math.max(floor, quality * 0.85); resize(); }
-    else if (fast >= 3) { // smooth again for a while: take some sharpness back, carefully
-      fast = 0;
-      ceiling = Math.min(1.08, ceiling * 1.02);
-      const next = Math.min(1, ceiling * 0.92, quality * 1.1);
-      if (next > quality + 0.01) { quality = next; resize(); }
-    }
+    // Only ever down, never back up: every resize clears the canvas, and going up and down again made the
+    // picture flash black every few seconds on slower graphics cards.
+    if (avg > 1 / 45 && quality > floor + 0.001) { quality = Math.max(floor, quality * 0.85); resize(); }
   }
   function frame(now) {
     raf = 0;
