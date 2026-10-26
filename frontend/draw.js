@@ -493,14 +493,14 @@
   map.on("zoomend", showCells);
 
   // ---------- Compass ----------
-  // The map is always north-up, so the rose is fixed: Β (north) on top, Α (east) right.
+  // The rose turns with the map (view only, never saved): drag it to rotate, click it to put north back on top.
   const Compass = L.Control.extend({
     options: { position: "topright" },
     onAdd() {
       const box = L.DomUtil.create("div", "pv-compass");
       box.dataset.help = "map-compass";
-      box.title = "Βορράς πάνω";
-      box.setAttribute("aria-label", "Πυξίδα: Βορράς πάνω, Νότος κάτω, Ανατολή δεξιά, Δύση αριστερά");
+      box.title = "Σύρε για περιστροφή του χάρτη · κλικ: Βορράς πάνω";
+      box.setAttribute("aria-label", "Πυξίδα: σύρε για περιστροφή του χάρτη, κλικ για Βορράς πάνω");
       box.innerHTML = `<svg viewBox="0 0 80 80" aria-hidden="true">
         <defs><linearGradient id="pvNeedle" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0" stop-color="#ffc53d"/><stop offset="1" stop-color="#ff4d6d"/></linearGradient></defs>
@@ -512,6 +512,36 @@
         <text class="n" x="40" y="7.5">Β</text><text x="40" y="73">Ν</text>
         <text x="73" y="40.5">Α</text><text x="7" y="40.5">Δ</text>
       </svg>`;
+      const rose = box.querySelector("svg");
+      const sync = () => {
+        const b = map.getBearing ? map.getBearing() : 0;
+        rose.style.transform = `rotate(${-b}deg)`;
+      };
+      map.on("rotate", sync);
+      sync();
+      const angleAt = (e) => {
+        const r = box.getBoundingClientRect();
+        return (Math.atan2(e.clientX - (r.left + r.width / 2), -(e.clientY - (r.top + r.height / 2))) * 180) / Math.PI;
+      };
+      let drag = null;
+      box.addEventListener("pointerdown", (e) => {
+        box.setPointerCapture(e.pointerId);
+        drag = { a: angleAt(e), b: map.getBearing(), moved: false };
+        e.preventDefault();
+      });
+      box.addEventListener("pointermove", (e) => {
+        if (!drag) return;
+        const d = angleAt(e) - drag.a;
+        if (Math.abs(d) > 3) drag.moved = true;
+        if (drag.moved) map.setBearing(drag.b - d);
+      });
+      const end = () => {
+        if (drag && !drag.moved) map.setBearing(0);
+        drag = null;
+      };
+      box.addEventListener("pointerup", end);
+      box.addEventListener("pointercancel", () => { drag = null; });
+      L.DomEvent.disableClickPropagation(box);
       return box;
     },
   });
