@@ -24,16 +24,22 @@
 
   const DAY = [hex("#3d8fe8"), hex("#c9ecff")], NIGHT = [hex("#070b22"), hex("#17224f")];
 
-  // Energy paths (cubic bezier points): panels -> house / battery / car, battery -> house.
-  const PATHS = {
-    house: [[150, 118], [152, 140], [138, 150], [122, 158]],
-    batt: [[152, 110], [172, 88], [202, 98], [214, 132]],
-    car: [[158, 106], [212, 66], [252, 82], [286, 142]],
-    night: [[206, 158], [182, 168], [150, 168], [128, 160]],
+  // Cables as polylines: panels -> junction -> house / battery / charger; at night battery -> house / charger.
+  const WIRES = {
+    panel: [[150, 116], [161, 124], [161, 176]],
+    house: [[161, 176], [161, 164], [158, 164]],
+    batt: [[161, 176], [215, 176], [215, 171]],
+    car: [[161, 176], [260, 176], [260, 171]],
+    nHouse: [[215, 171], [215, 176], [161, 176], [161, 164], [158, 164]],
+    nCar: [[215, 171], [215, 176], [260, 176], [260, 171]],
   };
-  const bez = (p, t) => {
-    const u = 1 - t, a = u * u * u, b = 3 * u * u * t, c = 3 * u * t * t, d = t * t * t;
-    return [a * p[0][0] + b * p[1][0] + c * p[2][0] + d * p[3][0], a * p[0][1] + b * p[1][1] + c * p[2][1] + d * p[3][1]];
+  const lens = (w) => { let tot = 0; const c = [0]; for (let k = 1; k < w.length; k++) { tot += Math.hypot(w[k][0] - w[k - 1][0], w[k][1] - w[k - 1][1]); c.push(tot); } return { c, tot }; };
+  Object.keys(WIRES).forEach((k) => { WIRES[k] = { pts: WIRES[k], ...lens(WIRES[k]) }; });
+  const along = (w, f) => {
+    const d = clamp(f) * w.tot; let k = 1;
+    while (k < w.pts.length - 1 && w.c[k] < d) k++;
+    const u = (d - w.c[k - 1]) / ((w.c[k] - w.c[k - 1]) || 1), a = w.pts[k - 1], b = w.pts[k];
+    return [mix(a[0], b[0], u), mix(a[1], b[1], u)];
   };
 
   let parts = [], last = 0, raf = 0;
@@ -96,8 +102,8 @@
     if (night > 0.02) {
       g.globalAlpha = night;
       glow(ax, ay, 60, "rgba(190,210,255,A)", 0.3);
-      g.fillStyle = "#eef2ff"; // crescent: the big disc minus an offset disc
-      g.beginPath(); g.arc(ax, ay, 13, 0, TAU); g.moveTo(ax + 6 + 12, ay - 3); g.arc(ax + 6, ay - 3, 12, 0, TAU, true); g.fill("evenodd");
+      g.save(); g.beginPath(); g.arc(ax, ay, 13, 0, TAU); g.clip(); // crescent: the disc minus an offset disc
+      g.fillStyle = "#eef2ff"; g.beginPath(); g.rect(ax - 20, ay - 20, 40, 40); g.arc(ax + 6, ay - 3, 12, 0, TAU); g.fill("evenodd"); g.restore();
       g.globalAlpha = 1;
     }
 
@@ -164,26 +170,39 @@
     [290, 322].forEach((x) => { g.beginPath(); g.arc(x, 168, 2.4, 0, TAU); g.fill(); });
     if (night > 0.3) glow(341, 158, 18, "rgba(255,240,190,A)", 0.5 * night);
 
-    // flowing energy
-    g.globalCompositeOperation = "lighter";
+    // cables
+    g.lineCap = "round"; g.lineJoin = "round";
+    const wirePath = (w) => { g.beginPath(); w.pts.forEach(([x, y], k) => (k ? g.lineTo(x, y) : g.moveTo(x, y))); };
+    ["panel", "house", "batt", "car"].forEach((k) => {
+      wirePath(WIRES[k]); g.strokeStyle = lerpCol(hex("#2b3348"), hex("#0a0f1e"), night * 0.6); g.lineWidth = 2.6; g.stroke();
+      wirePath(WIRES[k]); g.strokeStyle = lerpCol(hex("#6d7893"), hex("#3a4666"), night); g.lineWidth = 1.2; g.stroke();
+    });
+    // energy pulses travelling along the cables
     for (const q of parts) {
-      for (let j = 0; j < 4; j++) {
-        const [x, y] = bez(PATHS[q.path], clamp(q.t - j * 0.018));
-        glow(x, y, 7 - j, q.path === "night" ? "rgba(45,212,191,A)" : "rgba(255,196,70,A)", (1 - j * 0.25) * 0.9);
+      const w = WIRES[q.path], col = q.path[0] === "n" ? "45,212,191" : "255,196,70";
+      for (let j = 0; j < 5; j++) {
+        const [x, y] = along(w, q.t - j * 0.012);
+        g.fillStyle = `rgba(${col},${(1 - j * 0.2) * (j ? 0.55 : 1)})`;
+        g.beginPath(); g.arc(x, y, 1.9 - j * 0.2, 0, TAU); g.fill();
+        if (!j) glow(x, y, 6, `rgba(${col},A)`, 0.4);
       }
     }
-    g.globalCompositeOperation = "source-over";
     g.restore();
   }
 
   function step(dt) {
     const target = isLight() ? 0 : 1;
     night += clamp(target - night, -dt * 0.9, dt * 0.9);
-    const spawn = (path, n) => { if (Math.random() < n * dt) parts.push({ path, t: 0, v: 0.35 + Math.random() * 0.25 }); };
+    const spawn = (path, n) => { if (Math.random() < n * dt) parts.push({ path, t: 0, v: 0.5 / WIRES[path].tot * 60 }); };
     if (night < 0.5) {
-      spawn("house", 5); spawn("car", 3);
-      if (lv < 0.97) { spawn("batt", 4); lv = Math.min(0.97, lv + dt * 0.035); }
-    } else if (lv > 0.22) { spawn("night", 3.2); lv = Math.max(0.2, lv - dt * 0.035); }
+      spawn("panel", 2.2); // the stretch from the roof to the junction; branches follow when it arrives
+      for (const q of parts) if (q.path === "panel" && !q.done && q.t > 0.98) {
+        q.done = true; // reached the junction: split to the house, the car and the battery (if not full)
+        parts.push({ path: "house", t: 0, v: 0.5 / WIRES.house.tot * 60 }, { path: "car", t: 0, v: 0.5 / WIRES.car.tot * 60 });
+        if (lv < 0.97) parts.push({ path: "batt", t: 0, v: 0.5 / WIRES.batt.tot * 60 });
+      }
+      if (lv < 0.97) lv = Math.min(0.97, lv + dt * 0.035);
+    } else if (lv > 0.22) { spawn("nHouse", 1.2); spawn("nCar", 1.2); lv = Math.max(0.2, lv - dt * 0.035); }
     parts = parts.filter((q) => (q.t += q.v * dt) < 1);
   }
 
