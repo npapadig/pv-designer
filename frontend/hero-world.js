@@ -16,14 +16,15 @@ const color = (h) => new THREE.Color(h);
 const drop = (x, z) => (M * (x * x + z * z)) / (2 * R); // metres the round ground falls away from a flat house plan
 
 // Layout in the town frame (u to the right, v towards the viewer, in planet units).
-const PARK = [4.25, -4.3, 0.3]; // solar park centre and turn: far behind the town, towards the horizon
+const PARK = [7.4, -2.6, -0.3]; // solar park centre and turn: far to the right of the town, seen well from the wide view
 const PARK_SUB = [-1.3, 1.05]; // substation (in the park's own frame), where the line to the town starts
 const PARK_YARD = [-1.3, -0.1]; // battery containers (park frame)
 const LAKES = [[-3.9, 1.75, 1.8, 1.5, 0.2], [1.75, -3.05, 1.45, 0.85, -0.25], [5.3, 0.75, 1.15, 0.8, 0.4]]; // u, v, w, h, turn
 const RIVER = smoothPath([[-1.7, -4.25], [-2.5, -3.45], [-3.6, -3.0], [-4.4, -2.0], [-4.9, -0.8], [-4.8, 0.35], [-4.45, 1.12]], 60);
 const MOUNTAINS = [ // u, v, base radius, height, shape, turn
   [-2.2, -4.95, 1.75, 1.75, 0, 0.3], [-0.85, -5.35, 1.45, 1.35, 1, 1.1], [-3.7, -4.3, 1.5, 1.4, 2, 2.0],
-  [0.45, -5.55, 1.2, 1.0, 0, 2.6], [-4.95, -3.3, 1.3, 1.15, 1, 0.7], [7.3, -4.3, 1.6, 1.5, 2, 1.5], [7.9, -2.8, 1.15, 0.95, 0, 0.2],
+  [0.45, -5.55, 1.2, 1.0, 0, 2.6], [-4.95, -3.3, 1.3, 1.15, 1, 0.7], [8.9, -5.2, 1.6, 1.5, 2, 1.5], [10.2, -3.2, 1.15, 0.95, 0, 0.2],
+  [3.6, -5.6, 1.25, 1.1, 1, 0.9],
 ];
 const HOUSES = [ // u, v, turn, mirrored, gable roof
   [-2.0, -0.76, 0.05, false, true], [-0.7, -0.79, -0.03, true, false], [0.6, -0.76, 0.03, false, true],
@@ -35,16 +36,17 @@ const STREET_B = [[-2.9, 1.38], [2.95, 1.38], [3.42, 1.18], [3.62, 0.62], [3.62,
 const KIOSK = [3.98, -0.42];
 const FIELDS = [ // u, v, w, h, turn, texture
   [-2.6, -2.15, 1.5, 0.95, 0.2, "wheat"], [-0.6, -2.55, 1.2, 0.9, -0.1, "crop"], [0.05, -3.65, 1.0, 0.7, 0.15, "dry"],
-  [5.7, -1.8, 1.2, 0.9, -0.25, "wheat"], [-2.3, 3.1, 1.1, 0.8, 0.35, "crop"], [2.7, 2.6, 1.3, 0.8, 0.1, "crop"],
-  [6.4, -0.55, 1.0, 0.75, -0.3, "wheat"],
+  [3.4, -3.3, 1.2, 0.9, -0.25, "wheat"], [-2.3, 3.1, 1.1, 0.8, 0.35, "crop"], [2.7, 2.6, 1.3, 0.8, 0.1, "crop"],
+  [7.0, 0.35, 1.0, 0.75, -0.3, "wheat"],
 ];
 
-// Camera shots: target point (frame + u, v), camera direction above the ground there (az, el), distance, and
-// where the target sits on the screen (ax, ay as fractions from the top-left).
+// Camera shots: target point (frame + u, v), camera direction above the ground there (az, el), a starting distance
+// and its limits. hero.js moves the target and sets the distance so that the shot's subject (see subject()) fits the
+// free part of the screen next to or below the start screen's cards.
 export const SHOTS = {
-  overview: { frame: "town", at: [0.6, 0.05], az: 0.1, el: 0.62, d: 15.5, ax: 0.64, ay: 0.73 },
-  town: { frame: "town", at: [0.75, -0.05], az: 0.42, el: 0.43, d: 5.6, ax: 0.63, ay: 0.64 },
-  park: { frame: "park", at: [-0.3, 0.05], az: -1.0, el: 0.6, d: 6.2, ax: 0.62, ay: 0.63 },
+  overview: { frame: "town", at: [3.6, -1.1], az: 0.35, el: 0.72, d: 17, dMin: 11, dMax: 30 },
+  town: { frame: "town", at: [1.6, 0.1], az: 0.42, el: 0.5, d: 6, dMin: 3.2, dMax: 28 },
+  park: { frame: "park", at: [-0.2, 0.2], az: -0.9, el: 0.62, d: 6, dMin: 3.2, dMax: 28 },
 };
 
 // Built in a few steps that give the browser a breath in between, so the start screen never feels stuck.
@@ -66,11 +68,12 @@ export async function buildWorld(renderer) {
   };
   const parkUV = (u, v) => uvOf(globe.dir(park, u, v));
   const SUB = parkUV(...PARK_SUB);
-  const ROAD = [[3.62, 0], [4.3, -0.42], [4.4, -1.25], [3.75, -1.95], parkUV(PARK_SUB[0] + 0.32, PARK_SUB[1] + 0.22)];
+  const ROAD = [[3.62, 0], [4.3, -0.42], [4.95, -0.95], [5.55, -1.4], parkUV(PARK_SUB[0] + 0.32, PARK_SUB[1] + 0.22)];
   // the direction the wide view looks from: only what can be seen from there gets trees
   const viewAxis = (() => {
-    const s = SHOTS.overview, dir = new V3(Math.sin(s.az) * Math.cos(s.el), Math.sin(s.el), Math.cos(s.az) * Math.cos(s.el)).applyQuaternion(town.q);
-    return globe.dir(town, ...s.at).multiplyScalar(R).addScaledVector(dir, s.d).normalize();
+    const s = SHOTS.overview, P = globe.pose(town, ...s.at);
+    const dir = new V3(Math.sin(s.az) * Math.cos(s.el), Math.sin(s.el), Math.cos(s.az) * Math.cos(s.el)).applyQuaternion(P.q);
+    return P.p.clone().addScaledVector(dir, s.d).normalize();
   })();
 
   // ---------- ground: flat where things stand, gentle hills elsewhere ----------
@@ -243,11 +246,11 @@ export async function buildWorld(renderer) {
   const key = new THREE.DirectionalLight(0xffffff, 2.5);
   key.castShadow = true;
   key.shadow.mapSize.set(2048, 2048);
-  Object.assign(key.shadow.camera, { left: -7, right: 7, top: 7, bottom: -7, near: 2, far: 60 });
+  Object.assign(key.shadow.camera, { left: -8, right: 8, top: 8, bottom: -8, near: 2, far: 60 });
   key.shadow.camera.updateProjectionMatrix();
   key.shadow.bias = -0.0004;
   key.shadow.normalBias = 0.02;
-  const focusUV = [1.4, -1.6], focusPoint = globe.point(town, ...focusUV);
+  const focusUV = [3.0, -1.2], focusPoint = globe.point(town, ...focusUV); // between the town and the park
   key.target.position.copy(focusPoint);
   scene.add(hemi, key, key.target);
   // low golden sun from the right (long shadows to the left), moonlight from higher up
@@ -846,8 +849,20 @@ export async function buildWorld(renderer) {
   // A named shot (see SHOTS) as numbers, so that the camera can move smoothly from one shot to another.
   function shot(name) {
     const s = SHOTS[name], P = globe.pose(frames[s.frame], s.at[0], s.at[1]);
-    return { p: P.p, q: P.q, az: s.az, el: s.el, d: s.d, ax: s.ax, ay: s.ay };
+    return { p: P.p, q: P.q, az: s.az, el: s.el, d: s.d, dMin: s.dMin, dMax: s.dMax };
   }
+  // What each shot must show (points of a box over it): hero.js fits them into the free part of the screen.
+  const box = (F, u0, u1, v0, v1, h) => {
+    const out = [];
+    for (const u of [u0, (u0 + u1) / 2, u1]) for (const v of [v0, (v0 + v1) / 2, v1]) for (const y of [0, h]) out.push(globe.point(F, u, v, y));
+    return out;
+  };
+  const SUBJECTS = {
+    town: box(town, 0.05, 3.35, -1.3, 1.45, 0.45), // the four houses on the right, close up
+    park: [...box(park, -1.8, 1.4, -1.0, 1.45, 0.22), globe.point(town, ...SUB, 0.4)],
+  };
+  SUBJECTS.overview = [...box(town, -2.8, 3.4, -1.3, 1.5, 0.45), ...SUBJECTS.park];
+  const subject = (name) => SUBJECTS[name];
   const ball = new THREE.Sphere(new V3(), R + 0.2);
   const hits = (ray) => ray.intersectsSphere(ball);
 
@@ -857,5 +872,5 @@ export async function buildWorld(renderer) {
     own.clear();
   }
 
-  return { scene, update, shot, hits, dispose };
+  return { scene, update, shot, subject, hits, dispose };
 }

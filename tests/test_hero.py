@@ -49,6 +49,15 @@ def test_hero_has_no_greek_text():
         assert not any("Ͱ" <= c <= "Ͽ" or "ἀ" <= c <= "῾" for c in read(name)), name  # texts would need English
 
 
+def test_close_ups_stay_beside_or_below_the_cards():
+    js = read("hero.js")
+    assert "function freeArea()" in js and 'home.querySelector(".home-wrap")' in js  # measured from the cards
+    assert "world.subject(name)" in js and "ResizeObserver" in js  # fitted again when the cards change
+    assert "subject" in read("hero-world.js")
+    css = read("hero.css")
+    assert "@property --hero-rx" in css and "var(--hero-rx) var(--hero-ry)" in css  # the clear part shrinks close up
+
+
 def test_start_screen_focuses_the_scene_on_the_choice():
     js = read("hero.js")
     assert "window.heroScene = { focus }" in js

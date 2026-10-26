@@ -1,10 +1,14 @@
 /* Start-screen scene (hero.js, 3D planet): fills the free part of the screen behind the cards. Decorative only. */
+/* The clear part reaches --hero-rx x --hero-ry from the bottom-right corner (hero.js makes it smaller close up). */
+@property --hero-rx { syntax: "<percentage>"; inherits: false; initial-value: 95%; }
+@property --hero-ry { syntax: "<percentage>"; inherits: false; initial-value: 95%; }
 #heroScene {
+  --hero-rx: 95%; --hero-ry: 95%;
   position: fixed; inset: 0; z-index: 0; width: 100vw; height: 100vh; pointer-events: none;
-  opacity: 0; transition: opacity 1s ease 0.2s;
+  opacity: 0; transition: opacity 1s ease 0.2s, --hero-rx 1.6s ease, --hero-ry 1.6s ease;
   /* fades out towards the top-left so the cards and texts stay easy to read */
-  -webkit-mask-image: radial-gradient(ellipse 95% 95% at 100% 100%, #000 52%, rgba(0, 0, 0, 0.85) 70%, transparent 100%);
-  mask-image: radial-gradient(ellipse 95% 95% at 100% 100%, #000 52%, rgba(0, 0, 0, 0.85) 70%, transparent 100%);
+  -webkit-mask-image: radial-gradient(ellipse var(--hero-rx) var(--hero-ry) at 100% 100%, #000 52%, rgba(0, 0, 0, 0.85) 70%, transparent 100%);
+  mask-image: radial-gradient(ellipse var(--hero-rx) var(--hero-ry) at 100% 100%, #000 52%, rgba(0, 0, 0, 0.85) 70%, transparent 100%);
 }
 #heroScene.on { opacity: 1; }
 /* Without WebGL: a calm painted planet (night by default, day with the light theme). */
