@@ -1,4 +1,4 @@
-/* Start-screen scene (hero.js, painted planet): fills the free part of the screen behind the cards. Decorative only. */
+/* Start-screen scene (hero.js, 3D planet): fills the free part of the screen behind the cards. Decorative only. */
 #heroScene {
   position: fixed; inset: 0; z-index: 0; width: 100vw; height: 100vh; pointer-events: none;
   opacity: 0; transition: opacity 1s ease 0.2s;
@@ -7,6 +7,19 @@
   mask-image: radial-gradient(ellipse 95% 95% at 100% 100%, #000 52%, rgba(0, 0, 0, 0.85) 70%, transparent 100%);
 }
 #heroScene.on { opacity: 1; }
+/* Without WebGL: a calm painted planet (night by default, day with the light theme). */
+#heroScene.flat {
+  background:
+    radial-gradient(circle 95vh at 64% calc(100% + 47vh), #1f5a52 0 99.4%, rgba(90, 110, 230, 0.55) 99.6%, transparent 103%),
+    radial-gradient(circle 4vh at 80% 24%, #eef2ff 0 40%, rgba(190, 205, 255, 0.25) 42%, transparent 100%),
+    linear-gradient(#070b1c, #2a2457);
+}
+:root[data-theme="light"] #heroScene.flat {
+  background:
+    radial-gradient(circle 95vh at 64% calc(100% + 47vh), #6fbe57 0 99.4%, rgba(170, 220, 255, 0.8) 99.6%, transparent 103%),
+    radial-gradient(circle 9vh at 84% 28%, #fffbe8 0 18%, rgba(255, 207, 122, 0.45) 22%, transparent 100%),
+    linear-gradient(#9fd1f6, #fff1d8);
+}
 /* The content sits above the scene, so cards and buttons are never covered. */
 #home .home-wrap { position: relative; z-index: 1; }
 @media (max-width: 699px) { #heroScene { display: none; } }
