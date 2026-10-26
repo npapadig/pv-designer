@@ -27,10 +27,10 @@
   // Cables as polylines: panels -> junction -> house / battery / charger; at night battery -> house / charger.
   const WIRES = {
     panel: [[150, 116], [161, 124], [161, 176]],
-    house: [[161, 176], [161, 164], [158, 164]],
+    house: [[161, 176], [161, 131], [120, 131], [120, 135]], // up the wall, along the ceiling to the lamp
     batt: [[161, 176], [215, 176], [215, 171]],
     car: [[161, 176], [260, 176], [260, 171]],
-    nHouse: [[215, 171], [215, 176], [161, 176], [161, 164], [158, 164]],
+    nHouse: [[215, 171], [215, 176], [161, 176], [161, 131], [120, 131], [120, 135]],
     nCar: [[215, 171], [215, 176], [260, 176], [260, 171]],
   };
   const lens = (w) => { let tot = 0; const c = [0]; for (let k = 1; k < w.length; k++) { tot += Math.hypot(w[k][0] - w[k - 1][0], w[k][1] - w[k - 1][1]); c.push(tot); } return { c, tot }; };
@@ -44,6 +44,7 @@
 
   let parts = [], last = 0, raf = 0;
   let night = isLight() ? 0 : 1; // 0 = day, 1 = night; eases when the theme changes
+  let lamp = 0; // ceiling lamp: lights up when energy arrives
   let lv = night ? 0.9 : 0.3; // battery level: charges by day, drains by night
 
   function resize() {
@@ -177,6 +178,10 @@
       wirePath(WIRES[k]); g.strokeStyle = lerpCol(hex("#2b3348"), hex("#0a0f1e"), night * 0.6); g.lineWidth = 2.6; g.stroke();
       wirePath(WIRES[k]); g.strokeStyle = lerpCol(hex("#6d7893"), hex("#3a4666"), night); g.lineWidth = 1.2; g.stroke();
     });
+    // ceiling lamp at the end of the house cable
+    g.strokeStyle = "#2b3348"; g.lineWidth = 1; g.beginPath(); g.moveTo(120, 135); g.lineTo(120, 136.5); g.stroke();
+    glow(120, 139, 30, "rgba(255,226,140,A)", 0.7 * lamp);
+    g.fillStyle = lerpCol(hex("#8a8f9c"), hex("#fff1b0"), lamp); g.beginPath(); g.arc(120, 139, 3.2, 0, TAU); g.fill();
     // energy pulses travelling along the cables
     for (const q of parts) {
       const w = WIRES[q.path], col = q.path[0] === "n" ? "45,212,191" : "255,196,70";
@@ -203,6 +208,8 @@
       }
       if (lv < 0.97) lv = Math.min(0.97, lv + dt * 0.035);
     } else if (lv > 0.22) { spawn("nHouse", 1.2); spawn("nCar", 1.2); lv = Math.max(0.2, lv - dt * 0.035); }
+    for (const q of parts) if ((q.path === "house" || q.path === "nHouse") && q.t > 0.92) lamp = 1;
+    lamp = Math.max(0, lamp - dt * 0.9);
     parts = parts.filter((q) => (q.t += q.v * dt) < 1);
   }
 
