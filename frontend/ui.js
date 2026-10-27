@@ -139,6 +139,10 @@
 
   // ---------- Results dock and map hint ----------
   $("btnDock").onclick = () => $("results").classList.toggle("open");
+  // The dock can shrink to just its numbers ("mini") or disappear; a small button brings it back.
+  $("btnDockMin").onclick = () => $("results").classList.toggle("mini");
+  $("btnDockClose").onclick = () => { $("results").classList.add("gone"); $("btnDockShow").hidden = false; };
+  $("btnDockShow").onclick = () => { $("results").classList.remove("gone", "mini"); $("btnDockShow").hidden = true; };
 
   function updateHint() {
     let noArea = true;

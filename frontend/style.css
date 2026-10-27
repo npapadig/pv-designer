@@ -258,7 +258,15 @@ details[open] { padding-bottom: 4px; }
 .stats .hero span, #finPayback {
   background: var(--sun); -webkit-background-clip: text; background-clip: text; color: transparent;
 }
-.dock-actions { display: flex; gap: 8px; flex: none; }
+.dock-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; flex: 1 1 auto; min-width: 0; }
+.dock-bar { padding-right: 84px; }
+.dock-ctl { position: absolute; top: 8px; right: 10px; display: flex; gap: 6px; z-index: 1; }
+.dock-ctl .icon-btn { width: 34px; height: 34px; }
+.dock.mini .dock-actions, .dock.mini .dock-more { display: none; }
+.dock.mini #btnDockMin .ic { transform: rotate(180deg); }
+.dock.gone { display: none; }
+#btnDockShow { position: fixed; z-index: 10; left: var(--left); bottom: var(--gap); width: auto; padding: 0 16px; height: 42px; margin: 0; }
+@media print { #btnDockShow, .dock-ctl { display: none !important; } }
 .dock-actions button.primary { width: auto; height: 42px; margin: 0; padding: 0 18px; font-size: 0.86rem; }
 #btnDock .ic:last-child { transition: transform 0.3s; }
 .dock.open #btnDock .ic:last-child { transform: rotate(180deg); }

@@ -46,6 +46,7 @@
     <symbol id="i-pentagon" viewBox="0 0 24 24"><path d="M10.83 2.38a2 2 0 0 1 2.34 0l8 5.74a2 2 0 0 1 .73 2.25l-3.04 9.26a2 2 0 0 1-1.9 1.37H7.04a2 2 0 0 1-1.9-1.37L2.1 10.37a2 2 0 0 1 .73-2.25z"/></symbol>
     <symbol id="i-left" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></symbol>
     <symbol id="i-right" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></symbol>
     <symbol id="i-up" viewBox="0 0 24 24"><path d="m18 15-6-6-6 6"/></symbol>
     <symbol id="i-plus" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M12 5v14"/></symbol>
     <symbol id="i-house" viewBox="0 0 24 24"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></symbol>
@@ -490,7 +491,12 @@
   <button id="btnExpand" class="icon-btn" type="button" title="Άνοιγμα" aria-label="Άνοιγμα" hidden><svg class="ic"><use href="#i-right"/></svg></button>
 
   <div id="mapHint" hidden><svg class="ic"><use href="#i-pentagon"/></svg><span>Σχεδίασε την περιοχή των πάνελ με τα εργαλεία πάνω αριστερά στον χάρτη</span></div>
+  <button id="btnDockShow" class="ghost" type="button" title="Εμφάνιση αποτελεσμάτων" hidden><svg class="ic"><use href="#i-chart"/></svg><span>Αποτελέσματα</span></button>
   <section id="results" class="dock">
+    <div class="dock-ctl">
+      <button id="btnDockMin" class="icon-btn ghost" type="button" title="Μάζεμα" aria-label="Μάζεμα"><svg class="ic"><use href="#i-up"/></svg></button>
+      <button id="btnDockClose" class="icon-btn ghost" type="button" title="Κλείσιμο" aria-label="Κλείσιμο"><svg class="ic"><use href="#i-x"/></svg></button>
+    </div>
     <div class="dock-bar">
       <div class="stats">
         <div><span id="statCount">–</span><small>πάνελ</small></div>
