@@ -234,12 +234,13 @@ function setup(home) {
   // ---------- clicks, keys, pointer ----------
   const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
   const overPlanet = (e) => { ndc.set((e.clientX / W) * 2 - 1, 1 - (e.clientY / H) * 2); ray.setFromCamera(ndc, camera); return world.hits(ray.ray); };
+  const pickedPart = (e) => { ndc.set((e.clientX / W) * 2 - 1, 1 - (e.clientY / H) * 2); ray.setFromCamera(ndc, camera); return world.pick(ray.ray) || "town"; };
   // Only the free background counts: cards, buttons and texts keep their own clicks.
   const bare = (e) => home.contains(e.target) && !e.target.closest("button, a, input, select, textarea, label, p, h1, h3, small, .proj, .home-head");
   home.addEventListener("click", (e) => {
     if (!world || !active() || !bare(e)) return;
     if (shotName !== "overview") go("overview", "click");
-    else if (overPlanet(e)) go("town", "click");
+    else if (overPlanet(e)) go(pickedPart(e), "click");
   });
   home.addEventListener("pointermove", (e) => {
     parGoal = (e.clientX / (W || 1) - 0.5) * 0.05;

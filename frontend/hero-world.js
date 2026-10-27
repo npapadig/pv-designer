@@ -872,5 +872,13 @@ export async function buildWorld(renderer) {
     own.clear();
   }
 
-  return { scene, update, shot, subject, hits, dispose };
+  // Which part of the planet a ray lands on: "town" or "park" (whichever centre is nearer on the surface), or null.
+  const hitPoint = new V3(), townDir = globe.dir(town, 1.6, 0.1), parkDir = globe.dir(park, 0, 0);
+  const pick = (ray) => {
+    if (!ray.intersectSphere(new THREE.Sphere(new V3(), R), hitPoint)) return hits(ray) ? "town" : null;
+    const d = hitPoint.clone().normalize();
+    return d.dot(parkDir) > d.dot(townDir) ? "park" : "town";
+  };
+
+  return { scene, update, shot, subject, hits, pick, dispose };
 }
