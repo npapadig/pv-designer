@@ -8,10 +8,10 @@
   let shown = [];
   let chosen = null;
 
-  // East-west mode lives in a checkbox that only makes sense with racks.
+  // East-west mode is no longer shown: it is one of the proposals, and the hidden checkbox just remembers it.
   function syncEw() {
     const rack = $("mounting").value === "rack";
-    $("ewRow").hidden = !rack;
+    $("ewRow").hidden = true;
     $("azimuth").disabled = rack && $("ewMode").checked;
   }
   $("mounting").addEventListener("change", syncEw);

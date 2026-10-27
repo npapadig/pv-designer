@@ -275,57 +275,62 @@
 
     <section id="secPanels" class="step">
       <h2>Πάνελ και τοποθέτηση</h2>
-      <label>Μοντέλο πάνελ
-        <select id="panelPreset"></select>
-      </label>
+      <h3 class="sub">1. Τα πάνελ σου</h3>
       <div class="grid3">
         <label>Ισχύς (W) <input id="panelPower" type="number" step="5"></label>
         <label>Πλάτος (m) <input id="panelWidth" type="number" step="0.001"></label>
         <label>Μήκος (m) <input id="panelLength" type="number" step="0.001"></label>
       </div>
-      <div class="grid2">
-        <label>Τοποθέτηση
-          <select id="mounting">
-            <option value="flush">Παράλληλα με κεκλιμένη στέγη</option>
-            <option value="rack">Σε βάσεις (ταράτσα / έδαφος)</option>
-          </select>
-        </label>
-        <label>Προσανατολισμός πάνελ
-          <select id="orientation">
-            <option value="portrait">Κατακόρυφα</option>
-            <option value="landscape">Οριζόντια</option>
-          </select>
-        </label>
-        <label>Κλίση (°) <input id="tilt" type="number" value="30" min="0" max="90"></label>
-        <label>Αζιμούθιο (°) <input id="azimuth" type="number" value="180" min="0" max="360"></label>
-      </div>
-      <p class="muted small">Αζιμούθιο: 180 = Νότος, 90 = Ανατολή, 270 = Δύση.
-        <a href="#" id="btnAutoAz">Ευθυγράμμιση με την περιοχή</a></p>
-      <label class="radio switch" id="ewRow" hidden><input type="checkbox" id="ewMode">
-        Ανατολή-δύση «πλάτη με πλάτη» (οι σειρές κοιτάζουν εναλλάξ ανατολή και δύση· το αζιμούθιο δεν χρησιμοποιείται)</label>
+      <label>Ή διάλεξε έτοιμο μοντέλο
+        <select id="panelPreset"></select>
+      </label>
+      <h3 class="sub">2. Αποστάσεις (ελάχιστες)</h3>
       <details id="gapsBox" open>
         <summary>Αποστάσεις</summary>
         <div class="grid2">
-          <label>Από το περίγραμμα της στέγης (m) <input id="setback" type="number" value="0.5" step="0.1" min="0"></label>
+          <label>Από την άκρη της ταράτσας / στέγης (m) <input id="setback" type="number" value="0.5" step="0.1" min="0"></label>
           <label>Από τη γραμμή διαχωρισμού πλευρών (m) <input id="ridgeGap" type="number" step="0.1" min="0" placeholder="όπως το περίγραμμα"></label>
-          <label>Από εμπόδια (m) <input id="obstacleGap" type="number" step="0.1" min="0" placeholder="όπως το περίγραμμα"></label>
+          <label>Από κάθε εμπόδιο (m) <input id="obstacleGap" type="number" step="0.1" min="0" placeholder="όπως το περίγραμμα"></label>
           <label>Μεταξύ πάνελ, στήλη (m) <input id="colGap" type="number" value="0.02" step="0.01" min="0"></label>
           <label>Κενό σειρών (m) <input id="rowGap" type="number" step="0.1" min="0" placeholder="αυτόματο"></label>
         </div>
       </details>
       <details id="tablesBox">
-        <summary>Τραπέζια πάνελ</summary>
+        <summary>Τραπέζια πάνελ (ενωμένα, πιο ψηλά)</summary>
         <label class="radio switch"><input type="checkbox" id="tablesOn"> Χώρισε κάθε σειρά σε τραπέζια με διάδρομο</label>
         <div class="grid2">
           <label>Πάνελ ανά τραπέζι <input id="tablePanels" type="number" value="6" step="1" min="1"></label>
           <label>Κενό διαδρόμου (m) <input id="tableGap" type="number" value="0.8" step="0.1" min="0"></label>
         </div>
       </details>
+      <h3 class="sub">3. Προτάσεις τοποθέτησης</h3>
       <button id="btnLayout" class="primary"><svg class="ic"><use href="#i-grid"/></svg>Τοποθέτηση πάνελ</button>
-      <button id="btnLayoutCustom" class="secondary">Με τις ρυθμίσεις μου</button>
-      <p class="muted small">«Τοποθέτηση πάνελ» δείχνει 3 έτοιμες προτάσεις και τις δικές σου ρυθμίσεις, για να διαλέξεις. «Με τις ρυθμίσεις μου»
-        τοποθετεί τα πάνελ ακριβώς με τις τιμές παραπάνω.</p>
+      <p class="muted small">Δείχνει έτοιμες προτάσεις (οικονομική, μέγιστη ενέργεια, ανατολή-δύση, αισθητική) με τις αποστάσεις και τα πάνελ από πάνω.
+        Διάλεξε μία και ξεκινά η πρώτη τοποθέτηση· μετά μπορείς να μετακινήσεις πάνελ ένα-ένα.</p>
       <div id="layoutOptions"></div>
+      <details id="ownBox">
+        <summary>Θέλω να το ρυθμίσω μόνος μου (βάσεις, κατακόρυφα, αζιμούθιο)</summary>
+        <div class="grid2">
+          <label>Τοποθέτηση
+            <select id="mounting">
+              <option value="flush">Παράλληλα με κεκλιμένη στέγη</option>
+              <option value="rack">Σε βάσεις (ταράτσα / έδαφος)</option>
+            </select>
+          </label>
+          <label>Προσανατολισμός πάνελ
+            <select id="orientation">
+              <option value="portrait">Κατακόρυφα</option>
+              <option value="landscape">Οριζόντια</option>
+            </select>
+          </label>
+          <label>Κλίση (°) <input id="tilt" type="number" value="30" min="0" max="90"></label>
+          <label>Αζιμούθιο (°) <input id="azimuth" type="number" value="180" min="0" max="360"></label>
+        </div>
+        <p class="muted small">Αζιμούθιο: 180 = Νότος, 90 = Ανατολή, 270 = Δύση.
+          <a href="#" id="btnAutoAz">Ευθυγράμμιση με την περιοχή</a></p>
+        <label class="radio switch" id="ewRow" hidden><input type="checkbox" id="ewMode"> Ανατολή-δύση</label>
+        <button id="btnLayoutCustom" class="secondary">Με τις ρυθμίσεις μου</button>
+      </details>
       <details id="manualBox">
         <summary>Χειροκίνητη μετακίνηση πάνελ</summary>
         <label class="radio switch"><input type="checkbox" id="manualOn"> Μετακίνηση πάνελ με το ποντίκι</label>

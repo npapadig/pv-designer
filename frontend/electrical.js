@@ -129,7 +129,20 @@ api("/api/panels").then((list) => {
     });
     $("panelPreset").add(new Option(p.name, PANEL_PRESETS.length - 1));
   });
+  sortPanelPresets();
 }).catch(() => {});
+
+// Show the strongest (most modern) models first, "Δικό μου" last; the option values stay the array indexes (saved projects).
+// A new project starts on a modern 610 W module instead of the generic 410 W.
+function sortPanelPresets() {
+  const sel = $("panelPreset"), keep = sel.value, fresh = !state.projectId && keep === "0";
+  const opts = [...sel.options].sort((a, b) => (PANEL_PRESETS[b.value].power || 0) - (PANEL_PRESETS[a.value].power || 0)
+    || (PANEL_PRESETS[a.value].power ? -1 : 1));
+  opts.forEach((o) => sel.add(o));
+  const modern = PANEL_PRESETS.findIndex((p) => /Hi-MO 7 LR7-72HTH-610M/.test(p.name));
+  sel.value = fresh && modern >= 0 ? modern : keep;
+  if (fresh && modern >= 0) sel.dispatchEvent(new Event("change"));
+}
 
 api("/api/inverters").then((list) => {
   inverterLibrary = list;

@@ -423,7 +423,7 @@ async function runLayout() {
 // The main button shows the three proposals (options.js); the second one uses the settings as they are.
 const replaceOk = () => window.manual?.confirmReplace() ?? true; // hand-moved panels are replaced only after a yes
 $("btnLayout").onclick = () => replaceOk() && withBusy($("btnLayout"), () => (window.options ? options.show() : runLayout()));
-$("btnLayoutCustom").onclick = () => replaceOk() && withBusy($("btnLayoutCustom"), runLayout);
+$("btnLayoutCustom").onclick = () => replaceOk() && withBusy($("btnLayoutCustom"), () => { $("ewMode").checked = false; $("azimuth").disabled = false; return runLayout(); });
 
 // ---------- Shading ----------
 function shadingInput() {
