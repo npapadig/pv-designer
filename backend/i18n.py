@@ -28,6 +28,7 @@ EN: dict[str, str] = {
     "kWh / έτος": "kWh / year",
     "Πελάτης": "Client",
     "Συντάκτης": "Prepared by",
+    "Μηχανικός": "Engineer",
     "Ημερομηνία": "Date",
     # summary
     "Σύνοψη έργου": "Project summary",

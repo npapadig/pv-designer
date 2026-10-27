@@ -21,9 +21,9 @@ def test_roof_type_is_saved(tmp_path, monkeypatch):
         assert client.get(f"/api/projects/{pid}").json()["roof_type"] == roof
 
 
-def test_start_screen_offers_three_kinds():
+def test_start_screen_offers_rooftop_and_park():
     html = client.get("/").text
-    for el in ('id="homeBuilding"', 'id="homeNewBuilding"', 'id="homePark"', 'id="planAsk"'):
+    for el in ('id="homeRooftop"', 'id="homePark"', 'id="homeName"', 'id="homeEngineer"', 'id="planAsk"'):
         assert el in html
 
 
@@ -41,5 +41,12 @@ def test_google_box_is_gone():
 
 def test_roof_question_and_switch():
     html = client.get("/").text
-    for el in ('id="homeFlat"', 'id="homePitched"', 'id="roofRow"', 'name="roofType" value="flat"'):
+    for el in ('id="roofRow"', 'name="roofType" value="flat"'):
         assert el in html
+
+
+def test_engineer_name_is_saved_and_printed(tmp_path, monkeypatch):
+    monkeypatch.setattr(storage, "DATA_DIR", tmp_path)
+    info = {"client": "X", "engineer": "Γ. Παπαδόπουλος"}
+    pid = client.post("/api/projects", json={"name": "e", "report_info": info}).json()["id"]
+    assert client.get(f"/api/projects/{pid}").json()["report_info"]["engineer"] == "Γ. Παπαδόπουλος"

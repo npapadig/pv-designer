@@ -69,24 +69,22 @@
           <b>Συνέχεια</b><small id="homeContinueName"></small></button>
       </div>
       <div id="homeChoose" hidden>
-        <p class="home-ask">Πού θα μπουν τα πάνελ;</p>
+        <p class="home-ask">Τι θέλεις να σχεδιάσεις;</p>
         <div class="home-cards">
-          <button id="homeBuilding" class="home-card" type="button"><span class="home-ic"><svg class="ic"><use href="#i-house"/></svg></span>
-            <b>Σε υπάρχον κτίριο</b><small>Βρίσκεις το κτίριο στον δορυφορικό χάρτη και σχεδιάζεις τη στέγη πάνω του.</small></button>
-          <button id="homeNewBuilding" class="home-card" type="button"><span class="home-ic"><svg class="ic" viewBox="0 0 24 24"><path d="M13.22 2.42a2 2 0 0 0-2.51.05l-7 6A2 2 0 0 0 3 10v9a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7.35"/><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M15 6h6"/><path d="M18 3v6"/></svg></span>
-            <b>Σε νέο κτίριο</b><small>Δείχνεις πρώτα πού θα χτιστεί και μετά ανεβάζεις την κάτοψη (PNG ή JPG) για να σχεδιάσεις πάνω της.</small></button>
+          <button id="homeRooftop" class="home-card" type="button"><span class="home-ic"><svg class="ic"><use href="#i-house"/></svg></span>
+            <b>Φωτοβολταϊκά σε ταράτσα</b><small>Σε κτίριο, υπάρχον ή νέο, με επίπεδη ή κεκλιμένη στέγη.</small></button>
           <button id="homePark" class="home-card" type="button"><span class="home-ic"><svg class="ic" viewBox="0 0 24 24"><path d="M5 14h14l-2.5-8h-9z"/><path d="M12 6v8"/><path d="M6.25 10h11.5"/><path d="M12 14v4"/><path d="M8 18h8"/><path d="M2 21h20"/></svg></span>
-            <b>Πάρκο σε χωράφι</b><small>Φωτοβολταϊκό στο έδαφος: σχεδιάζεις το χωράφι και τα πάνελ μπαίνουν σε βάσεις.</small></button>
+            <b>Φωτοβολταϊκό πάρκο</b><small>Φωτοβολταϊκό στο έδαφος: σχεδιάζεις το χωράφι και τα πάνελ μπαίνουν σε βάσεις.</small></button>
         </div>
       </div>
-      <div id="homeRoof" hidden>
-        <p class="home-ask" id="homeRoofAsk">Τι στέγη έχει το κτίριο;</p>
-        <div class="home-cards">
-          <button id="homeFlat" class="home-card" type="button"><span class="home-ic"><svg class="ic" viewBox="0 0 24 24"><path d="M2 8h20"/><path d="M4 8v13h16V8"/><path d="M10 21v-5h4v5"/></svg></span>
-            <b>Επίπεδη ταράτσα (0°)</b><small>Τα πάνελ μπαίνουν σε βάσεις, με την κλίση που θέλεις.</small></button>
-          <button id="homePitched" class="home-card" type="button"><span class="home-ic"><svg class="ic" viewBox="0 0 24 24"><path d="M2 12 12 3l10 9"/><path d="M5 9.5V21h14V9.5"/><path d="M10 21v-6h4v6"/></svg></span>
-            <b>Κεκλιμένη στέγη</b><small>Κεραμοσκεπή ή λαμαρίνα: τα πάνελ μπαίνουν παράλληλα στη στέγη, που μπορείς να τη χωρίσεις σε πλευρές.</small></button>
-        </div>
+      <div id="homeDetails" hidden>
+        <p class="home-ask" id="homeDetailsAsk">Πώς λέγεται το έργο;</p>
+        <form id="homeDetailsForm" class="home-form" autocomplete="off">
+          <label>Όνομα έργου <input id="homeName" value="Νέο έργο"></label>
+          <label>Όνομα μηχανικού <span class="muted">(προαιρετικό)</span> <input id="homeEngineer" placeholder="Ο μηχανικός που επιβεβαιώνει τη μελέτη"></label>
+          <button id="homeGo" class="home-card new" type="submit"><span class="home-ic"><svg class="ic"><use href="#i-right"/></svg></span>
+            <b>Συνέχεια στον χάρτη</b></button>
+        </form>
       </div>
       <h3 class="home-sub">Αποθηκευμένα έργα</h3>
       <div id="homeProjects" class="home-grid"></div>
@@ -137,6 +135,7 @@
         <summary>Στοιχεία για την αναφορά PDF</summary>
         <label>Πελάτης <input id="clientName" placeholder="Ονοματεπώνυμο ή εταιρεία"></label>
         <label>Διεύθυνση έργου <input id="projectAddress" placeholder="Οδός, αριθμός, πόλη"></label>
+        <label>Μηχανικός (προαιρετικό) <input id="engineerName" placeholder="Ο μηχανικός που επιβεβαιώνει τη μελέτη"></label>
         <label>Συντάκτης / εταιρεία <input id="reportAuthor" placeholder="Το όνομά σας ή της εταιρείας σας"></label>
       </details>
       <div class="row">

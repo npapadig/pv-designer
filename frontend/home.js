@@ -33,14 +33,14 @@
   let shown = false; // no fade-in when the app opens, so the map does not flash through
   function hide() { $("home").hidden = true; }
 
-  // "Νέο έργο" first asks where the panels go, then (for a building) the roof; "Πίσω" goes one back.
+  // "Νέο έργο" first asks rooftop or park, then the project name (and the optional engineer); "Πίσω" goes one back.
   function screen(name) {
     $("homeStart").hidden = name !== "start";
     $("homeChoose").hidden = name !== "choose";
-    $("homeRoof").hidden = name !== "roof";
+    $("homeDetails").hidden = name !== "details";
     $("homeBack").hidden = name !== "choose"; // «Πίσω» sits in the top-left corner of the screen
-    $("homeRoofBack").hidden = name !== "roof";
-    hero(name === "roof" ? "town" : "overview"); // the roof question is about a building: the 3D scene shows the town
+    $("homeRoofBack").hidden = name !== "details";
+    hero(name === "details" ? (kind === "park" ? "park" : "town") : "overview"); // the scene stays on the chosen place
   }
   // The 3D start scene (hero.js) flies to the part of the planet that fits the choice: town or solar park.
   const hero = (where, soft) => window.heroScene && window.heroScene.focus(where, soft);
@@ -126,36 +126,36 @@
     return true;
   }
 
-  // A building: first the roof question.
-  let building = null;
-  function askRoof(type) {
-    building = type;
-    $("homeRoofAsk").textContent = type === "new" ? "Τι στέγη θα έχει το νέο κτίριο;" : "Τι στέγη έχει το κτίριο;";
-    screen("roof");
+  // The choice is only rooftop or park; existing/new building and the roof type are decided on the next screen.
+  let kind = null;
+  const ENGINEER_KEY = "pv-designer.engineer";
+  function askDetails(k) {
+    kind = k;
+    hero(k === "park" ? "park" : "town");
+    $("homeName").value = "Νέο έργο";
+    try { $("homeEngineer").value = localStorage.getItem(ENGINEER_KEY) || ""; } catch {}
+    screen("details");
+    $("homeName").focus();
+    $("homeName").select();
   }
-  $("homeBuilding").onclick = () => askRoof("existing");
-  $("homeNewBuilding").onclick = () => askRoof("new");
+  $("homeRooftop").onclick = () => askDetails("rooftop");
+  $("homePark").onclick = () => askDetails("park");
 
-  // An existing building goes straight to the address search; a new one is first placed on the map,
-  // then plan.js offers to upload the floor plan.
-  function startBuilding(roof) {
-    if (!begin(building, roof)) return;
-    if (building === "new" && window.plan) plan.askWhere();
+  $("homeDetailsForm").onsubmit = (e) => {
+    e.preventDefault();
+    const name = $("homeName").value.trim() || "Νέο έργο";
+    const engineer = $("homeEngineer").value.trim();
+    if (!(kind === "park" ? begin("park", "flat") : begin("existing", "pitched"))) return;
+    $("projectName").value = name;
+    $("engineerName").value = engineer;
+    try { localStorage.setItem(ENGINEER_KEY, engineer); } catch {}
+    markSaved();
     $("searchBox").focus();
-  }
-  $("homeFlat").onclick = () => startBuilding("flat");
-  $("homePitched").onclick = () => startBuilding("pitched");
-
-  // A park on a field: flat ground, panels on racks (the layout proposals of the "Πάνελ" step).
-  $("homePark").onclick = () => {
-    hero("park");
-    if (!begin("park", "flat")) return;
-    $("searchBox").focus();
-    toast("Βρες το χωράφι και σχεδίασε το περίγραμμά του με το εργαλείο πολυγώνου. Στο βήμα «Πάνελ» θα βρεις έτοιμες προτάσεις διάταξης σε βάσεις.", 8000);
+    if (kind === "park") toast("Βρες το χωράφι και σχεδίασε το περίγραμμά του με το εργαλείο πολυγώνου. Στο βήμα «Πάνελ» θα βρεις έτοιμες προτάσεις διάταξης σε βάσεις.", 8000);
   };
 
   // Pointer (or keyboard focus) resting on a choice: the scene already looks at the town or at the park.
-  [["homeBuilding", "town"], ["homeNewBuilding", "town"], ["homePark", "park"]].forEach(([id, where]) => {
+  [["homeRooftop", "town"], ["homePark", "park"]].forEach(([id, where]) => {
     const back = () => { if (!$("homeChoose").hidden) hero("overview", true); };
     for (const ev of ["pointerenter", "focus"]) $(id).addEventListener(ev, () => hero(where, true));
     for (const ev of ["pointerleave", "blur"]) $(id).addEventListener(ev, back);
@@ -169,7 +169,7 @@
   $("homeTheme").onclick = () => $("btnTheme").click();
   document.addEventListener("keydown", (e) => {
     if (e.key !== "Escape" || $("home").hidden) return;
-    if (!$("homeRoof").hidden) screen("choose");
+    if (!$("homeDetails").hidden) screen("choose");
     else if (!$("homeChoose").hidden) screen("start");
     else if (!$("homeContinue").hidden) hide();
   });

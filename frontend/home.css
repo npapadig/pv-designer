@@ -49,10 +49,14 @@
 .home-card.new .home-ic { background: rgba(255, 255, 255, 0.22); color: #fff; }
 
 .home-ask { margin: 0 0 14px; font-size: 1.15rem; font-weight: 720; letter-spacing: -0.02em; }
-#homeChoose, #homeRoof { animation: rise 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); }
-#homeChoose .home-card, #homeRoof .home-card { min-height: 190px; }
-#homeChoose .home-card:hover, #homeRoof .home-card:hover { border-color: var(--sun-2); }
+#homeChoose, #homeDetails { animation: rise 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); }
+#homeChoose .home-card { min-height: 190px; }
+#homeChoose .home-card:hover { border-color: var(--sun-2); }
 
+.home-form { display: grid; gap: 14px; max-width: 460px; }
+.home-form label { display: grid; gap: 6px; font-weight: 600; }
+.home-form input { font-size: 1.05rem; padding: 12px 14px; }
+.home-form .home-card.new { min-height: 110px; padding-left: 80px; justify-content: center; cursor: pointer; }
 .home-sub { margin: 38px 0 14px; }
 .home-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 14px; }
 .proj { position: relative; }
@@ -86,7 +90,7 @@
   .home-head { margin-bottom: 22px; }
   .home-title h1 { font-size: 1.35rem; }
   .home-cards, .home-grid { grid-template-columns: 1fr; gap: 12px; }
-  .home-card, #homeChoose .home-card, #homeRoof .home-card { min-height: 0; padding: 18px 18px 18px 78px; justify-content: center; }
+  .home-card, #homeChoose .home-card { min-height: 0; padding: 18px 18px 18px 78px; justify-content: center; }
   .home-ic { top: 50%; transform: translateY(-50%); left: 18px; }
   .home-sub { margin-top: 28px; }
   .proj-open { min-height: 0; }

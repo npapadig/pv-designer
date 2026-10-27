@@ -821,7 +821,7 @@ function collectProject() {
       ...settings(), avoid_shaded: $("avoidShaded").checked, max_shade_pct: +$("maxShade").value || 0, loss_pct: +$("loss").value, preset: $("panelPreset").value,
       panel_name: PANEL_PRESETS[$("panelPreset").value].power ? PANEL_PRESETS[$("panelPreset").value].name : null,
     },
-    report_info: { client: $("clientName").value, address: $("projectAddress").value, author: $("reportAuthor").value },
+    report_info: { client: $("clientName").value, address: $("projectAddress").value, author: $("reportAuthor").value, engineer: $("engineerName").value },
     areas: areas.getLayers().map(latlngsOf),
     area_names: areas.getLayers().map((l) => l.pvName || ""),
     area_faces: window.faces?.collect() || null,
@@ -847,6 +847,7 @@ function resetProject() {
   $("projectName").value = "Νέο έργο";
   $("clientName").value = "";
   $("projectAddress").value = "";
+  $("engineerName").value = "";
   state.projectType = "existing";
   state.roofType = "pitched";
   window.faces?.syncRoof();
@@ -891,6 +892,7 @@ function loadProject(p) {
   const info = p.report_info || {};
   $("clientName").value = info.client || "";
   $("projectAddress").value = info.address || "";
+  $("engineerName").value = info.engineer || "";
   if (info.author) $("reportAuthor").value = info.author;
   (p.areas || []).forEach((a, i) => {
     const layer = L.polygon(a);
