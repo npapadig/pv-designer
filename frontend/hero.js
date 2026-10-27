@@ -239,13 +239,15 @@ function setup(home) {
   const bare = (e) => home.contains(e.target) && !e.target.closest("button, a, input, select, textarea, label, p, h1, h3, small, .proj, .home-head");
   home.addEventListener("click", (e) => {
     if (!world || !active() || !bare(e)) return;
-    if (shotName !== "overview") go("overview", "click");
-    else if (overPlanet(e)) go(pickedPart(e), "click");
+    // A card under the pointer may already have moved the camera ("api"): a click on the planet still means "go there".
+    const part = overPlanet(e) ? pickedPart(e) : "";
+    if (part && !(source === "click" && part === shotName)) go(part, "click");
+    else if (shotName !== "overview") go("overview", "click");
   });
   home.addEventListener("pointermove", (e) => {
     parGoal = (e.clientX / (W || 1) - 0.5) * 0.05;
     if (!world || !active()) return;
-    const want = bare(e) ? (shotName !== "overview" ? "zoom-out" : overPlanet(e) ? "zoom-in" : "") : "";
+    const want = bare(e) ? (overPlanet(e) && !(source === "click" && pickedPart(e) === shotName) ? "zoom-in" : shotName !== "overview" ? "zoom-out" : "") : "";
     if (home.style.cursor !== want) home.style.cursor = want;
   });
   addEventListener("keydown", (e) => {
