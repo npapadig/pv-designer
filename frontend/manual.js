@@ -126,7 +126,7 @@
   // ---------- Checking the rules ----------
   function request(withShade) {
     const s = settings();
-    const obstacles = keepouts.getLayers().map((l) => ({ polygon: latlngsOf(l), height_m: l.pvHeight || 0 }));
+    const obstacles = obstaclesWithHeights();
     return {
       panels: layers().map(latlngsOf),
       areas: areas.getLayers().map(latlngsOf),

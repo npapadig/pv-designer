@@ -244,9 +244,22 @@
   const drawActions = drawControl._toolbars.draw._actionsContainer;
   toolbar.appendChild(drawActions);
 
+  // The bar stays hidden; it shows while the pointer rests on the tool in use or on the bar itself.
+  let peekTimer = null;
+  const peek = (on) => {
+    clearTimeout(peekTimer);
+    if (on) L.DomUtil.addClass(toolbar, "peek");
+    else peekTimer = setTimeout(() => L.DomUtil.removeClass(toolbar, "peek"), 350);
+  };
+  for (const el of [drawActions, toolbar]) {
+    L.DomEvent.on(el, "mouseover", (e) => { if (el === drawActions || e.target.closest?.("a.pv-tb.active")) peek(true); });
+    L.DomEvent.on(el, "mouseout", () => peek(false));
+  }
+
   function setActive(a) {
     if (activeTool) L.DomUtil.removeClass(activeTool, "active");
     activeTool = a || null;
+    L.DomUtil.removeClass(toolbar, "peek");
     if (!activeTool) return;
     L.DomUtil.addClass(activeTool, "active");
     drawActions.style.top = `${activeTool.getBoundingClientRect().top - toolbar.getBoundingClientRect().top}px`;

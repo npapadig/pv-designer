@@ -88,6 +88,7 @@
     $("btnNext").hidden = current === sections.length - 1;
     $("btnNext").classList.remove("nudge");
     links[current].classList.remove("nudge");
+    window.setPanelsVisible?.(sections[current].id !== "secShading"); // the shadow step shows shadows, not the layout
     body.scrollTop = 0;
     setCollapsed(false);
     updateHint();

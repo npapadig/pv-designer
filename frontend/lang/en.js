@@ -35,6 +35,9 @@ window.I18N_EN =
 "π.χ. μονοκατοικία ή πολυκατοικία που θέλει φωτοβολταϊκά στη στέγη.": "e.g. a house or apartment block that wants photovoltaics on its roof.",
 "Πρώτα σε ρωτά αν θα είναι ταράτσα ή πάρκο και μετά το όνομα του έργου.": "It first asks whether it is a roof or a park, then the project name.",
 "Κλείνει την ερώτηση «Τι θέλεις να σχεδιάσεις;» χωρίς να ξεκινήσει νέο έργο.": "Closes the question “What do you want to design?” without starting a new project.",
+"Στηθαίο": "Parapet",
+"Στηθαίο γύρω από κάθε περιοχή (μόνο το περίγραμμα, σκιάζει τα πάνελ)": "Parapet around every area (outline only, it shades the panels)",
+"Πάχος (m)": "Thickness (m)",
 "Πίσω": "Back",
 "Αποθηκευμένα έργα": "Saved projects",
 "Δεν υπάρχουν ακόμα αποθηκευμένα έργα. Πάτα «Νέο έργο» για να ξεκινήσεις.": "There are no saved projects yet. Press “New project” to start.",
@@ -101,6 +104,7 @@ window.I18N_EN =
 // ---------------------------------------------------------------- 2. site
 "Τοποθεσία": "Location",
 "Διεύθυνση ή πόλη…": "Address or town…",
+"Διεύθυνση, πόλη ή συντεταγμένες (π.χ. 39.64, 22.42)…": "Address, town or coordinates (e.g. 39.64, 22.42)…",
 "Αναζήτηση": "Search",
 "Μετά σχεδίασε την περιοχή με το εργαλείο πολυγώνου πάνω αριστερά στον χάρτη.": "Then draw the area with the polygon tool at the top left of the map.",
 "Δεν βρέθηκε η διεύθυνση.": "The address was not found.",

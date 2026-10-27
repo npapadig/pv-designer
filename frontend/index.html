@@ -151,7 +151,7 @@
     <section id="secSite" class="step">
       <h2>Τοποθεσία</h2>
       <div class="row search-row">
-        <input id="searchBox" placeholder="Διεύθυνση ή πόλη…" autocomplete="off" role="combobox" aria-autocomplete="list"
+        <input id="searchBox" placeholder="Διεύθυνση, πόλη ή συντεταγμένες (π.χ. 39.64, 22.42)…" autocomplete="off" role="combobox" aria-autocomplete="list"
           aria-expanded="false" aria-controls="searchList">
         <button id="btnSearch" class="icon-btn" title="Αναζήτηση" aria-label="Αναζήτηση"><svg class="ic"><use href="#i-search"/></svg></button>
         <ul id="searchList" class="search-list" role="listbox" aria-label="Προτάσεις διευθύνσεων" hidden></ul>
@@ -254,15 +254,6 @@
       <label>Όριο σκίασης ανά πάνελ (%) <input id="maxShade" type="number" value="10" step="1" min="0" max="100"></label>
       <p class="muted small">Ισχύει όταν βάλεις ύψος στα εμπόδια (βήμα «Χώρος»). Η τοποθέτηση των πάνελ παραλείπει τις θέσεις
         που χάνουν πάνω από το όριο ενέργειας τον χρόνο λόγω σκιάς.</p>
-      <button id="btnShading" class="primary"><svg class="ic"><use href="#i-cloud-sun"/></svg>Ανάλυση σκιάσεων</button>
-      <p id="shadingInfo" class="muted small"></p>
-      <div id="shadingLegend" class="legend small" hidden>
-        <span><i style="background:#1e3a8a"></i>&lt;1%</span>
-        <span><i style="background:#facc15"></i>1–5%</span>
-        <span><i style="background:#f97316"></i>5–10%</span>
-        <span><i style="background:#dc2626"></i>&gt;10%</span>
-        <span class="muted">απώλεια ανά πάνελ</span>
-      </div>
       <label class="radio switch"><input type="checkbox" id="showShadows"> Δείξε τις σκιές στον χάρτη</label>
       <div class="grid2" id="shadowControls" hidden>
         <label>Μήνας <select id="shadowMonth"></select></label>
@@ -270,10 +261,27 @@
           <input id="shadowHour" type="range" min="6" max="20" step="0.5" value="10"></label>
       </div>
       <p id="sunInfo" class="muted small"></p>
+      <details id="parapetBox">
+        <summary>Στηθαίο</summary>
+        <label class="radio switch"><input type="checkbox" id="parapetOn"> Στηθαίο γύρω από κάθε περιοχή (μόνο το περίγραμμα, σκιάζει τα πάνελ)</label>
+        <div class="grid2">
+          <label>Ύψος (m) <input id="parapetHeight" type="number" value="1" step="0.1" min="0"></label>
+          <label>Πάχος (m) <input id="parapetThickness" type="number" value="0.25" step="0.05" min="0.05"></label>
+        </div>
+      </details>
+      <button id="btnShading" class="primary"><svg class="ic"><use href="#i-cloud-sun"/></svg>Ανάλυση σκιάσεων</button>
+      <p id="shadingInfo" class="muted small"></p>
     </section>
 
     <section id="secPanels" class="step">
       <h2>Πάνελ και τοποθέτηση</h2>
+      <div id="shadingLegend" class="legend small" hidden>
+        <span><i style="background:#1e3a8a"></i>&lt;1%</span>
+        <span><i style="background:#facc15"></i>1–5%</span>
+        <span><i style="background:#f97316"></i>5–10%</span>
+        <span><i style="background:#dc2626"></i>&gt;10%</span>
+        <span class="muted">απώλεια ανά πάνελ</span>
+      </div>
       <label>Μοντέλο πάνελ
         <select id="panelPreset"></select>
       </label>
