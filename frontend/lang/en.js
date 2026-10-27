@@ -359,7 +359,8 @@ window.I18N_EN =
 "Διακοπές λειτουργίας": "Downtime",
 "Η ισχύς πρέπει να είναι μεγαλύτερη από 0.": "The power must be more than 0.",
 "Παραγωγή (kWh)": "Production (kWh)",
-"Χάνεται από σκιές (kWh)": "Lost to shade (kWh)",
+"Χάνεται από σκιές (kWh) · μαζί = χωρίς σκιές": "Lost to shade (kWh) · together = without shade",
+"Παραγωγή μετά τις σκιές (kWh)": "Production after shade (kWh)",
 // ---------------------------------------------------------------- 7. finances
 "Οικονομική ανάλυση": "Financial analysis",
 "Κόστος συστήματος (€/kWp, με ΦΠΑ)": "System cost (€/kWp, with VAT)",

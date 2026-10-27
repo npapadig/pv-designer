@@ -569,9 +569,9 @@ function renderResults() {
       data: {
         labels: e.monthly.map((m) => MONTHS[m.month - 1]),
         datasets: [
-          { label: "Παραγωγή (kWh)", data: e.monthly.map((m) => m.kwh), backgroundColor: "#f59e0b" },
+          { label: "Παραγωγή μετά τις σκιές (kWh)", data: e.monthly.map((m) => m.kwh), backgroundColor: "#f59e0b" },
           ...(e.annual_kwh_unshaded ? [{
-            label: "Χάνεται από σκιές (kWh)",
+            label: "Χάνεται από σκιές (kWh) · μαζί = χωρίς σκιές",
             data: e.monthly.map((m) => Math.round((m.kwh_unshaded - m.kwh) * 10) / 10),
             backgroundColor: "#9ca3af",
           }] : []),
