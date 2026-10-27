@@ -91,7 +91,7 @@ function setup(home) {
       }
       p.ax = clamp(p.ax + cx - (x0 + x1) / 2, 0.2, 1.1);
       p.ay = clamp(p.ay + cy - (y0 + y1) / 2, 0.2, 1.2);
-      p.d = clamp(p.d * Math.max((x1 - x0) / aw, (y1 - y0) / ah), s.dMin, s.dMax);
+      p.d = clamp(p.d * Math.max((x1 - x0) / aw, (y1 - y0) / ah), s.dMin, name === "overview" ? s.dMax : Math.min(s.dMax, 9)); // a close-up is never farther than the wide view, even in a small free area
     }
     return p;
   }
