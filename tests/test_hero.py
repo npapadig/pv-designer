@@ -66,5 +66,5 @@ def test_start_screen_focuses_the_scene_on_the_choice():
         assert shot in world
     home = read("home.js")
     assert "window.heroScene" in home
-    assert 'hero(name === "roof" ? "town" : "overview")' in home  # roof question = a building: show the town
-    assert 'hero("park")' in home and '["homePark", "park"]' in home
+    assert 'name === "details" ?' in home  # the name screen keeps the scene on the chosen place
+    assert 'hero(k === "park" ? "park" : "town")' in home and '["homePark", "park"]' in home

@@ -344,12 +344,40 @@ function settings() {
   };
 }
 
+// A parapet (στηθαίο) around every area: a thin wall along each side, inside the outline, as shading obstacles.
+function parapetObstacles() {
+  if (!$("parapetOn").checked) return [];
+  const h = +$("parapetHeight").value || 0, t = Math.max(0.05, +$("parapetThickness").value || 0.25);
+  if (h <= 0) return [];
+  const out = [];
+  areas.getLayers().forEach((layer) => {
+    const ll = latlngsOf(layer);
+    if (ll.length < 3) return;
+    const lat0 = ll.reduce((a, p) => a + p[0], 0) / ll.length, lng0 = ll.reduce((a, p) => a + p[1], 0) / ll.length;
+    const kx = 111320 * Math.cos((lat0 * Math.PI) / 180), ky = 110540;
+    const xy = ll.map((p) => [(p[1] - lng0) * kx, (p[0] - lat0) * ky]);
+    const back = ([x, y]) => [lat0 + y / ky, lng0 + x / kx];
+    const area2 = xy.reduce((a, p, i) => { const q = xy[(i + 1) % xy.length]; return a + p[0] * q[1] - q[0] * p[1]; }, 0);
+    const side = area2 > 0 ? 1 : -1; // counter-clockwise: the inside is on the left of each side
+    xy.forEach((a, i) => {
+      const b = xy[(i + 1) % xy.length];
+      const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+      if (len < 0.01) return;
+      const nx = (-(b[1] - a[1]) / len) * side * t, ny = ((b[0] - a[0]) / len) * side * t;
+      out.push({ polygon: [a, b, [b[0] + nx, b[1] + ny], [a[0] + nx, a[1] + ny]].map(back), height_m: h });
+    });
+  });
+  return out;
+}
+const obstaclesWithHeights = () =>
+  keepouts.getLayers().map((l) => ({ polygon: latlngsOf(l), height_m: l.pvHeight || 0 })).concat(parapetObstacles());
+
 // "Avoid shaded positions" (step «Σκιές»): the obstacles with their heights go along with a layout request.
 function shadeOptions() {
   if (!$("avoidShaded").checked) return {};
   return {
     avoid_shaded: true, max_shade_pct: +$("maxShade").value || 0,
-    obstacles: keepouts.getLayers().map((l) => ({ polygon: latlngsOf(l), height_m: l.pvHeight || 0 })),
+    obstacles: obstaclesWithHeights(),
   };
 }
 
@@ -365,6 +393,8 @@ function clearLayout() {
 // Deep blue modules with a thin light frame; draw.js adds the cell lines when zoomed in.
 const PANEL_FILL = "#1e3a8a";
 const PANEL_STYLE = { color: "#e2e8f0", weight: 0.8, opacity: 0.9, fillColor: PANEL_FILL, fillOpacity: 0.92, lineJoin: "miter" };
+// The step «Σκιές» shows the shadow map without the panels; the other steps show them (with the loss colours).
+window.setPanelsVisible = (on) => { if (on) panelsLayer.addTo(map); else panelsLayer.remove(); };
 const addPanel = (latlngs) => L.polygon(latlngs, PANEL_STYLE).addTo(panelsLayer);
 const NO_FIT = "Δεν χωράει κανένα πάνελ. Δοκίμασε μικρότερη απόσταση από τα άκρα ή οριζόντια πάνελ.";
 
@@ -430,7 +460,7 @@ function shadingInput() {
   const s = settings();
   return {
     panels: panelsLayer.getLayers().map(latlngsOf),
-    obstacles: keepouts.getLayers().map((l) => ({ polygon: latlngsOf(l), height_m: l.pvHeight || 0 })),
+    obstacles: obstaclesWithHeights(),
     tilt_deg: s.tilt_deg, azimuth_deg: s.azimuth_deg, mounting: s.mounting,
     ...(window.faces?.shadingFaces() || {}),
   };
@@ -472,6 +502,7 @@ async function runShading() {
   state.finance = null;
   colorPanels();
   renderResults();
+  if (!$("showShadows").checked) { $("showShadows").checked = true; refreshShadows(); } // the step shows the shadow map
 }
 $("btnShading").onclick = () => withBusy($("btnShading"), runShading);
 
@@ -519,7 +550,7 @@ function refreshShadows() {
     } catch (e) { toast(e.message); }
   }, 150);
 }
-["showShadows", "shadowMonth", "shadowHour"].forEach((id) => $(id).addEventListener("input", refreshShadows));
+["showShadows", "shadowMonth", "shadowHour", "parapetOn", "parapetHeight", "parapetThickness"].forEach((id) => $(id).addEventListener("input", refreshShadows));
 refreshShadows();
 
 // ---------- Energy ----------
@@ -819,9 +850,10 @@ function collectProject() {
     roof_type: state.roofType || "pitched",
     settings: {
       ...settings(), avoid_shaded: $("avoidShaded").checked, max_shade_pct: +$("maxShade").value || 0, loss_pct: +$("loss").value, preset: $("panelPreset").value,
+      parapet_on: $("parapetOn").checked, parapet_height_m: +$("parapetHeight").value, parapet_thickness_m: +$("parapetThickness").value,
       panel_name: PANEL_PRESETS[$("panelPreset").value].power ? PANEL_PRESETS[$("panelPreset").value].name : null,
     },
-    report_info: { client: $("clientName").value, address: $("projectAddress").value, author: $("reportAuthor").value },
+    report_info: { client: $("clientName").value, address: $("projectAddress").value, author: $("reportAuthor").value, engineer: $("engineerName").value },
     areas: areas.getLayers().map(latlngsOf),
     area_names: areas.getLayers().map((l) => l.pvName || ""),
     area_faces: window.faces?.collect() || null,
@@ -847,6 +879,8 @@ function resetProject() {
   $("projectName").value = "Νέο έργο";
   $("clientName").value = "";
   $("projectAddress").value = "";
+  $("engineerName").value = "";
+  $("parapetOn").checked = false; $("parapetHeight").value = 1; $("parapetThickness").value = 0.25;
   state.projectType = "existing";
   state.roofType = "pitched";
   window.faces?.syncRoof();
@@ -884,6 +918,9 @@ function loadProject(p) {
   $("ridgeGap").value = s.ridge_gap_m == null ? "" : s.ridge_gap_m;
   $("obstacleGap").value = s.obstacle_gap_m == null ? "" : s.obstacle_gap_m;
   $("avoidShaded").checked = !!s.avoid_shaded;
+  $("parapetOn").checked = !!s.parapet_on;
+  $("parapetHeight").value = s.parapet_height_m ?? 1;
+  $("parapetThickness").value = s.parapet_thickness_m ?? 0.25;
   $("maxShade").value = s.max_shade_pct ?? 10;
   $("tablesOn").checked = (s.table_panels || 0) > 0;
   $("tablePanels").value = s.table_panels || 6;
@@ -891,6 +928,7 @@ function loadProject(p) {
   const info = p.report_info || {};
   $("clientName").value = info.client || "";
   $("projectAddress").value = info.address || "";
+  $("engineerName").value = info.engineer || "";
   if (info.author) $("reportAuthor").value = info.author;
   (p.areas || []).forEach((a, i) => {
     const layer = L.polygon(a);

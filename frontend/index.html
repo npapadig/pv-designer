@@ -10,6 +10,7 @@
   <link rel="stylesheet" href="style.css?v=__VERSION__">
   <link rel="stylesheet" href="home.css?v=__VERSION__">
   <link rel="stylesheet" href="hero.css?v=__VERSION__">
+  <link rel="stylesheet" href="view3d.css?v=__VERSION__">
   <link rel="stylesheet" href="draw.css?v=__VERSION__">
   <link rel="stylesheet" href="shapes.css?v=__VERSION__">
   <link rel="stylesheet" href="options.css?v=__VERSION__">
@@ -70,24 +71,22 @@
           <b>Συνέχεια</b><small id="homeContinueName"></small></button>
       </div>
       <div id="homeChoose" hidden>
-        <p class="home-ask">Πού θα μπουν τα πάνελ;</p>
+        <p class="home-ask">Τι θέλεις να σχεδιάσεις;</p>
         <div class="home-cards">
-          <button id="homeBuilding" class="home-card" type="button"><span class="home-ic"><svg class="ic"><use href="#i-house"/></svg></span>
-            <b>Σε υπάρχον κτίριο</b><small>Βρίσκεις το κτίριο στον δορυφορικό χάρτη και σχεδιάζεις τη στέγη πάνω του.</small></button>
-          <button id="homeNewBuilding" class="home-card" type="button"><span class="home-ic"><svg class="ic" viewBox="0 0 24 24"><path d="M13.22 2.42a2 2 0 0 0-2.51.05l-7 6A2 2 0 0 0 3 10v9a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7.35"/><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M15 6h6"/><path d="M18 3v6"/></svg></span>
-            <b>Σε νέο κτίριο</b><small>Δείχνεις πρώτα πού θα χτιστεί και μετά ανεβάζεις την κάτοψη (PNG ή JPG) για να σχεδιάσεις πάνω της.</small></button>
+          <button id="homeRooftop" class="home-card" type="button"><span class="home-ic"><svg class="ic"><use href="#i-house"/></svg></span>
+            <b>Φωτοβολταϊκά σε ταράτσα</b><small>Σε κτίριο, υπάρχον ή νέο, με επίπεδη ή κεκλιμένη στέγη.</small></button>
           <button id="homePark" class="home-card" type="button"><span class="home-ic"><svg class="ic" viewBox="0 0 24 24"><path d="M5 14h14l-2.5-8h-9z"/><path d="M12 6v8"/><path d="M6.25 10h11.5"/><path d="M12 14v4"/><path d="M8 18h8"/><path d="M2 21h20"/></svg></span>
-            <b>Πάρκο σε χωράφι</b><small>Φωτοβολταϊκό στο έδαφος: σχεδιάζεις το χωράφι και τα πάνελ μπαίνουν σε βάσεις.</small></button>
+            <b>Φωτοβολταϊκό πάρκο</b><small>Φωτοβολταϊκό στο έδαφος: σχεδιάζεις το χωράφι και τα πάνελ μπαίνουν σε βάσεις.</small></button>
         </div>
       </div>
-      <div id="homeRoof" hidden>
-        <p class="home-ask" id="homeRoofAsk">Τι στέγη έχει το κτίριο;</p>
-        <div class="home-cards">
-          <button id="homeFlat" class="home-card" type="button"><span class="home-ic"><svg class="ic" viewBox="0 0 24 24"><path d="M2 8h20"/><path d="M4 8v13h16V8"/><path d="M10 21v-5h4v5"/></svg></span>
-            <b>Επίπεδη ταράτσα (0°)</b><small>Τα πάνελ μπαίνουν σε βάσεις, με την κλίση που θέλεις.</small></button>
-          <button id="homePitched" class="home-card" type="button"><span class="home-ic"><svg class="ic" viewBox="0 0 24 24"><path d="M2 12 12 3l10 9"/><path d="M5 9.5V21h14V9.5"/><path d="M10 21v-6h4v6"/></svg></span>
-            <b>Κεκλιμένη στέγη</b><small>Κεραμοσκεπή ή λαμαρίνα: τα πάνελ μπαίνουν παράλληλα στη στέγη, που μπορείς να τη χωρίσεις σε πλευρές.</small></button>
-        </div>
+      <div id="homeDetails" hidden>
+        <p class="home-ask" id="homeDetailsAsk">Πώς λέγεται το έργο;</p>
+        <form id="homeDetailsForm" class="home-form" autocomplete="off">
+          <label>Όνομα έργου <input id="homeName" value="Νέο έργο"></label>
+          <label>Όνομα μηχανικού <span class="muted">(προαιρετικό)</span> <input id="homeEngineer" placeholder="Ο μηχανικός που επιβεβαιώνει τη μελέτη"></label>
+          <button id="homeGo" class="home-card new" type="submit"><span class="home-ic"><svg class="ic"><use href="#i-right"/></svg></span>
+            <b>Συνέχεια στον χάρτη</b></button>
+        </form>
       </div>
       <h3 class="home-sub">Αποθηκευμένα έργα</h3>
       <div id="homeProjects" class="home-grid"></div>
@@ -138,6 +137,7 @@
         <summary>Στοιχεία για την αναφορά PDF</summary>
         <label>Πελάτης <input id="clientName" placeholder="Ονοματεπώνυμο ή εταιρεία"></label>
         <label>Διεύθυνση έργου <input id="projectAddress" placeholder="Οδός, αριθμός, πόλη"></label>
+        <label>Μηχανικός (προαιρετικό) <input id="engineerName" placeholder="Ο μηχανικός που επιβεβαιώνει τη μελέτη"></label>
         <label>Συντάκτης / εταιρεία <input id="reportAuthor" placeholder="Το όνομά σας ή της εταιρείας σας"></label>
       </details>
       <div class="row">
@@ -153,7 +153,7 @@
     <section id="secSite" class="step">
       <h2>Τοποθεσία</h2>
       <div class="row search-row">
-        <input id="searchBox" placeholder="Διεύθυνση ή πόλη…" autocomplete="off" role="combobox" aria-autocomplete="list"
+        <input id="searchBox" placeholder="Διεύθυνση, πόλη ή συντεταγμένες (π.χ. 39.64, 22.42)…" autocomplete="off" role="combobox" aria-autocomplete="list"
           aria-expanded="false" aria-controls="searchList">
         <button id="btnSearch" class="icon-btn" title="Αναζήτηση" aria-label="Αναζήτηση"><svg class="ic"><use href="#i-search"/></svg></button>
         <ul id="searchList" class="search-list" role="listbox" aria-label="Προτάσεις διευθύνσεων" hidden></ul>
@@ -256,15 +256,6 @@
       <label>Όριο σκίασης ανά πάνελ (%) <input id="maxShade" type="number" value="10" step="1" min="0" max="100"></label>
       <p class="muted small">Ισχύει όταν βάλεις ύψος στα εμπόδια (βήμα «Χώρος»). Η τοποθέτηση των πάνελ παραλείπει τις θέσεις
         που χάνουν πάνω από το όριο ενέργειας τον χρόνο λόγω σκιάς.</p>
-      <button id="btnShading" class="primary"><svg class="ic"><use href="#i-cloud-sun"/></svg>Ανάλυση σκιάσεων</button>
-      <p id="shadingInfo" class="muted small"></p>
-      <div id="shadingLegend" class="legend small" hidden>
-        <span><i style="background:#1e3a8a"></i>&lt;1%</span>
-        <span><i style="background:#facc15"></i>1–5%</span>
-        <span><i style="background:#f97316"></i>5–10%</span>
-        <span><i style="background:#dc2626"></i>&gt;10%</span>
-        <span class="muted">απώλεια ανά πάνελ</span>
-      </div>
       <label class="radio switch"><input type="checkbox" id="showShadows"> Δείξε τις σκιές στον χάρτη</label>
       <div class="grid2" id="shadowControls" hidden>
         <label>Μήνας <select id="shadowMonth"></select></label>
@@ -272,10 +263,27 @@
           <input id="shadowHour" type="range" min="6" max="20" step="0.5" value="10"></label>
       </div>
       <p id="sunInfo" class="muted small"></p>
+      <details id="parapetBox">
+        <summary>Στηθαίο</summary>
+        <label class="radio switch"><input type="checkbox" id="parapetOn"> Στηθαίο γύρω από κάθε περιοχή (μόνο το περίγραμμα, σκιάζει τα πάνελ)</label>
+        <div class="grid2">
+          <label>Ύψος (m) <input id="parapetHeight" type="number" value="1" step="0.1" min="0"></label>
+          <label>Πάχος (m) <input id="parapetThickness" type="number" value="0.25" step="0.05" min="0.05"></label>
+        </div>
+      </details>
+      <button id="btnShading" class="primary"><svg class="ic"><use href="#i-cloud-sun"/></svg>Ανάλυση σκιάσεων</button>
+      <p id="shadingInfo" class="muted small"></p>
     </section>
 
     <section id="secPanels" class="step">
       <h2>Πάνελ και τοποθέτηση</h2>
+      <div id="shadingLegend" class="legend small" hidden>
+        <span><i style="background:#1e3a8a"></i>&lt;1%</span>
+        <span><i style="background:#facc15"></i>1–5%</span>
+        <span><i style="background:#f97316"></i>5–10%</span>
+        <span><i style="background:#dc2626"></i>&gt;10%</span>
+        <span class="muted">απώλεια ανά πάνελ</span>
+      </div>
       <h3 class="sub">1. Τα πάνελ σου</h3>
       <div class="grid3">
         <label>Ισχύς (W) <input id="panelPower" type="number" step="5"></label>
@@ -506,6 +514,7 @@
       </div>
       <div class="dock-actions">
         <button id="btnDock" class="ghost" type="button"><svg class="ic"><use href="#i-chart"/></svg><span>Ανάλυση</span><svg class="ic"><use href="#i-up"/></svg></button>
+        <button id="btn3d" class="ghost" type="button"><svg class="ic"><use href="#i-house"/></svg>3D</button>
         <button id="btnReport" class="primary"><svg class="ic"><use href="#i-file-text"/></svg>Αναφορά PDF</button>
         <button id="btnPlanPdf" class="ghost" type="button"><svg class="ic"><use href="#i-file-text"/></svg>Κάτοψη PDF</button>
         <button id="btnSingleLine" class="ghost" type="button"><svg class="ic"><use href="#i-file-text"/></svg>Μονογραμμικό PDF</button>
@@ -544,6 +553,7 @@
   <script src="plan.js?v=__VERSION__"></script>
   <script src="home.js?v=__VERSION__"></script>
   <script type="module" src="hero.js?v=__VERSION__"></script>
+  <script type="module" src="view3d.js?v=__VERSION__"></script>
   <script src="vendor/qr/qr.js"></script>
   <script src="mobile-settings.js?v=__VERSION__"></script>
   <script src="helptexts.js?v=__VERSION__"></script>

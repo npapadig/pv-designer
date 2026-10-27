@@ -1,0 +1,21 @@
+/* 3D view of the roof / building (view3d.js): a full-screen layer above the map with a bar of controls. */
+#view3d { position: fixed; inset: 0; z-index: 3000; display: none; background: #0b1020; }
+#view3d.on { display: block; }
+#view3d canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; cursor: grab; touch-action: none; }
+#view3d canvas:active { cursor: grabbing; }
+.v3-bar {
+  position: absolute; top: 12px; left: 12px; right: 12px; display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center;
+  padding: 10px 14px; border-radius: 16px; background: var(--glass-strong); color: var(--text);
+  border: 1px solid var(--line-strong); box-shadow: var(--shadow); pointer-events: auto;
+}
+.v3-bar b { font-weight: 750; }
+.v3-bar label { display: inline-flex; gap: 6px; align-items: center; margin: 0; font-weight: 600; }
+.v3-bar input[type=number] { width: 70px; }
+.v3-bar input[type=range] { width: 120px; }
+.v3-bar .v3-sp { flex: 1; }
+.v3-bar .seg { display: inline-flex; border: 1px solid var(--line-strong); border-radius: 10px; overflow: hidden; }
+.v3-bar .seg button { border: 0; border-radius: 0; background: transparent; color: var(--text); height: 34px; padding: 0 12px; }
+.v3-bar .seg button.on { background: var(--sun); color: #fff; }
+.v3-hint { position: absolute; left: 14px; bottom: 12px; color: #cbd5e1; font-size: 0.8rem; text-shadow: 0 1px 3px #000; }
+:root[data-theme="light"] .v3-hint { color: #334155; text-shadow: none; }
+@media (max-width: 760px) { .v3-bar { gap: 8px 10px; padding: 8px 10px; } .v3-bar input[type=range] { width: 90px; } }

@@ -71,7 +71,8 @@
 .pv-toolbar a.pv-tb.keepout.active { background: linear-gradient(135deg, #ff6b81, #e11d48); }
 .pv-toolbar a.pv-tb.tree.active { background: linear-gradient(135deg, #4ade80, #16a34a); }
 .pv-toolbar a.pv-tb.pv-off .ic { opacity: 0.38; }
-.pv-toolbar .leaflet-draw-actions { left: calc(100% + 8px); margin: 0; filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.35)); }
+.pv-toolbar .leaflet-draw-actions { left: calc(100% + 8px); margin: 0; opacity: 0; pointer-events: none; transition: opacity 0.12s; filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.35)); }
+.pv-toolbar.peek .leaflet-draw-actions { opacity: 1; pointer-events: auto; }
 .pv-toolbar .leaflet-draw-actions a {
   display: block; height: 34px; padding: 0 12px; text-decoration: none; border-left: 1px solid var(--line-strong);
   background: var(--glass-strong); color: var(--text); font: 600 12.5px/34px var(--font);

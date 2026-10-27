@@ -25,7 +25,7 @@ goal, files it owns, numbered items, checks to run, and a status table. Max 2 st
 | peristrofi | `peristrofi.md` | `vendor/leaflet-rotate`, app.js «Map», πυξίδα | ΤΕΛΟΣ (v0.22.0) |
 | planitis | `planitis.md` | `hero.js`, `hero.css` | ΤΕΛΟΣ (v0.23.0) |
 | xeirokiniti | `xeirokiniti.md` | drag πάνελ + έλεγχος περιορισμών | ΤΕΛΟΣ (v0.23.0) |
-| trisdiastato | `trisdiastato.md` | `frontend/view3d.js/.css`, ένα σημείο σε index.html/app.js, `lang/en.js`, τεστ | ΤΡΕΧΕΙ |
+| trisdiastato | `trisdiastato.md` | `frontend/view3d.js/.css`, ένα σημείο σε index.html/app.js, `lang/en.js`, τεστ | ΤΕΛΟΣ (v0.27.0) |
 
 2026-10-22 (τελικό): το πολύ 2 ροές μαζί· κάθε ροή που τελειώνει αρχειοθετείται πριν ξεκινήσει η επόμενη (CLAUDE.md §5).
 

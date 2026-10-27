@@ -123,6 +123,8 @@ def _title_block(c, x: float, y0: float, w: float, h: float, rows: list[tuple[st
     head = [(report.tr("Έργο"), project.get("name") or "–"),
             (report.tr("Πελάτης"), info.get("client") or "–"),
             (report.tr("Διεύθυνση"), info.get("address") or "–")]
+    if info.get("engineer"):
+        head.append((report.tr("Μηχανικός"), info["engineer"]))
     for item in head + rows:
         label, value = item
         y -= 6.2 * mm
