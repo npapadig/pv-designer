@@ -1351,7 +1351,8 @@ window.I18N_EN =
 "κάνε κλικ σε δύο σημεία": "click two points",
 "Χάρακας: μέτρησε αποστάσεις πάνω στον χάρτη": "Ruler: measure distances on the map",
 "Χάρακας ·": "Ruler ·",
-"Κλικ σε σημεία του χάρτη, π.χ. στις άκρες ενός μήκους που ξέρεις · Backspace = σβήσε το τελευταίο · Esc = τέλος (το μέτρο μένει στον χάρτη). Δεν αποθηκεύεται στο έργο.": "Click points on the map, e.g. the ends of a length you know · Backspace = delete the last one · Esc = finish (the measurement stays on the map). It is not saved in the project.",
+"Κλικ σε σημεία του χάρτη, π.χ. στις άκρες ενός μήκους που ξέρεις · Backspace = σβήσε το τελευταίο · Enter ή «Τέλος» = κράτα το μέτρο στον χάρτη (σβήνεται με το × του) · Esc = σβήσ' το. Δεν αποθηκεύεται στο έργο.": "Click points on the map, e.g. the ends of a length you know · Backspace = delete the last one · Enter or “Done” = keep the measurement on the map (delete it with its ×) · Esc = discard it. It is not saved in the project.",
+"Σβήσιμο αυτής της μέτρησης": "Delete this measurement",
 "Καθάρισμα": "Clear",
 "Διάλεξε πρώτα ένα σχήμα (διπλό κλικ).": "First select a shape (double-click).",
 "Επιλεγμένο εμπόδιο": "Selected obstacle",
@@ -1430,6 +1431,10 @@ window.I18N_EN =
 "Δεν βρέθηκε διεύθυνση δικτύου. Έλεγξε ότι ο υπολογιστής είναι συνδεδεμένος στο Wi-Fi.": "No network address found. Check that the computer is connected to Wi-Fi."
 },
 "rules": [
+["^Νότια\\. Στις (\\d+)° χωράνε (\\d+) πάνελ· με (\\d+)° χωράει μία σειρά ακόμα: (\\d+) πάνελ$", "South. At $1° $2 panels fit; at $3° one more row fits: $4 panels"],
+["^Νότια, στη βέλτιστη κλίση (\\d+)°: δεν χωράει επιπλέον σειρά με μικρότερη κλίση$", "South, at the best tilt $1°: no extra row fits at a lower tilt"],
+["^Οικονομική (\\d+)°$", "Economic $1°"],
+["^Νότια, στη βέλτιστη κλίση (\\d+)°, με λιγότερα πάνελ$", "South, at the best tilt $1°, with fewer panels"],
 ["^Πάνελ που παραβιάζουν περιορισμούς: (\\d+)$", "Panels breaking rules: $1"],
 ["^… (\\d+) ακόμα$", "… $1 more"],
 // mobile app: chip on a project card

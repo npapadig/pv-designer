@@ -32,7 +32,7 @@ def by_key():
 
 def test_three_options_in_order():
     opts = layout_options([ROOF], LayoutParams())
-    assert [o["key"] for o in opts] == ["economic", "east_west", "aesthetic", "manual"]
+    assert [o["key"] for o in opts][:4] == ["economic", "east_west", "aesthetic", "manual"]  # a 30° card may follow
     assert all(o["count"] > 0 for o in opts)
     assert all(o["mounting"] == "rack" for o in opts[:3])
 
@@ -106,7 +106,7 @@ def test_options_api_power_only():
     r = client.post("/api/layout/options", json={"areas": [ROOF]})
     assert r.status_code == 200
     opts = r.json()["options"]
-    assert len(opts) == 4
+    assert len(opts) in (4, 5)
     for o in opts:
         assert o["kwp"] > 0 and "annual_kwh" not in o
         assert 50 < o["yield_pct"] <= 100
@@ -240,3 +240,20 @@ def test_proposals_try_both_panel_orientations(roof):
             nominal = {"economic": 30, "east_west": 10, "aesthetic": 15}[opt["key"]]
             low = {"economic": 20, "east_west": 8, "aesthetic": 10}[opt["key"]]
             assert opt["count"] >= layout.best_tilt(layout_at, nominal, low)[1]["count"]
+
+
+def test_economic_offers_the_nominal_tilt_when_a_lower_one_adds_a_row():
+    roof = rect(-5, -5, 5, 5)
+    opts = layout_options([roof], LayoutParams(setback_m=0))
+    keys = [o["key"] for o in opts]
+    assert keys[:4] == ["economic", "east_west", "aesthetic", "manual"] and keys[-1] == "economic_nominal"
+    eco, nominal = opts[0], opts[-1]
+    assert eco["tilt_deg"] < 30 == nominal["tilt_deg"] and eco["count"] > nominal["count"]
+    assert "30" in eco["note"] and "30" in nominal["title"]
+
+
+def test_typed_row_gap_is_used_by_the_proposals():
+    roof = rect(-5, -5, 5, 5)
+    auto = layout_options([roof], LayoutParams(setback_m=0))[0]
+    wide = layout_options([roof], LayoutParams(setback_m=0, row_spacing_m=3.0))[0]
+    assert wide["row_spacing_m"] == 3.0 and wide["count"] < auto["count"]

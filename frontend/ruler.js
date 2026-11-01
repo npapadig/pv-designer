@@ -8,7 +8,7 @@
   const LINE = { pane: "pvRuler", interactive: false, color: TEAL, weight: 3, dashArray: "8 6", lineCap: "round" };
   const DOT = { pane: "pvRuler", interactive: false, radius: 4.5, color: "#0f766e", weight: 2, fillColor: "#fff", fillOpacity: 1 };
   const drawn = L.layerGroup().addTo(map);
-  const kept = L.layerGroup().addTo(map); // finished measurements stay on the map until «Καθάρισμα»
+  const kept = L.layerGroup().addTo(map); // finished measurements stay on the map until «Καθάρισμα» or their ×
 
   let on = false;
   let pts = [];
@@ -52,10 +52,11 @@
   }
 
   // handover: another tool has just started, so drawing goes on (no "draw:drawstop").
-  function stop(handover) {
+  // discard: Esc throws the unfinished measurement away; «Τέλος», Enter and another tool keep it.
+  function stop(handover, discard) {
     if (!on) return;
     on = false;
-    if (pts.length > 1) build(kept, pts, null); // it stays on the map
+    if (pts.length > 1 && !discard) keep(pts); // it stays on the map
     pts = [];
     mouse = null;
     drawn.clearLayers();
@@ -66,6 +67,18 @@
     map.off("mousemove", follow);
     map.off("mouseout", leave);
     if (handover !== true) map.fire("draw:drawstop", { layerType: "ruler" });
+  }
+
+  // A finished measurement: its own group, with a × at the last point that deletes just this one.
+  function keep(list) {
+    const group = L.layerGroup();
+    build(group, list, null);
+    const x = L.marker(list[list.length - 1], {
+      icon: L.divIcon({ className: "pv-ruler-x", html: "×", iconSize: [22, 22] }), keyboard: false, title: "Σβήσιμο αυτής της μέτρησης",
+    });
+    x.on("click", (ev) => { L.DomEvent.stopPropagation(ev); kept.removeLayer(group); });
+    group.addLayer(x);
+    kept.addLayer(group);
   }
 
   function addPoint(e) { pts.push(e.latlng); draw(); }
@@ -79,7 +92,8 @@
     if (!on || e.ctrlKey || e.metaKey || e.altKey) return;
     const t = e.target;
     if (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName)) return;
-    if (e.key === "Escape") stop();
+    if (e.key === "Escape") stop(false, true);
+    else if (e.key === "Enter") stop();
     else if (e.key === "Backspace" || e.key === "Delete") { pts.pop(); draw(); }
     else return;
     e.preventDefault();
@@ -98,7 +112,7 @@
   bar.dataset.help = "bar-ruler";
   bar.innerHTML = `<div class="pv-editbar-text"><b>Χάρακας · <span data-total></span></b>
       <span>Κλικ σε σημεία του χάρτη, π.χ. στις άκρες ενός μήκους που ξέρεις · Backspace = σβήσε το τελευταίο ·
-      Esc = τέλος (το μέτρο μένει στον χάρτη). Δεν αποθηκεύεται στο έργο.</span></div>
+      Enter ή «Τέλος» = κράτα το μέτρο στον χάρτη (σβήνεται με το × του) · Esc = σβήσ' το. Δεν αποθηκεύεται στο έργο.</span></div>
     <div class="pv-editbar-actions"><button type="button" class="secondary" data-a="clear">Καθάρισμα</button>
       <button type="button" data-a="done"><svg class="ic"><use href="#i-check"/></svg>Τέλος</button></div>`;
   const total = bar.querySelector("[data-total]");

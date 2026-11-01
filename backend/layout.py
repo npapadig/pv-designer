@@ -377,11 +377,12 @@ def layout_options(areas: list, p: LayoutParams, east_west: bool = False) -> lis
         ("east_west", "Μέγιστη ενέργεια", "Ανατολή-δύση πλάτη με πλάτη, τα περισσότερα πάνελ", OPTION_EAST_WEST, 90.0),
         ("aesthetic", "Αισθητική", "Παράλληλα με τον τοίχο του κτιρίου", OPTION_AESTHETIC, wall),
     ]
-    out = []
+    out, extra = [], []
     # The user's orientation first, so it wins a tie.
     orientations = [p.orientation] + [o for o in ("portrait", "landscape") if o != p.orientation]
     for key, title, note, opt, az in plans:
-        gap = opt["row_gap_m"]
+        # A row gap the user typed in wins over the proposal's own (None = the proposal's automatic one).
+        gap = p.row_spacing_m if p.row_spacing_m is not None else opt["row_gap_m"]
         best = None
         for orient in orientations:
             def layout_at(tilt, key=key, az=az, gap=gap, orient=orient):
@@ -396,13 +397,25 @@ def layout_options(areas: list, p: LayoutParams, east_west: bool = False) -> lis
         orient, tilt, res = best
         out.append({"key": key, "title": title, "note": note, "tilt_deg": tilt, "azimuth_deg": az,
                     "mounting": "rack", "row_spacing_m": gap, "orientation": orient, **res})
+        if key == "economic":
+            nominal = opt["tilt_deg"]
+            at_nominal = layout_at(nominal, key=key, az=az, gap=gap, orient=orient)
+            if tilt < nominal and res["count"] > at_nominal["count"]:
+                out[-1]["note"] = (f"Νότια. Στις {nominal:g}° χωράνε {at_nominal['count']} πάνελ· με {tilt:g}° χωράει "
+                                   f"μία σειρά ακόμα: {res['count']} πάνελ")
+                extra.append({"key": "economic_nominal", "title": f"Οικονομική {nominal:g}°",
+                            "note": f"Νότια, στη βέλτιστη κλίση {nominal:g}°, με λιγότερα πάνελ",
+                            "tilt_deg": nominal, "azimuth_deg": az, "mounting": "rack", "row_spacing_m": gap,
+                            "orientation": orient, **at_nominal})
+            else:
+                out[-1]["note"] = f"Νότια, στη βέλτιστη κλίση {tilt:g}°: δεν χωράει επιπλέον σειρά με μικρότερη κλίση"
     ew = east_west and p.mounting == "rack"
     manual = compute_ew_areas(areas, p) if ew else _merge([compute_layout(a, p) for a in areas], p)
     out.append({"key": "manual", "title": "Χειροκίνητα", "note": "Οι ρυθμίσεις του βήματος «Πάνελ» όπως είναι",
                 "tilt_deg": p.tilt_deg, "azimuth_deg": 90.0 if ew else p.azimuth_deg, "mounting": p.mounting,
                 "orientation": p.orientation,
                 "row_spacing_m": p.row_spacing_m, "east_west": ew, **manual})
-    return out
+    return out + extra
 
 
 def remove_shaded(res: dict, obstacles: list, tilt_deg: float, azimuth_deg: float, mounting: str,

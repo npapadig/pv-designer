@@ -136,3 +136,8 @@
   fill: var(--muted); font: 700 10px var(--font); text-anchor: middle; dominant-baseline: middle;
 }
 .pv-compass text.n { fill: var(--accent-text); font-size: 11.5px; }
+
+/* The × that deletes one finished ruler measurement */
+.pv-ruler-x { width: 22px; height: 22px; line-height: 20px; text-align: center; border-radius: 50%; background: #0f766e; color: #fff;
+  font: 700 16px/20px system-ui, sans-serif; cursor: pointer; box-shadow: 0 1px 4px rgba(0,0,0,.45); }
+.pv-ruler-x:hover { background: #dc2626; }

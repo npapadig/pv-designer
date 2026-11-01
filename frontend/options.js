@@ -72,7 +72,7 @@
     if (!ew) $("azimuth").value = Math.round(o.azimuth_deg);
     $("mounting").value = o.mounting;
     $("orientation").value = o.orientation;
-    $("rowGap").value = o.row_spacing_m == null ? "" : o.row_spacing_m;
+    // The row gap field is left as the user typed it: a proposal never overwrites it.
     $("ewMode").checked = ew;
     syncEw();
     const { panels, key, title, note, east_west, yield_pct, ...res } = o;
