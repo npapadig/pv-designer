@@ -250,6 +250,7 @@
     const flat = park || state.roofType === "flat";
     $("roofRow").hidden = park;
     $("facesBox").hidden = flat;
+    if (typeof refreshShadows === "function") refreshShadows(); // the parapet belongs to a flat roof only
     document.querySelectorAll("input[name=roofType]").forEach((r) => { r.checked = r.value === (flat ? "flat" : "pitched"); });
   }
 

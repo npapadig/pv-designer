@@ -348,8 +348,11 @@ function settings() {
 }
 
 // A parapet (στηθαίο) around every area: a thin wall along each side, inside the outline, as shading obstacles.
+// Only a flat roof has one: a pitched roof or a park does not (and with the panels parallel to a sloping roof the
+// flat-roof geometry of the walls would not even be right).
+const parapetApplies = () => state.projectType !== "park" && state.roofType === "flat";
 function parapetObstacles() {
-  if (!$("parapetOn").checked) return [];
+  if (!$("parapetOn").checked || !parapetApplies()) return [];
   const h = +$("parapetHeight").value || 0, t = Math.max(0.05, +$("parapetThickness").value || 0.25);
   if (h <= 0) return [];
   const out = [];
@@ -529,7 +532,16 @@ function renderShadingInfo() {
 MONTHS.forEach((m, i) => $("shadowMonth").add(new Option(m, i)));
 $("shadowMonth").value = 11;
 let shadowTimer = null;
+// The parapet (στηθαίο) as grey walls on the map.
+function drawParapet() {
+  $("parapetBox").hidden = !parapetApplies();
+  parapetLayer.clearLayers();
+  parapetObstacles().forEach((o) =>
+    L.polygon(o.polygon, { color: "#374151", weight: 1, fillColor: "#6b7280", fillOpacity: 0.9, interactive: false }).addTo(parapetLayer)
+  );
+}
 function refreshShadows() {
+  drawParapet();
   const on = $("showShadows").checked;
   $("shadowControls").hidden = !on;
   const h = +$("shadowHour").value;
