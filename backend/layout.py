@@ -46,6 +46,7 @@ class LayoutParams:
     table_panels: int = 0              # panels per table in a row; 0 = no tables, one continuous row
     table_gap_m: float = 0.8           # walkway gap between two tables of a row
     keepouts: list = field(default_factory=list)  # list of [[lat, lng], ...]
+    voids: list = field(default_factory=list)     # holes in the roof (light wells): also in keepouts; only their area is taken off area_m2
 
 
 def _transformers(lat0: float, lon0: float):
@@ -91,6 +92,12 @@ def _usable_with_ridge(area: Polygon, neighbours: list, p: LayoutParams) -> Poly
     if not ridge.is_empty:
         cut = cut.union(ridge)
     return area.difference(cut)
+
+
+def _voids_in(area: Polygon, voids: list, fwd) -> float:
+    """Area (m²) of the holes that lie inside this area."""
+    holes = [_to_xy(v, fwd) for v in voids if len(v) >= 3]
+    return float(unary_union(holes).intersection(area).area) if holes else 0.0
 
 
 def compute_layout(area_latlngs: list, p: LayoutParams, neighbours: list | None = None) -> dict:
@@ -166,7 +173,7 @@ def compute_layout(area_latlngs: list, p: LayoutParams, neighbours: list | None 
         "panels": panels,
         "count": count,
         "kwp": round(count * p.panel_power_w / 1000.0, 3),
-        "area_m2": round(area.area, 1),
+        "area_m2": round(area.area - _voids_in(area, p.voids, fwd), 1),
         "usable_area_m2": round(usable.area, 1) if not usable.is_empty else 0.0,
         "module_area_m2": round(count * p.panel_width_m * p.panel_length_m, 1),
         "row_gap_m": round(row_gap, 2),

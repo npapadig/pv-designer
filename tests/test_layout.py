@@ -69,3 +69,12 @@ def test_too_few_points():
     import pytest
     with pytest.raises(ValueError):
         compute_layout([[0, 0], [0, 1]], LayoutParams())
+
+
+def test_voids_come_off_the_area_figure():
+    outline = square(20, 20)
+    hole = [[lat, lng] for lat, lng in square(4, 4)]  # a 4 x 4 m hole in the middle
+    plain = compute_layout(outline, LayoutParams())
+    holed = compute_layout(outline, LayoutParams(keepouts=[hole], voids=[hole]))
+    assert abs(plain["area_m2"] - holed["area_m2"] - 16) < 0.6
+    assert holed["count"] < plain["count"]

@@ -104,6 +104,7 @@ const parapetLayer = new L.FeatureGroup().addTo(map);
 const AREA_STYLE = { color: "#ff8a3d", weight: 2.5, opacity: 1, fillColor: "#ffc53d", fillOpacity: 0.12, lineJoin: "round", className: "pv-shape pv-area" };
 const KEEPOUT_STYLE = { color: "#ff4d6d", weight: 2, opacity: 1, fillColor: "#ff4d6d", fillOpacity: 0.25, lineJoin: "round", className: "pv-shape pv-keepout" };
 // A tree is an obstacle too; shapes.css gives it a leafy edge.
+const VOID_STYLE = { color: "#9ca3af", weight: 2, dashArray: "6 4", opacity: 1, fillColor: "#111827", fillOpacity: 0.55, lineJoin: "round", className: "pv-shape pv-keepout pv-void" };
 const TREE_STYLE = { color: "#166534", weight: 2, opacity: 1, fillColor: "#22c55e", fillOpacity: 0.5, lineJoin: "round", className: "pv-shape pv-keepout pv-tree" };
 const DRAFT_STYLE = { color: "#ffc53d", weight: 2.5, opacity: 1, dashArray: "7 6", fillColor: "#ffc53d", fillOpacity: 0.1, lineJoin: "round", className: "pv-shape" };
 
@@ -150,9 +151,9 @@ document.querySelectorAll("input[name=drawMode]").forEach((r) => r.addEventListe
 const NEW_OBSTACLE_M = 1; // a new obstacle starts 1 m high; changed in the list or with a click on it
 
 function addShape(layer, kind, height) {
-  layer.setStyle(kind === "keepout" ? (layer.pvTree ? TREE_STYLE : KEEPOUT_STYLE) : AREA_STYLE);
+  layer.setStyle(kind === "keepout" ? (layer.pvTree ? TREE_STYLE : layer.pvVoid ? VOID_STYLE : KEEPOUT_STYLE) : AREA_STYLE);
   layer.pvKind = kind;
-  if (kind === "keepout") setObstacleHeight(layer, height ?? NEW_OBSTACLE_M);
+  if (kind === "keepout") setObstacleHeight(layer, layer.pvVoid ? 0 : height ?? NEW_OBSTACLE_M); // a void casts no shadow
   (kind === "keepout" ? keepouts : areas).addLayer(layer);
   editGroup.addLayer(layer);
   updateShapesInfo();
@@ -161,7 +162,7 @@ function addShape(layer, kind, height) {
 // The name in the lists and tooltips: the one typed in, else «Εμπόδιο 2» by its place in the list.
 function shapeName(layer) {
   if (layer.pvName) return layer.pvName;
-  return layer.pvKind === "keepout" ? `Εμπόδιο ${keepouts.getLayers().indexOf(layer) + 1}` : `Χώρος ${areas.getLayers().indexOf(layer) + 1}`;
+  return layer.pvKind === "keepout" ? `${layer.pvVoid ? "Κενό" : "Εμπόδιο"} ${keepouts.getLayers().indexOf(layer) + 1}` : `Χώρος ${areas.getLayers().indexOf(layer) + 1}`;
 }
 
 // Obstacles carry a height (m above the panel surface) used by the shading analysis.
@@ -179,7 +180,7 @@ function setObstacleHeight(layer, h) {
     });
   }
   layer.off("click").on("click", () => {
-    if (window.drawTools?.editing) return;
+    if (window.drawTools?.editing || layer.pvVoid) return;
     const box = L.DomUtil.create("div");
     box.innerHTML = `<b></b><label>Ύψος (m) <input type="number" min="0" step="0.5" value="${layer.pvHeight}"></label>`;
     box.querySelector("b").textContent = shapeName(layer);
@@ -194,6 +195,7 @@ function setObstacleHeight(layer, h) {
 map.on(L.Draw.Event.CREATED, (e) => {
   // A drawn rectangle becomes a plain polygon, so its corners can be edited one by one.
   const layer = e.layer instanceof L.Rectangle ? L.polygon(e.layer.getLatLngs(), e.layer.options) : e.layer;
+  if (drawMode() === "void") layer.pvVoid = true;
   addShape(layer, drawMode() === "area" ? "area" : "keepout");
   clearLayout();
 });
@@ -351,7 +353,8 @@ function parapetObstacles() {
   const h = +$("parapetHeight").value || 0, t = Math.max(0.05, +$("parapetThickness").value || 0.25);
   if (h <= 0) return [];
   const out = [];
-  areas.getLayers().forEach((layer) => {
+  const rings = [...areas.getLayers().map((l) => [l, 1]), ...keepouts.getLayers().filter((l) => l.pvVoid).map((l) => [l, -1])];
+  rings.forEach(([layer, inward]) => { // the wall of a void stands on the roof side: outside its outline
     const ll = latlngsOf(layer);
     if (ll.length < 3) return;
     const lat0 = ll.reduce((a, p) => a + p[0], 0) / ll.length, lng0 = ll.reduce((a, p) => a + p[1], 0) / ll.length;
@@ -359,7 +362,7 @@ function parapetObstacles() {
     const xy = ll.map((p) => [(p[1] - lng0) * kx, (p[0] - lat0) * ky]);
     const back = ([x, y]) => [lat0 + y / ky, lng0 + x / kx];
     const area2 = xy.reduce((a, p, i) => { const q = xy[(i + 1) % xy.length]; return a + p[0] * q[1] - q[0] * p[1]; }, 0);
-    const side = area2 > 0 ? 1 : -1; // counter-clockwise: the inside is on the left of each side
+    const side = (area2 > 0 ? 1 : -1) * inward; // counter-clockwise: the inside is on the left of each side
     xy.forEach((a, i) => {
       const b = xy[(i + 1) % xy.length];
       const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
@@ -370,6 +373,8 @@ function parapetObstacles() {
   });
   return out;
 }
+// The holes in the roof (light wells): sent with the layout requests so their area comes off the area figure.
+const voidsOf = () => keepouts.getLayers().filter((l) => l.pvVoid).map(latlngsOf);
 const obstaclesWithHeights = () =>
   keepouts.getLayers().map((l) => ({ polygon: latlngsOf(l), height_m: l.pvHeight || 0 })).concat(parapetObstacles());
 
@@ -421,18 +426,18 @@ async function runLayout() {
 
   // Roof faces with their own tilt/azimuth: one request for all, with the face of every panel.
   if (window.faces?.active()) {
-    const { panels, ...res } = await api("/api/layout/faces", "POST", { ...s, ...shadeOptions(), keepouts: ko, faces: faces.list() });
+    const { panels, ...res } = await api("/api/layout/faces", "POST", { ...s, ...shadeOptions(), keepouts: ko, voids: voidsOf(), faces: faces.list() });
     return setLayout(panels, res);
   }
   // East-west racks back to back: two faces (east, west), like roof faces.
   if (window.options?.eastWest()) {
-    const { panels, ...res } = await api("/api/layout/ew", "POST", { ...s, ...shadeOptions(), keepouts: ko, areas: areaLayers.map(latlngsOf) });
+    const { panels, ...res } = await api("/api/layout/ew", "POST", { ...s, ...shadeOptions(), keepouts: ko, voids: voidsOf(), areas: areaLayers.map(latlngsOf) });
     return setLayout(panels, res);
   }
 
   const total = { count: 0, kwp: 0, area_m2: 0, module_area_m2: 0, row_gap_m: null, center: null };
   for (const layer of areaLayers) {
-    const res = await api("/api/layout", "POST", { ...s, ...shadeOptions(), area: latlngsOf(layer), keepouts: ko });
+    const res = await api("/api/layout", "POST", { ...s, ...shadeOptions(), area: latlngsOf(layer), keepouts: ko, voids: voidsOf() });
     res.panels.forEach((p) =>
       addPanel(p)
     );
@@ -861,7 +866,7 @@ function collectProject() {
     keepouts: keepouts.getLayers().map(latlngsOf),
     keepout_heights: keepouts.getLayers().map((l) => l.pvHeight || 0),
     keepout_names: keepouts.getLayers().map((l) => l.pvName || ""),
-    keepout_shapes: keepouts.getLayers().map((l) => (l.pvTree ? "tree" : "")), // only the look on the map
+    keepout_shapes: keepouts.getLayers().map((l) => (l.pvTree ? "tree" : l.pvVoid ? "void" : "")), // only the look on the map
     shading: state.shading,
     layout: state.layout ? { ...state.layout, panels: panelsLayer.getLayers().map(latlngsOf) } : null,
     energy: state.energy,
@@ -945,6 +950,7 @@ function loadProject(p) {
     const layer = L.polygon(k);
     layer.pvName = (p.keepout_names || [])[i] || undefined; // older projects: «Εμπόδιο N»
     layer.pvTree = (p.keepout_shapes || [])[i] === "tree" || undefined;
+    layer.pvVoid = (p.keepout_shapes || [])[i] === "void" || undefined;
     addShape(layer, "keepout", (p.keepout_heights || [])[i] || 0);
   });
   if (p.layout) {

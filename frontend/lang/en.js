@@ -297,6 +297,12 @@ window.I18N_EN =
 "Οι ρυθμίσεις του βήματος «Πάνελ» όπως είναι": "The settings of the “Panels” step as they are",
 // ---------------------------------------------------------------- 4. shading
 "Σκιάσεις": "Shading",
+"Κενό": "Void",
+"Πάτα «Περιοχή πάνελ», «Εμπόδιο» ή «Κενό» (άδειο κομμάτι μέσα στην ταράτσα, π.χ. φωταγωγός) και κάνε κλικ γύρω γύρω στον χάρτη· κλικ στο πρώτο σημείο για να κλείσει. Για «Δέντρο» πάτα στο κέντρο του και σύρε ως την άκρη του. Διπλό κλικ σε ένα σχήμα για να το επιλέξεις.": "Press “Panel area”, “Obstacle” or “Void” (an empty part inside the roof, e.g. a light well) and click all around on the map; click the first point to close it. For “Tree” press its centre and drag to its edge. Double-click a shape to select it.",
+"Σχεδιάζεις ένα κομμάτι που λείπει από την περιοχή (σκούρο διακεκομμένο περίγραμμα).": "You draw a part that is missing from the area (dark dashed outline).",
+"Πρώτα σχεδιάζεις όλη την ταράτσα με «Περιοχή πάνελ» και μετά, με το «Κενό», τα άδεια κομμάτια της, π.χ. φωταγωγούς. Δεν μπαίνουν πάνελ εκεί, το εμβαδόν τους αφαιρείται από την επιφάνεια της περιοχής και, αν είναι ενεργό το στηθαίο, στήνεται στηθαίο γύρω από το κενό.": "First draw the whole roof with “Panel area”, then, with “Void”, its empty parts, e.g. light wells. No panels go there, their area is taken off the area's surface and, if the parapet is on, a parapet is put around the void.",
+"Η περιοχή βγαίνει με το σωστό εμβαδόν και δεν χρειάζεται να σχεδιάσεις την ταράτσα σε πολλά κομμάτια.": "The area comes out with the right size and you do not need to draw the roof in many pieces.",
+"π.χ. δύο φωταγωγοί μέσα σε μια μεγάλη ταράτσα.": "e.g. two light wells inside a large roof.",
 "Πώς υπολογίζεται η σκίαση": "How the shading is calculated",
 "Γεωμετρία.": "Geometry.",
 "Όλα μπαίνουν σε ένα επίπεδο με μέτρα. Κάθε εμπόδιο (και το στηθαίο) είναι ένα πρίσμα: το περίγραμμα που σχεδίασες σηκώνεται μέχρι το ύψος του. Κάθε πάνελ ελέγχεται σε 3×3 σημεία.": "Everything is placed in a flat plane measured in metres. Every obstacle (and the parapet) is a prism: the outline you drew is raised up to its height. Each panel is checked at 3×3 points.",

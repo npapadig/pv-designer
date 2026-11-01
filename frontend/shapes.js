@@ -58,6 +58,7 @@
       face: selected.pvFace ? { ...selected.pvFace } : null,
       suggest: selected.pvSuggest,
       tree: !!selected.pvTree,
+      void: !!selected.pvVoid,
     };
     showButtons();
     toast("Αντιγράφηκε. Πάτα Ctrl+V (ή «Επικόλληση») για να βάλεις ένα αντίγραφο.");
@@ -74,6 +75,7 @@
     if (clip.face) layer.pvFace = { ...clip.face };
     if (clip.suggest != null) layer.pvSuggest = clip.suggest;
     if (clip.tree) { layer.pvTree = true; layer.pvName = treeName(); }
+    if (clip.void) layer.pvVoid = true;
     addShape(layer, clip.kind, clip.height);
     clearLayout();
     select(layer);
@@ -103,7 +105,7 @@
   function snapshot() {
     const one = (l) => ({
       kind: kindOf(l), pts: ring(l).map((p) => [p.lat, p.lng]), height: l.pvHeight ?? null, name: l.pvName ?? null,
-      face: l.pvFace || null, suggest: l.pvSuggest ?? null, tree: !!l.pvTree,
+      face: l.pvFace || null, suggest: l.pvSuggest ?? null, tree: !!l.pvTree, void: !!l.pvVoid,
     });
     return JSON.stringify([...areas.getLayers(), ...keepouts.getLayers()].map(one));
   }
@@ -135,7 +137,7 @@
     const layers = [...areas.getLayers(), ...keepouts.getLayers()];
     restoring = true;
     map.closePopup();
-    if (layers.length === list.length && list.every((s, i) => kindOf(layers[i]) === s.kind && !!layers[i].pvTree === !!s.tree)) {
+    if (layers.length === list.length && list.every((s, i) => kindOf(layers[i]) === s.kind && !!layers[i].pvTree === !!s.tree && !!layers[i].pvVoid === !!s.void)) {
       list.forEach((s, i) => {
         const l = layers[i];
         l.pvName = s.name ?? undefined;
@@ -149,6 +151,7 @@
         const l = L.polygon(s.pts);
         if (s.name != null) l.pvName = s.name;
         if (s.tree) l.pvTree = true;
+        if (s.void) l.pvVoid = true;
         addShape(l, s.kind, s.height);
       }
     }
@@ -376,7 +379,7 @@
 
   function makeRow(kind, layer) {
     const row = document.createElement("div");
-    row.className = `shape-row ${kind}${layer.pvTree ? " tree" : ""}`;
+    row.className = `shape-row ${kind}${layer.pvTree ? " tree" : ""}${layer.pvVoid ? " void" : ""}`;
     row.pvLayer = layer;
     row.innerHTML = `<span class="shape-no"></span>
       <input name="name" maxlength="40" autocomplete="off" placeholder="${kind === "area" ? "π.χ. νότια στέγη" : "π.χ. δέντρο, φράχτης"}">

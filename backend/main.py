@@ -41,6 +41,7 @@ class Obstacle(BaseModel):
 class LayoutRequest(BaseModel):
     area: list[list[float]] = Field(..., description="[[lat, lng], ...]")
     keepouts: list[list[list[float]]] = []
+    voids: list[list[list[float]]] = []  # holes in the roof (also sent in keepouts): taken off the area figure
     panel_width_m: float = Field(1.134, gt=0.2, lt=5)
     panel_length_m: float = Field(1.722, gt=0.2, lt=5)
     panel_power_w: float = Field(410, gt=0, lt=2000)
