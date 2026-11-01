@@ -45,12 +45,14 @@
 
   function render(outlines) {
     const best = Math.max(...shown.map((o) => o.kwp || 0));
+    const typedGap = $("rowGap").value !== ""; // otherwise every proposal works out its own gap
     const cards = shown.map((o, i) => `
       <button type="button" class="opt-card${chosen === o.key ? " chosen" : ""}" data-i="${i}" ${o.count ? "" : "disabled"}>
         <b>${o.title}</b>
         <span class="opt-note">${o.note}</span>
         <span class="opt-preview">${preview(o, outlines)}</span>
         <span class="opt-angles">${angles(o)}</span>
+        ${o.row_gap_m != null && o.mounting === "rack" ? `<span class="opt-angles">Κενό σειρών ${fmt(o.row_gap_m, 2)} m ${typedGap ? "(δικό σου)" : "(αυτόματο)"}</span>` : ""}
         <span class="opt-num"><em>${fmt(o.count)}</em> πάνελ</span>
         <span class="opt-num${o.kwp && o.kwp === best ? " best" : ""}"><em>${o.count ? fmt(o.kwp, 2) : "–"}</em> kWp</span>
         ${o.count ? `<span class="opt-num small" title="Σε σχέση με την ιδανική τοποθέτηση (νότια, στην καλύτερη κλίση) = 100 %">Απόδοση <em>${fmt(o.yield_pct, 0)} %</em></span>`

@@ -297,6 +297,8 @@ window.I18N_EN =
 "Οι ρυθμίσεις του βήματος «Πάνελ» όπως είναι": "The settings of the “Panels” step as they are",
 // ---------------------------------------------------------------- 4. shading
 "Σκιάσεις": "Shading",
+"(δικό σου)": "(yours)",
+"(αυτόματο)": "(automatic)",
 "Κενό": "Void",
 "Πάτα «Περιοχή πάνελ», «Εμπόδιο» ή «Κενό» (άδειο κομμάτι μέσα στην ταράτσα, π.χ. φωταγωγός) και κάνε κλικ γύρω γύρω στον χάρτη· κλικ στο πρώτο σημείο για να κλείσει. Για «Δέντρο» πάτα στο κέντρο του και σύρε ως την άκρη του. Διπλό κλικ σε ένα σχήμα για να το επιλέξεις.": "Press “Panel area”, “Obstacle” or “Void” (an empty part inside the roof, e.g. a light well) and click all around on the map; click the first point to close it. For “Tree” press its centre and drag to its edge. Double-click a shape to select it.",
 "Σχεδιάζεις ένα κομμάτι που λείπει από την περιοχή (σκούρο διακεκομμένο περίγραμμα).": "You draw a part that is missing from the area (dark dashed outline).",
@@ -1431,6 +1433,7 @@ window.I18N_EN =
 "Δεν βρέθηκε διεύθυνση δικτύου. Έλεγξε ότι ο υπολογιστής είναι συνδεδεμένος στο Wi-Fi.": "No network address found. Check that the computer is connected to Wi-Fi."
 },
 "rules": [
+["^Κενό σειρών (.+?) m (.+?)$", "Row gap $1 m $2"],
 ["^Νότια\\. Στις (\\d+)° χωράνε (\\d+) πάνελ· με (\\d+)° χωράει μία σειρά ακόμα: (\\d+) πάνελ$", "South. At $1° $2 panels fit; at $3° one more row fits: $4 panels"],
 ["^Νότια, στη βέλτιστη κλίση (\\d+)°: δεν χωράει επιπλέον σειρά με μικρότερη κλίση$", "South, at the best tilt $1°: no extra row fits at a lower tilt"],
 ["^Οικονομική (\\d+)°$", "Economic $1°"],
