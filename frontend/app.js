@@ -99,6 +99,7 @@ const areas = new L.FeatureGroup().addTo(map);
 const keepouts = new L.FeatureGroup().addTo(map);
 const panelsLayer = new L.FeatureGroup().addTo(map);
 const shadowsLayer = new L.FeatureGroup().addTo(map);
+const parapetLayer = new L.FeatureGroup().addTo(map);
 // className hooks the shapes to draw.css (soft dark halo, hover); it applies when a shape is added to the map.
 const AREA_STYLE = { color: "#ff8a3d", weight: 2.5, opacity: 1, fillColor: "#ffc53d", fillOpacity: 0.12, lineJoin: "round", className: "pv-shape pv-area" };
 const KEEPOUT_STYLE = { color: "#ff4d6d", weight: 2, opacity: 1, fillColor: "#ff4d6d", fillOpacity: 0.25, lineJoin: "round", className: "pv-shape pv-keepout" };
@@ -880,7 +881,7 @@ function resetProject() {
   $("clientName").value = "";
   $("projectAddress").value = "";
   $("engineerName").value = "";
-  $("parapetOn").checked = false; $("parapetHeight").value = 1; $("parapetThickness").value = 0.25;
+  $("parapetOn").checked = true; $("parapetHeight").value = 1; $("parapetThickness").value = 0.25;
   state.projectType = "existing";
   state.roofType = "pitched";
   window.faces?.syncRoof();

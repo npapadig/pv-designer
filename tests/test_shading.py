@@ -80,3 +80,12 @@ def test_shading_appears_in_pdf_report():
     assert res["report"]["summary"][0][1].endswith("%")
     pdf = report.build_pdf({"name": "Δοκιμή", "shading": res, "layout": {"kwp": 5, "count": 12}}, imagery=False)
     assert pdf[:4] == b"%PDF"
+
+
+def test_ring_shadow_keeps_its_lit_middle():
+    """A parapet along all four sides casts a ring-shaped shadow: the hole must reach the map."""
+    walls = [rect(-8, -8, 8, -7.75), rect(-8, 7.75, 8, 8), rect(-8, -8, -7.75, 8), rect(7.75, -8, 8, 8)]
+    body = {"panels": flush_panels(), "obstacles": [{"polygon": w, "height_m": 1.5} for w in walls],
+            "tilt_deg": 30, "azimuth_deg": 180, "mounting": "flush", "when": "2025-12-21T13:30:00Z"}
+    shadows = TestClient(app).post("/api/shadows", json=body).json()["shadows"]
+    assert any(len(rings) > 1 for rings in shadows)  # outer ring + hole

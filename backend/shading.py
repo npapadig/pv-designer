@@ -347,7 +347,11 @@ def shadows_at(panels, obstacles, tilt_deg, azimuth_deg, mounting, when_utc, fac
     for poly in getattr(shadow, "geoms", [shadow]):
         if poly.geom_type != "Polygon" or poly.area < 0.01:
             continue
-        ring = np.asarray(poly.exterior.coords)
-        lng, lat = inv.transform(ring[:, 0], ring[:, 1])
-        result["shadows"].append([[float(a), float(b)] for a, b in zip(lat, lng)])
+        # Outer ring first, then the holes (a parapet's shadow is a ring: the lit middle must stay lit).
+        rings = []
+        for r in [poly.exterior, *poly.interiors]:
+            ring = np.asarray(r.coords)
+            lng, lat = inv.transform(ring[:, 0], ring[:, 1])
+            rings.append([[float(a), float(b)] for a, b in zip(lat, lng)])
+        result["shadows"].append(rings)
     return result
