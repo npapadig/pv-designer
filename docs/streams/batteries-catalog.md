@@ -39,7 +39,7 @@
 ## Κατάσταση
 | Στοιχείο | Κατάσταση |
 |---|---|
-| Έρευνα φυλλαδίων | – |
-| `batteries.json` | – |
-| `tests/test_battery_catalog.py` | – |
-| notes | – |
+| Έρευνα φυλλαδίων | ✔ |
+| `batteries.json` | ✔ (25) |
+| `tests/test_battery_catalog.py` | ✔ |
+| notes | ✔ |
