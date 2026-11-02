@@ -519,8 +519,14 @@
         <div id="batResult" class="bat-result"></div>
         <h3 class="bat-h">3. Προτάσεις</h3>
         <div id="batCards" class="opt-cards"></div>
+        <button id="btnBatPlan" class="secondary" type="button"><svg class="ic"><use href="#i-zap"/></svg>Βρες το καλύτερο μέγεθος με ήλιο</button>
+        <div id="batPlan" hidden>
+          <p id="batPlanInfo" class="muted small"></p>
+          <div class="chart-box"><canvas id="batPlanChart" height="210"></canvas></div>
+        </div>
         <p class="muted small">Κάθε πρόταση αλλάζει μόνο τη χωρητικότητα· όλες οι ρυθμίσεις που έδωσες πάνω ισχύουν σε όλες.
-          Οι υπολογισμοί είναι χωρίς ήλιο (η πιο αυστηρή περίπτωση) και δεν υπολογίζουν ρεύμα εκκίνησης συσκευών.</p>
+          Οι προτάσεις «Εφεδρεία» είναι χωρίς ήλιο (η πιο αυστηρή περίπτωση)· οι «Οικονομική», «Για το βράδυ» και «Μέγιστη αυτάρκεια»
+          βγαίνουν ώρα με την ώρα, με τον ήλιο και τα οικονομικά. Δεν υπολογίζεται ρεύμα εκκίνησης συσκευών.</p>
 
         <h3 class="bat-h">4. Εξοικονόμηση από τον ήλιο</h3>
         <p class="muted small">Υπολογίζει ώρα με την ώρα πόση από την ενέργεια των πάνελ χρησιμοποιείς εσύ και πόση αγοράζεις ή πουλάς,

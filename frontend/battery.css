@@ -25,5 +25,13 @@
 .bat-cmp-head { border-bottom-color: var(--line-strong); }
 .bat-cmp-head b { color: var(--muted); font-size: 0.7rem; font-weight: 650; letter-spacing: 0.04em; text-transform: uppercase; white-space: normal; }
 #batSim { margin-top: 12px; }
-#batSim .chart-box { height: 240px; position: relative; margin-top: 8px; }
-#btnBatSim { margin-top: 4px; }
+#batSim .chart-box, #batPlan .chart-box { height: 240px; position: relative; margin-top: 8px; }
+#btnBatSim, #btnBatPlan { margin-top: 4px; }
+#batPlan { margin-top: 8px; }
+#batCards .opt-card { justify-content: flex-start; }
+.opt-card.bad b { color: var(--danger); }
+.opt-num.bad em { color: var(--danger); }
+.bat-outage { margin: 10px 0; }
+.bat-outage h4 { margin: 0 0 4px; font-size: 0.85rem; }
+.bat-outage .bat-cmp { padding: 4px 0; }
+.bat-outage .bat-cmp.worst span { font-weight: 700; color: var(--danger); }

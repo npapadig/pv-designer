@@ -1,8 +1,10 @@
 // Battery (step «Μπαταρία»): which loads to keep when the grid is down, for how many days, and the battery size
 // that does it (backend/battery.py, POST /api/battery/autonomy); and what the battery saves from the sun, hour by hour
-// (backend/battery_sim.py, POST /api/battery/simulate). This file is the form, the proposal cards, the savings table
-// and day chart, and what is saved in the project. Loaded after app.js and electrical.js
-// (uses $, api, state, fmt, toast, withBusy, MONTHS, runLayout, runShading, elec and the finance field finConsumption).
+// (backend/battery_sim.py, POST /api/battery/simulate); the sizes tried with the sun and the finances, and how long the backup
+// lasts per month when the sun shines (backend/battery_plan.py, POST /api/battery/proposals and /outage). This file is the
+// form, the proposal cards, the savings table and day chart, the sweep chart, the outage table, and what is saved in the
+// project. Loaded after app.js and electrical.js
+// (uses $, api, state, fmt, toast, withBusy, MONTHS, runLayout, runShading, elec, financeSettings and the finance field finConsumption).
 (() => {
   const FIELDS = ["batDays", "batCap", "batPower", "batUsable", "batRound", "batReserve", "batSimul", "batCost", "batFixed", "batSubsidy",
     "batFade", "batReplYear", "batReplPct", "batProfile", "batSeason"];
@@ -27,6 +29,14 @@
   let last = null;        // the last answer of /api/battery/autonomy
   let sim = null;         // the last answer of /api/battery/simulate
   let simChart = null;
+  let plan = null;        // the last answer of /api/battery/proposals (the sizes tried with the sun)
+  let planKey = "";       // what it was calculated for, without the capacity (the server tries the sizes itself)
+  let planTimer = null;
+  let planSeq = 0;
+  let planChart = null;
+  let outage = null;      // the last answer of /api/battery/outage
+  let outageTimer = null;
+  let outageSeq = 0;
 
   const enabled = () => $("batOn").checked;
   const num = (id) => ($(id).value === "" ? null : +$(id).value);
@@ -54,6 +64,8 @@
     syncFinance();
     schedule();
     if (sim) { clearTimeout(simTimer); simTimer = setTimeout(() => calcSim(false), 500); }
+    if (outage) { clearTimeout(outageTimer); outageTimer = setTimeout(() => calcOutage(false), 600); }
+    if (plan) { clearTimeout(planTimer); planTimer = setTimeout(() => calcPlan(false), 1000); }
   }
 
   // With a battery the hourly model decides the self-consumption, not the percentage of the finance step.
@@ -182,9 +194,11 @@
   }
   const loadParams = () => ({ annual_kwh: num("batConsumption"), profile: $("batProfile").value, season: $("batSeason").value });
 
+  const onLoads = () => rows.filter((r) => r.on).map((r) => ({ kwh_day: r.kwh_day, peak_w: r.peak_w }));
+
   function request() {
     return {
-      loads: rows.filter((r) => r.on).map((r) => ({ kwh_day: r.kwh_day, peak_w: r.peak_w })),
+      loads: onLoads(),
       simultaneity_pct: num("batSimul") ?? 70,
       target_days: num("batDays") || 1,
       kwp: state.layout ? state.layout.kwp : null,
@@ -224,6 +238,7 @@
       html += line("Χρήσιμη ενέργεια της μπαταρίας", `${fmt(b.usable_kwh, 1)} kWh`);
       html += `<div class="bat-big"><span>Κρατά</span><em>${fmt(reserve > 0 ? b.days_guaranteed : b.days_full, 1)}</em><span>${days(reserve > 0 ? b.days_guaranteed : b.days_full)}</span><span>χωρίς ήλιο</span></div>`;
       if (reserve > 0 && reserve < 100) html += line("Αν είναι γεμάτη", `${fmt(b.days_full, 1)} ημέρες`);
+      html += outageHtml(b);
       html += `<p class="bat-ok ${b.capacity_ok ? "ok" : "warn"}">${b.capacity_ok ? "✓ Φτάνει για τον στόχο σου" : "✗ Δεν φτάνει για τον στόχο σου"}</p>`;
       html += `<p class="bat-ok ${b.power_ok ? "ok" : "warn"}">${b.power_ok ? "✓ Η ισχύς αρκεί για τα φορτία" : "✗ Η ισχύς είναι μικρότερη από τα φορτία"}</p>`;
       html += line(b.power_auto ? "Ισχύς μπαταρίας (αυτόματη)" : "Ισχύς μπαταρίας", `${fmt(b.power_kw, 1)} kW`);
@@ -237,31 +252,165 @@
     $("batResult").innerHTML = html;
     const use = $("batUseNeeded");
     if (use) use.onclick = () => { $("batCap").value = r.needed_capacity_kwh; custom(); changed(); };
+    const outBtn = $("btnBatOutage");
+    if (outBtn) outBtn.onclick = () => withBusy(outBtn, () => calcOutage(true));
 
-    const CARD = {
-      days: ["Εφεδρεία", "Κρατά τα φορτία που διάλεξες, χωρίς ήλιο"],
-      per_kwp: ["Για το βράδυ", "1 kWh ανά kWp πάνελ, για καθημερινή χρήση"],
-      manual: ["Χειροκίνητα", "Οι ρυθμίσεις του βήματος όπως είναι"],
-    };
-    $("batCards").innerHTML = r.cards.map((c, i) => {
-      const [title, note] = CARD[c.kind];
-      const d = reserveDays(c);
-      return `<button type="button" class="opt-card" data-i="${i}" ${c.capacity_kwh > 0 ? "" : "disabled"}>
-        <b>${title}</b>
-        <span class="opt-note">${note}</span>
-        ${c.capacity_kwh > 0 ? `<span class="opt-angles"><em>${fmt(c.kind === "days" ? c.days : d, 1)}</em> ${days(c.kind === "days" ? c.days : d)}</span>
-        <span class="opt-num"><em>${fmt(c.capacity_kwh, 1)}</em> kWh · <em>${fmt(c.power_kw, 1)}</em> kW</span>
-        <span class="opt-num"><em>${fmt(c.investment)}</em> €</span>` : '<span class="opt-angles">–</span>'}
-      </button>`;
-    }).join("");
+    const shown = cardList();
+    $("batCards").innerHTML = shown.map(cardHtml).join("");
     $("batCards").querySelectorAll(".opt-card").forEach((el) => (el.onclick = () => {
-      const c = last.cards[+el.dataset.i];
-      $("batCap").value = c.capacity_kwh;
+      $("batCap").value = shown[+el.dataset.i].capacity_kwh;
       custom();
       changed();
     }));
   }
   const reserveDays = (c) => ((num("batReserve") ?? 100) > 0 ? c.days_guaranteed : c.days_full) ?? 0;
+
+  // ---------- Proposal cards ----------
+  // The ready-made sizes of the autonomy step, with the ones tried with the sun and the finances when they were calculated
+  // (they replace the rule of 1 kWh per kWp).
+  function cardList() {
+    const own = last.cards;
+    const tried = plan && plan.savings && plan.cards.length ? plan.cards : own.filter((c) => c.kind === "per_kwp");
+    return [...own.filter((c) => c.kind === "days"), ...tried, ...own.filter((c) => c.kind === "manual")];
+  }
+
+  const CARD = {
+    days: ["Εφεδρεία", "Κρατά τα φορτία που διάλεξες, χωρίς ήλιο"],
+    per_kwp: ["Για το βράδυ", "1 kWh ανά kWp πάνελ, για καθημερινή χρήση"],
+    manual: ["Χειροκίνητα", "Οι ρυθμίσεις του βήματος όπως είναι"],
+    eco: ["Οικονομική", "Το μεγαλύτερο καθαρό κέρδος στη ζωή του συστήματος"],
+    eco_no: ["Δεν συμφέρει οικονομικά", "Καμία μπαταρία δεν αποσβένεται· αυτή χάνει το λιγότερο"],
+    night: ["Για το βράδυ", "Καλύπτει τη μέση κατανάλωση των ωρών χωρίς ήλιο"],
+    autarky: ["Μέγιστη αυτάρκεια", "Η μικρότερη που φτάνει το 90 % της μέγιστης αύξησης κάλυψης"],
+  };
+
+  function cardHtml(c, i) {
+    const [title, plain] = CARD[c.kind];
+    const note = c.above_sweep ? "Δεν φτάνει ούτε το μεγαλύτερο μέγεθος που δοκιμάστηκε" : plain; // «Για το βράδυ» with a large reserve
+    const d = c.kind === "days" ? c.days : reserveDays(c);
+    let body = '<span class="opt-angles">–</span>';
+    if (c.capacity_kwh > 0) {
+      body = `<span class="opt-angles"><em>${fmt(d, 1)}</em> ${days(d)}</span>
+        <span class="opt-num"><em>${fmt(c.capacity_kwh, 1)}</em> kWh · <em>${fmt(c.power_kw, 1)}</em> kW</span>
+        <span class="opt-num"><em>${fmt(c.investment)}</em> €</span>`;
+      if (c.npv_gain != null) { // a size tried with the sun and the finances
+        body += `<span class="opt-num small">Ιδιοκατανάλωση <em>${fmt(c.self_consumption_pct, 1)}</em> %</span>
+          <span class="opt-num small">Κάλυψη κατανάλωσης <em>${fmt(c.autarky_pct, 1)}</em> %</span>
+          <span class="opt-num small">${c.payback_years == null ? "δεν αποσβένεται" : `Απόσβεση <em>${fmt(c.payback_years, 1)}</em> έτη`}</span>`;
+        if (c.kind === "eco" || c.kind === "eco_no") {
+          body += `<span class="opt-num small ${c.npv_gain < 0 ? "bad" : ""}">Κέρδος (NPV) <em>${fmt(c.npv_gain)}</em> €</span>`;
+        }
+      }
+    }
+    return `<button type="button" class="opt-card ${c.kind === "eco_no" ? "bad" : ""}" data-i="${i}" ${c.capacity_kwh > 0 ? "" : "disabled"}>
+      <b>${title}</b>
+      <span class="opt-note">${note}</span>
+      ${body}
+    </button>`;
+  }
+
+  // ---------- Sizes tried with the sun (sweep) ----------
+  async function planBody() {
+    return {
+      simulation: await elec.simulationBody(), load: loadParams(), battery: batteryParams(), finance: financeSettings(),
+      loads: onLoads(), simultaneity_pct: num("batSimul") ?? 70, target_days: num("batDays") || 1,
+    };
+  }
+
+  // manual: the button; otherwise it follows a change while the result is on the screen (errors stay quiet). The sizes do
+  // not depend on the capacity typed in the field, so a click on a card does not calculate again.
+  async function calcPlan(manual) {
+    try {
+      await ensureSystem();
+      const body = await planBody();
+      const key = JSON.stringify({ ...body, battery: { ...body.battery, capacity_kwh: 0 } });
+      if (!manual && plan && key === planKey) return;
+      const mine = ++planSeq;
+      const answer = await api("/api/battery/proposals", "POST", body);
+      if (mine !== planSeq) return; // a newer calculation was started meanwhile
+      plan = answer;
+      planKey = key;
+      renderPlan();
+      if (last) render();
+    } catch (e) { if (manual) throw e; }
+  }
+  $("btnBatPlan").onclick = () => withBusy($("btnBatPlan"), () => calcPlan(true));
+
+  function renderPlan() {
+    $("batPlan").hidden = !plan;
+    if (!plan) { drawPlan(); return; }
+    const info = [];
+    if (!plan.savings) {
+      info.push("Η μπαταρία είναι ρυθμισμένη μόνο για εφεδρεία, οπότε δεν κάνει εξοικονόμηση και δεν υπάρχουν οικονομικές προτάσεις. Άλλαξε τη «Λειτουργία» για να βρεις το καλύτερο μέγεθος.");
+    } else {
+      if (plan.assumed_consumption) info.push("Η κατανάλωση είναι υπόθεση (ίση με την παραγωγή). Βάλε την πραγματική ετήσια κατανάλωση για πιο σωστό αποτέλεσμα.");
+      if (plan.cards.some((c) => c.kind === "eco_no")) info.push("Με τις τιμές που έβαλες καμία μπαταρία δεν αποσβένεται στη ζωή του συστήματος· έχει νόημα μόνο για εφεδρεία. Δες το κόστος της μπαταρίας και τον τρόπο σύνδεσης.");
+      if ($("finScheme").value === "net_metering") info.push("Με ενεργειακό συμψηφισμό το δίκτυο λειτουργεί ήδη σαν μπαταρία, γι' αυτό η μπαταρία αξίζει συνήθως λιγότερο.");
+    }
+    if (plan.warning) info.push(plan.warning);
+    $("batPlanInfo").replaceChildren(...info.map((t) => Object.assign(document.createElement("span"), { textContent: t })));
+    $("batPlan").querySelector(".chart-box").hidden = !plan.savings;
+    drawPlan();
+  }
+
+  // The gain of every size tried (bars) and how much of the consumption it covers (line).
+  function drawPlan() {
+    if (planChart) { planChart.destroy(); planChart = null; }
+    if (!plan || !plan.savings || !plan.sweep.length || !$("battery").classList.contains("active")) return;
+    const rows = plan.sweep;
+    planChart = new Chart($("batPlanChart"), {
+      data: {
+        labels: rows.map((r) => fmt(r.capacity_kwh, 1)),
+        datasets: [
+          { type: "bar", label: "Κέρδος (NPV) από τη μπαταρία", data: rows.map((r) => r.npv_gain), backgroundColor: rows.map((r) => (r.npv_gain >= 0 ? "#16a34a" : "#ef4444")) },
+          { type: "line", label: "Κάλυψη της κατανάλωσης", data: rows.map((r) => r.autarky_pct), borderColor: "#818cf8", pointRadius: 0, tension: 0.25, yAxisID: "y2" },
+        ],
+      },
+      options: {
+        plugins: { legend: { labels: { boxWidth: 12 } } },
+        scales: {
+          x: { title: { display: true, text: "Χωρητικότητα (kWh)" }, ticks: { maxTicksLimit: 14 } },
+          y: { title: { display: true, text: "€" } },
+          y2: { position: "right", min: 0, max: 100, grid: { drawOnChartArea: false }, title: { display: true, text: "%" } },
+        },
+      },
+    });
+  }
+
+  // ---------- Outage with sun ----------
+  // How long the loads keep running per month when the grid goes down but the sun shines (the answer of /api/battery/outage).
+  async function calcOutage(manual) {
+    try {
+      if (!manual && (!(num("batCap") > 0) || !onLoads().length)) return;
+      await ensureSystem();
+      const mine = ++outageSeq;
+      const answer = await api("/api/battery/outage", "POST",
+        { simulation: await elec.simulationBody(), load: loadParams(), battery: batteryParams(), loads: onLoads() });
+      if (mine !== outageSeq) return;
+      outage = answer;
+      if (last) render();
+    } catch (e) { if (manual) throw e; }
+  }
+
+  function outageHtml(b) {
+    if (!outage) return '<button type="button" id="btnBatOutage" class="secondary small">Και με ήλιο; Δες ανά μήνα</button>';
+    const cap = outage.max_days;
+    const long = (v) => v >= cap - 0.05;
+    const val = (v, partial) => (long(v) ? `${cap}+` : `${partial ? "≥ " : ""}${fmt(v, 1)}`); // partial: some starts reached the limit, so the average is at least this
+    let html = '<div class="bat-outage"><h4>Αν πέσει το δίκτυο και υπάρχει ήλιος</h4>';
+    html += long(outage.min_days)
+      ? `<p class="bat-ok ok">✓ Κρατά πάνω από <em>${cap}</em> ημέρες σε όλους τους μήνες</p>`
+      : line("Χειρότερη περίπτωση", `<span>${MONTHS[outage.worst_month - 1]}</span> · ${fmt(outage.min_days, 1)} <span>${days(outage.min_days)}</span>`);
+    html += cmp("Μήνας", "Ελάχιστο, ημέρες", "Μέσο, ημέρες", "bat-cmp-head");
+    html += outage.months.map((m) => cmp(MONTHS[m.month - 1], val(m.min_days), val(m.mean_days, m.full_pct > 0),
+      m.month === outage.worst_month && !long(outage.min_days) ? "worst" : "")).join("");
+    html += `<p class="muted small">Δοκιμάζεται κάθε ώρα του έτους ως αρχή της διακοπής, με τα φορτία που διάλεξες και τον ήλιο του τυπικού έτους.
+      Η μπαταρία ξεκινά στο επίπεδο που εγγυάται η εφεδρεία. Το «+» σημαίνει πάνω από 30 ημέρες (πρακτικά χωρίς τέλος).</p>`;
+    if (outage.start_kwh <= 0) html += '<p class="muted small">Με εφεδρεία 0 % η μπαταρία μπορεί να είναι άδεια όταν πέσει το δίκτυο· για εγγυημένη αυτονομία άλλαξε τη «Λειτουργία».</p>';
+    html += '<p class="muted small">Υποθέτει inverter που δουλεύει και χωρίς δίκτυο. Μεγαλύτερη συννεφιά από του τυπικού έτους μπορεί να κρατήσει λιγότερο.</p>';
+    if (!b.power_ok) html += '<p class="muted small">Η ισχύς της μπαταρίας δεν αρκεί για τα φορτία, οπότε στην πράξη θα κρατήσει λιγότερο από τον πίνακα.</p>';
+    return `${html}</div>`;
+  }
 
   // ---------- Savings from the sun (hour by hour) ----------
   async function ensureSystem() {
@@ -337,7 +486,7 @@
   // ---------- On / off ----------
   async function show() {
     $("batBody").hidden = !enabled();
-    if (!enabled()) { state.battery = null; last = null; sim = null; renderSim(); changed(); return; }
+    if (!enabled()) { state.battery = null; last = null; sim = null; plan = null; outage = null; renderSim(); renderPlan(); changed(); return; }
     await loadPresets();
     if (!rows.length) applySet(set);
     changed();
@@ -349,6 +498,8 @@
     if (!$("battery").classList.contains("active")) return;
     schedule();
     if (sim) drawDay();
+    if (plan) { drawPlan(); calcPlan(false); }
+    if (outage) calcOutage(false);
   }).observe($("battery"), { attributes: true, attributeFilter: ["class"] });
 
   // ---------- Project ----------
@@ -360,12 +511,17 @@
     rows = [];
     last = null;
     sim = null;
+    plan = null;
+    planKey = "";
+    outage = null;
     state.battery = null;
     $("batBody").hidden = true;
     $("batResult").innerHTML = "";
     $("batCards").innerHTML = "";
     $("batSim").hidden = true;
+    $("batPlan").hidden = true;
     if (simChart) { simChart.destroy(); simChart = null; }
+    if (planChart) { planChart.destroy(); planChart = null; }
     syncMode();
     syncFinance();
   }
@@ -377,7 +533,7 @@
       if (!enabled()) return { enabled: false };
       const inputs = {};
       FIELDS.forEach((id) => (inputs[id] = $(id).value));
-      return { enabled: true, set, rows, inputs, result: last, dispatch: sim };
+      return { enabled: true, set, rows, inputs, result: last, dispatch: sim, plan, outage };
     },
 
     // Everything is restored at once (the project's "unsaved changes" check compares right after); the
@@ -393,6 +549,8 @@
       rows = saved.rows || [];
       last = saved.result || null;
       sim = saved.dispatch || null;
+      plan = saved.plan || null;
+      outage = saved.outage || null;
       customId = rows.length;
       document.querySelectorAll("input[name=batSet]").forEach((r) => { r.checked = r.value === set; });
       $("batSetInfo").textContent = SET_INFO[set];
@@ -402,6 +560,7 @@
       drawRows();
       render();
       renderSim();
+      renderPlan();
       loadPresets().then(schedule).catch(() => {});
     },
 

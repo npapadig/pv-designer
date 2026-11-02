@@ -13,7 +13,7 @@ from fastapi.responses import Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from . import battery, battery_sim, electrical, energy, finance, plan_drawing, report, single_line, tech_description, appendix_i, settings, shading, simulation, storage
+from . import battery, battery_plan, battery_sim, electrical, energy, finance, plan_drawing, report, single_line, tech_description, appendix_i, settings, shading, simulation, storage
 from . import lifecycle, manual, mobile
 from .battery import BatteryParams
 from .battery_sim import LoadParams
@@ -118,9 +118,8 @@ class ShadowsRequest(ShadingRequest):
     when: str = Field(..., description="ISO date-time, e.g. 2025-12-21T10:00:00Z")
 
 
-class FinanceRequest(BaseModel):
-    kwp: float = Field(..., gt=0)
-    annual_kwh: float = Field(..., gt=0)
+class FinanceSettings(BaseModel):
+    """The prices, costs and rates of the financial analysis: everything but the system itself."""
     capex_per_kwp: float = Field(1100, ge=0, le=10000)
     subsidy_eur: float = Field(0, ge=0)
     scheme: Literal["self", "net_billing", "net_metering"] = "net_billing"
@@ -137,6 +136,11 @@ class FinanceRequest(BaseModel):
     inverter_cost_per_kwp: float = Field(120, ge=0, le=2000)
     discount_rate_pct: float = Field(5, ge=0, le=30)
     lifetime_years: int = Field(25, ge=1, le=40)
+
+
+class FinanceRequest(FinanceSettings):
+    kwp: float = Field(..., gt=0)
+    annual_kwh: float = Field(..., gt=0)
     battery: BatterySimRequest | None = None  # with a battery the hourly model decides the self-consumption
 
 
@@ -180,6 +184,19 @@ class BatterySimRequest(BaseModel):
     simulation: SimulationRequest
     load: LoadParams = LoadParams()
     battery: BatteryParams = BatteryParams()
+
+
+class BatteryProposalsRequest(BatterySimRequest):
+    """The sweep of sizes: the system, the consumption and the settings of the battery as above (its capacity is not used),
+    the prices and rates of the finance step, and the loads to keep (for the days of autonomy of every size)."""
+    finance: FinanceSettings = FinanceSettings()
+    loads: list[battery.LoadItem] = []
+    simultaneity_pct: float = Field(battery.SIMULTANEITY_PCT, gt=0, le=100)
+    target_days: float = Field(1, gt=0, le=battery.MAX_DAYS)
+
+
+class BatteryOutageRequest(BatterySimRequest):
+    loads: list[battery.LoadItem] = []
 
 
 FinanceRequest.model_rebuild()
@@ -349,6 +366,39 @@ def battery_simulate(req: BatterySimRequest):
     try:
         pv, meta = _hourly_pv(req.simulation.model_dump_json())
         result = battery_sim.simulate_year(pv, meta["lat"], meta["lon"], req.load, req.battery)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    except Exception as e:
+        raise HTTPException(502, str(e))
+    result["source"] = meta["source"]
+    result["warning"] = meta["warning"]
+    return result
+
+
+@app.post("/api/battery/proposals")
+def battery_proposals(req: BatteryProposalsRequest):
+    """Sizes from the hourly model and the financial analysis: the most profitable, for the evening, the most self-sufficient."""
+    try:
+        pv, meta = _hourly_pv(req.simulation.model_dump_json())
+        daily, peak = battery.load_summary(req.loads, req.simultaneity_pct)
+        data = {**req.finance.model_dump(), "kwp": req.simulation.dc_kwp}
+        result = battery_plan.propose(pv, meta["lat"], meta["lon"], req.load, req.battery, data, daily, peak, req.target_days)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    except Exception as e:
+        raise HTTPException(502, str(e))
+    result["source"] = meta["source"]
+    result["warning"] = meta["warning"]
+    return result
+
+
+@app.post("/api/battery/outage")
+def battery_outage(req: BatteryOutageRequest):
+    """How many days the loads to keep run when the grid goes down but the sun shines, per month."""
+    try:
+        pv, meta = _hourly_pv(req.simulation.model_dump_json())
+        daily, _ = battery.load_summary(req.loads)
+        result = battery_plan.outage_by_month(pv, meta["lat"], meta["lon"], req.load, req.battery, daily)
     except ValueError as e:
         raise HTTPException(400, str(e))
     except Exception as e:
