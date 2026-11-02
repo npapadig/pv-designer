@@ -16,7 +16,7 @@ def test_layout_endpoint():
 def test_index_served():
     r = client.get("/")
     assert r.status_code == 200
-    assert "PV Designer" in r.text
+    assert "Solly" in r.text
 
 
 def test_projects_crud(tmp_path, monkeypatch):

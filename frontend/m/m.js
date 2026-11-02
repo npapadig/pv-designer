@@ -104,7 +104,7 @@
         msg.textContent = e.status === 401 ? "Λάθος κωδικός." : e.message;
         btn.disabled = false; pw.select();
       }
-    } }, logo, h("h2", {}, "PV Designer"), h("p", { class: "muted" }, "Βάλε τον κωδικό που όρισες στον υπολογιστή."), pw, msg, btn);
+    } }, logo, h("h2", {}, "Solly"), h("p", { class: "tagline" }, "Your Bright Friend"), h("p", { class: "muted" }, "Βάλε τον κωδικό που όρισες στον υπολογιστή."), pw, msg, btn);
     setView(form);
   }
 

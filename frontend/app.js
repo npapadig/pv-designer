@@ -1039,7 +1039,7 @@ refreshProjectList().catch(() => toast("Δεν βρέθηκε ο server. Ξεκ�
 
 api("/api/version").then((v) => {
   $("appVersion").textContent = `v${v.version}`;
-  document.title = `PV Designer v${v.version}`;
+  document.title = `Solly v${v.version}`;
 }).catch(() => {});
 
 // ---------- Google satellite (Map Tiles API, needs the owner's own key) ----------

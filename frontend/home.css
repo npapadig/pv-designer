@@ -24,6 +24,7 @@
 .home-title { flex: 1; min-width: 0; }
 .home-title h1 { margin: 0; font-size: 1.7rem; font-weight: 780; letter-spacing: -0.035em; line-height: 1.15; }
 .home-title p { margin: 2px 0 0; font-size: 0.9rem; }
+.home-title .tagline { font-size: 0.55em; font-weight: 650; letter-spacing: 0; color: var(--accent-text); white-space: nowrap; margin-left: 4px; }
 #homeTheme .ic:last-child { display: none; }
 :root[data-theme="light"] #homeTheme .ic:first-child { display: none; }
 :root[data-theme="light"] #homeTheme .ic:last-child { display: block; }
