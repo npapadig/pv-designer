@@ -11,6 +11,12 @@ according to the scheme:
 
 Prices and O&M costs rise each year with their escalation rates. The inverter is
 replaced once, in the given year.
+
+With a battery (`storage`, from backend/battery_sim.py) the split between self-consumption and export
+of every year comes from the hourly battery model instead of the self-consumption percentage; the
+battery's price and its replacement are added, and the result says what the battery alone brings
+(`battery`: extra cost, extra benefit, payback of the battery, NPV gain) by comparing with the same
+system without it.
 """
 from __future__ import annotations
 
@@ -38,13 +44,30 @@ class FinanceParams:
     inverter_cost_per_kwp: float = 120.0
     discount_rate_pct: float = 5.0
     lifetime_years: int = 25
+    storage: dict | None = None  # per-year energy flows and costs with a battery (battery_sim.storage_for_finance)
 
 
 def analyse(p: FinanceParams) -> dict:
     if p.kwp <= 0 or p.annual_kwh <= 0:
         raise ValueError("Χρειάζεται πρώτα υπολογισμός παραγωγής (kWp και kWh).")
+    result = _analyse(p, p.storage)
+    st = p.storage
+    if st:
+        none = {"years": st["years_without"], "annual_kwh": st["annual_kwh"], "capex": 0.0, "investment": 0.0,
+                "replacement_year": 0, "replacement_cost": 0.0}
+        result["battery"] = _battery_block(result, _analyse(p, none), st)
+    result["report"] = report_block(p, result)
+    return result
+
+
+def _analyse(p: FinanceParams, st: dict | None) -> dict:
+    """The cash flows of the system; st = the storage flows (None: the self-consumption percentage decides)."""
     capex = p.kwp * p.capex_per_kwp
     investment = max(capex - p.subsidy_eur, 0.0)
+    if st:
+        capex += st["capex"]
+        investment += st["investment"]
+    consumption = p.annual_consumption_kwh or (st["annual_kwh"] if st else None)
     r = p.discount_rate_pct / 100.0
     self_share = min(max(p.self_consumption_pct, 0.0), 100.0) / 100.0
 
@@ -56,24 +79,30 @@ def analyse(p: FinanceParams) -> dict:
     for y in range(1, p.lifetime_years + 1):
         production = p.annual_kwh * (1 - p.degradation_pct / 100.0) ** (y - 1)
         price_factor = (1 + p.price_escalation_pct / 100.0) ** (y - 1)
-        self_kwh = production * self_share
-        if p.annual_consumption_kwh:
-            self_kwh = min(self_kwh, p.annual_consumption_kwh)
-        export_kwh = production - self_kwh
+        if st:
+            flows = st["years"][y - 1]
+            production, self_kwh, export_kwh = flows["production"], flows["self"], flows["export"]
+        else:
+            self_kwh = production * self_share
+            if p.annual_consumption_kwh:
+                self_kwh = min(self_kwh, p.annual_consumption_kwh)
+            export_kwh = production - self_kwh
 
         savings = self_kwh * p.retail_price * price_factor
         if p.scheme == "net_billing":
             export_income = export_kwh * p.export_price * price_factor
         elif p.scheme == "net_metering":
             offset_kwh = export_kwh
-            if p.annual_consumption_kwh:
-                offset_kwh = min(export_kwh, max(p.annual_consumption_kwh - self_kwh, 0.0))
+            if consumption:
+                offset_kwh = min(export_kwh, max(consumption - self_kwh, 0.0))
             export_income = offset_kwh * p.offset_price * price_factor
         else:
             export_income = 0.0
 
         om = p.kwp * p.om_per_kwp * (1 + p.om_escalation_pct / 100.0) ** (y - 1)
         replacement = p.kwp * p.inverter_cost_per_kwp if y == p.inverter_replacement_year else 0.0
+        if st and st["replacement_year"] and y == st["replacement_year"]:
+            replacement += st["replacement_cost"]
         net = savings + export_income - om - replacement
         disc = (1 + r) ** y
         cumulative += net
@@ -110,8 +139,33 @@ def analyse(p: FinanceParams) -> dict:
         "total_net": round(total_net, 2),
         "years": years,
     }
-    result["report"] = report_block(p, result)
     return result
+
+
+def _battery_block(with_b: dict, without_b: dict, st: dict) -> dict:
+    """What the battery alone brings: the system with it against the same system without it."""
+    extra = with_b["investment"] - without_b["investment"]
+    diff = [a["net"] - b["net"] for a, b in zip(with_b["years"], without_b["years"])]
+    cumulative, c = [], -extra
+    for d in diff:
+        c += d
+        cumulative.append(c)
+    first = st["summary"]
+    return {
+        "capex": round(st["capex"], 2),
+        "investment": round(st["investment"], 2),
+        "replacement_year": st["replacement_year"],
+        "replacement_cost": round(st["replacement_cost"], 2),
+        "extra_investment": round(extra, 2),
+        "first_year_gain": round(with_b["first_year_benefit"] - without_b["first_year_benefit"], 2),
+        "payback_years": _payback(extra, cumulative) if extra > 0 else 0.0,
+        "npv_gain": round(with_b["npv"] - without_b["npv"], 2),
+        "irr_pct": _irr([-extra] + diff) if extra > 0 else None,
+        "self_consumption_without_pct": first["without"]["self_consumption_pct"],
+        "self_consumption_with_pct": first["with"]["self_consumption_pct"],
+        "autarky_without_pct": first["without"]["autarky_pct"],
+        "autarky_with_pct": first["with"]["autarky_pct"],
+    }
 
 
 SCHEMES = {
@@ -131,6 +185,7 @@ def _num(v, d: int = 0) -> str:
 
 def report_block(p: FinanceParams, res: dict) -> dict:
     """Summary, cash-flow table and assumptions for the PDF report (see report.PLUGIN_SECTIONS)."""
+    self_pct = p.storage["summary"]["with"]["self_consumption_pct"] if p.storage else p.self_consumption_pct
     eur = lambda v: f"{_num(v)} €"
     years_text = lambda v: "δεν αποσβένεται" if v is None else f"{_num(v, 1)} έτη"
     summary = [
@@ -160,7 +215,7 @@ def report_block(p: FinanceParams, res: dict) -> dict:
     }.get(p.scheme, "")
     notes = [
         f"Παραδοχές: κόστος {_num(p.capex_per_kwp)} €/kWp με ΦΠΑ, τιμή ρεύματος {_num(p.retail_price, 3)} €/kWh, "
-        f"{export}ιδιοκατανάλωση {_num(p.self_consumption_pct)}% της παραγωγής, αύξηση τιμών "
+        f"{export}ιδιοκατανάλωση {_num(self_pct)}% της παραγωγής, αύξηση τιμών "
         f"{_num(p.price_escalation_pct, 1)}% τον χρόνο, μείωση απόδοσης πάνελ {_num(p.degradation_pct, 1)}% τον χρόνο, "
         f"συντήρηση {_num(p.om_per_kwp)} €/kWp τον χρόνο"
         + (f", αλλαγή inverter το {p.inverter_replacement_year}ο έτος ({_num(p.inverter_cost_per_kwp)} €/kWp)."

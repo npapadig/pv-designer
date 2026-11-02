@@ -17,7 +17,7 @@ Repo: github.com/npapadig/pv-designer, single `main` branch, several Claude thre
 5. **Inverter**: inverter library + custom, string sizing by temperature-corrected voltages, DC/AC ratio.
 6. **Παραγωγή**: PVGIS PVcalc (fallback: offline pvlib clear-sky) and a detailed hourly pvlib simulation from
    PVGIS TMY (cached in `data/weather/`) with a loss breakdown.
-7. **Μπαταρία** (v0.30): loads to keep during a grid outage, battery size, days of autonomy without sun (`backend/battery.py`, `POST /api/battery/autonomy`, `frontend/battery.js`; saved as `project.battery`). Design and the next pieces: `docs/streams/batteries.md`.
+7. **Μπαταρία** (v0.30): loads to keep during a grid outage, battery size, days of autonomy without sun (`backend/battery.py`, `POST /api/battery/autonomy`, `frontend/battery.js`; saved as `project.battery`). v0.31: hourly saving model `backend/battery_sim.py` (`POST /api/battery/simulate`, load profiles, dispatch, per-year flows for `finance.analyse(storage=…)`; `simulation.simulate(hourly=True)` gives the hourly AC energy; `main._hourly_pv` caches the simulation). Design and the next pieces: `docs/streams/batteries.md`.
 8. **Οικονομικά**: self-consumption / net billing / net metering, payback, ROI, NPV, IRR, LCOE, 25-year cash flow.
 
 ## Architecture

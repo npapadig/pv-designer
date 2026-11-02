@@ -669,6 +669,7 @@ async function runFinance() {
   if (!state.energy) return;
   state.finance = await api("/api/finance", "POST", {
     ...financeSettings(), kwp: state.layout.kwp, annual_kwh: state.energy.annual_kwh,
+    battery: (await window.battery?.financeBlock()) || null, // with a battery the hourly model decides the self-consumption
   });
   renderFinance();
 }
@@ -692,6 +693,7 @@ function renderFinance() {
     ` Συνολικό καθαρό κέρδος σε ${life} χρόνια ${eur(f.years[life - 1].cumulative)}` +
     (f.roi_pct == null ? "." : ` (ROI ${fmt(f.roi_pct)}%).`) +
     (f.discounted_payback_years == null ? "" : ` Απόσβεση με αναγωγή σε σημερινές τιμές: ${fmt(f.discounted_payback_years, 1)} έτη.`);
+  window.battery?.renderFinance(f);
   // Year 0 is the investment itself.
   const years = [{ year: 0, net: -f.investment, cumulative: -f.investment }, ...f.years];
   financeChart = new Chart($("financeChart"), {

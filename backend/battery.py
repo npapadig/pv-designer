@@ -110,6 +110,9 @@ class BatteryParams(BaseModel):
     cost_per_kwh: float = Field(DEFAULT_COST_PER_KWH, ge=0)
     cost_fixed: float = Field(0, ge=0)
     subsidy_eur: float = Field(0, ge=0)
+    fade_pct_per_year: float = Field(2.0, ge=0, le=20, description="capacity lost for every year of age")
+    replacement_year: int = Field(12, ge=0, le=40, description="year of a new battery; 0 = never")
+    replacement_cost_pct: float = Field(60.0, ge=0, le=300, description="price of the new battery, % of the first one")
 
 
 class AutonomyRequest(BaseModel):
@@ -133,6 +136,8 @@ def presets() -> dict:
         "defaults": {
             "simultaneity_pct": SIMULTANEITY_PCT, "usable_pct": 90, "roundtrip_pct": 90, "reserve_pct": 100,
             "cost_per_kwh": DEFAULT_COST_PER_KWH, "power_per_kwh": POWER_PER_KWH, "target_days": 1,
+            "fade_pct_per_year": 2, "replacement_year": 12, "replacement_cost_pct": 60,
+            "profile": "home", "season": "mixed",
         },
     }
 

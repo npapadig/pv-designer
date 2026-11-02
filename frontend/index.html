@@ -490,6 +490,14 @@
           <label>Χωρητικότητα (kWh) <input id="batCap" type="number" min="0" step="0.5"></label>
           <label>Ισχύς (kW) <input id="batPower" type="number" min="0" step="0.5" placeholder="αυτόματο"></label>
         </div>
+        <label>Λειτουργία
+          <select id="batMode">
+            <option value="100">Μόνο εφεδρεία (η μπαταρία μένει γεμάτη)</option>
+            <option value="30">Εξοικονόμηση και εφεδρεία (κρατά 30 % για διακοπή)</option>
+            <option value="0">Μόνο εξοικονόμηση (χωρίς εφεδρεία)</option>
+            <option value="">Δική μου εφεδρεία (δες «Περισσότερες ρυθμίσεις»)</option>
+          </select>
+        </label>
         <details>
           <summary>Περισσότερες ρυθμίσεις</summary>
           <div class="grid2">
@@ -500,6 +508,9 @@
             <label>Κόστος (€ ανά kWh, με ΦΠΑ) <input id="batCost" type="number" value="800" min="0" step="50"></label>
             <label>Σταθερό κόστος (€) <input id="batFixed" type="number" value="0" min="0" step="100"></label>
             <label>Επιδότηση (€) <input id="batSubsidy" type="number" value="0" min="0" step="100"></label>
+            <label>Απώλεια χωρητικότητας (% ανά έτος) <input id="batFade" type="number" value="2" min="0" max="20" step="0.5"></label>
+            <label>Αλλαγή μπαταρίας (έτος, 0 = ποτέ) <input id="batReplYear" type="number" value="12" min="0" max="40" step="1"></label>
+            <label>Κόστος νέας μπαταρίας (% του αρχικού) <input id="batReplPct" type="number" value="60" min="0" max="300" step="5"></label>
           </div>
           <p class="muted small">Το κόστος είναι ενδεικτικό· βάλε την τιμή της προσφοράς που έχεις.</p>
         </details>
@@ -509,6 +520,34 @@
         <div id="batCards" class="opt-cards"></div>
         <p class="muted small">Κάθε πρόταση αλλάζει μόνο τη χωρητικότητα· όλες οι ρυθμίσεις που έδωσες πάνω ισχύουν σε όλες.
           Οι υπολογισμοί είναι χωρίς ήλιο (η πιο αυστηρή περίπτωση) και δεν υπολογίζουν ρεύμα εκκίνησης συσκευών.</p>
+
+        <h3 class="bat-h">4. Εξοικονόμηση από τον ήλιο</h3>
+        <p class="muted small">Υπολογίζει ώρα με την ώρα πόση από την ενέργεια των πάνελ χρησιμοποιείς εσύ και πόση αγοράζεις ή πουλάς,
+          με και χωρίς μπαταρία. Παίρνει την ετήσια κατανάλωση από πάνω· αν είναι κενή, υποθέτει ότι ισούται με την παραγωγή.</p>
+        <div class="grid2">
+          <label>Τύπος καταναλωτή <select id="batProfile">
+            <option value="home">Σπίτι (πρωί και βράδυ)</option>
+            <option value="home_day">Σπίτι με κόσμο την ημέρα</option>
+            <option value="office">Γραφείο ή κατάστημα (ημέρας)</option>
+            <option value="always_on">24ωρη επιχείρηση (ψυγεία)</option>
+            <option value="farm">Αγρόκτημα (άντληση την ημέρα)</option>
+            <option value="flat">Σταθερή όλη την ώρα</option>
+          </select></label>
+          <label>Εποχικότητα <select id="batSeason">
+            <option value="mixed">Χειμώνας και καλοκαίρι</option>
+            <option value="summer">Περισσότερο το καλοκαίρι</option>
+            <option value="winter">Περισσότερο το χειμώνα</option>
+            <option value="flat">Ίδια όλο τον χρόνο</option>
+          </select></label>
+        </div>
+        <button id="btnBatSim" class="primary" type="button"><svg class="ic"><use href="#i-zap"/></svg>Υπολογισμός εξοικονόμησης</button>
+        <div id="batSim" hidden>
+          <p id="batSimInfo" class="muted small"></p>
+          <div id="batSimTable" class="bat-table"></div>
+          <label>Τυπική ημέρα του μήνα <select id="batMonth"></select></label>
+          <div class="chart-box"><canvas id="batChart" height="210"></canvas></div>
+          <p class="muted small">Οι τιμές είναι μέσος όρος των ημερών του μήνα. Η κατανάλωση είναι εκτίμηση από τον τύπο καταναλωτή που διάλεξες.</p>
+        </div>
       </div>
     </section>
 
@@ -533,6 +572,8 @@
           <label id="finExportLabel">Τιμή πώλησης περίσσειας (€/kWh) <input id="finExport" type="number" value="0.07" step="0.01" min="0"></label>
           <label id="finOffsetLabel" hidden>Αξία συμψηφισμού (€/kWh) <input id="finOffset" type="number" value="0.16" step="0.01" min="0"></label>
         </div>
+        <p id="finBatteryNote" class="muted small" hidden>Με μπαταρία, η ιδιοκατανάλωση υπολογίζεται ώρα με την ώρα από το βήμα «Μπαταρία»,
+          όχι από το ποσοστό παραπάνω.</p>
         <details>
           <summary class="small">Περισσότερες ρυθμίσεις</summary>
           <div class="grid2">
@@ -556,6 +597,7 @@
           <div><span id="finLcoe">–</span><small>LCOE €/kWh</small></div>
         </div>
         <p id="finExtra" class="muted small"></p>
+        <div id="finBattery" class="bat-table" hidden></div>
         <div class="chart-box"><canvas id="financeChart" height="200"></canvas></div>
         <p class="muted small">Οι υπολογισμοί είναι εκτίμηση. Οι τιμές ρεύματος και οι όροι του κάθε προγράμματος
           αλλάζουν, γι' αυτό έλεγξε τις τρέχουσες τιμές με τον πάροχο και τον ΔΕΔΔΗΕ.</p>

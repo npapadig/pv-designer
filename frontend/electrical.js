@@ -38,13 +38,14 @@ const elec = {
     renderDesign();
   },
 
-  async simulate() {
+  // The request of the detailed simulation (also used by the battery step, which needs the hourly energy).
+  async simulationBody() {
     if (!state.electrical) await runDesign();
     const d = state.electrical;
     if (!d.ok) toast("Προσοχή: ο σχεδιασμός strings έχει σφάλματα (δες την ενότητα 5).", 6000);
     const s = settings();
     const [lat, lon] = state.layout.center;
-    return api("/api/simulate", "POST", {
+    return {
       lat, lon, tilt_deg: s.tilt_deg, azimuth_deg: s.azimuth_deg, mounting: s.mounting,
       dc_kwp: d.dc_kwp, ac_kw: d.ac_kw, inverter_eff_pct: d.inverter.eff_pct,
       temp_coeff_pmax_pct: +$("modGammaP").value,
@@ -53,7 +54,11 @@ const elec = {
       shading_monthly_pct: state.shading ? state.shading.monthly_loss_pct : null,
       // With strings per face, each face brings the power of its connected panels.
       faces: (window.faces?.energyFaces() || null)?.map((f, i) => (d.faces ? { ...f, kwp: d.faces[i].dc_kwp } : f)) || null,
-    });
+    };
+  },
+
+  async simulate() {
+    return api("/api/simulate", "POST", await this.simulationBody());
   },
 
   render() {

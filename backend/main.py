@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import mimetypes
+from functools import lru_cache
 from pathlib import Path
 from typing import Literal
 
@@ -12,8 +13,10 @@ from fastapi.responses import Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from . import battery, electrical, energy, finance, plan_drawing, report, single_line, tech_description, appendix_i, settings, shading, simulation, storage
+from . import battery, battery_sim, electrical, energy, finance, plan_drawing, report, single_line, tech_description, appendix_i, settings, shading, simulation, storage
 from . import lifecycle, manual, mobile
+from .battery import BatteryParams
+from .battery_sim import LoadParams
 from .equipment import CATALOG_PANELS, PRESET_INVERTERS, Inverter
 from .layout import LayoutParams, compute_faces_layout, compute_layout, remove_shaded, split_area
 
@@ -134,6 +137,7 @@ class FinanceRequest(BaseModel):
     inverter_cost_per_kwp: float = Field(120, ge=0, le=2000)
     discount_rate_pct: float = Field(5, ge=0, le=30)
     lifetime_years: int = Field(25, ge=1, le=40)
+    battery: BatterySimRequest | None = None  # with a battery the hourly model decides the self-consumption
 
 
 class ElectricalRequest(BaseModel):
@@ -169,6 +173,16 @@ class SimulationRequest(BaseModel):
     availability_pct: float = Field(0, ge=0, le=50)
     shading_monthly_pct: list[float] | None = Field(None, min_length=12, max_length=12)
     faces: list[EnergyFace] | None = None  # roof faces on this inverter; their kwp give each one's share
+
+
+class BatterySimRequest(BaseModel):
+    """The system (as for /api/simulate), the consumption and the battery: what the battery saves over a typical year."""
+    simulation: SimulationRequest
+    load: LoadParams = LoadParams()
+    battery: BatteryParams = BatteryParams()
+
+
+FinanceRequest.model_rebuild()
 
 
 @app.get("/api/health")
@@ -304,10 +318,19 @@ def shadows(req: ShadowsRequest):
 
 @app.post("/api/finance")
 def finance_analysis(req: FinanceRequest):
+    data = req.model_dump(exclude={"battery"})
     try:
-        return finance.analyse(finance.FinanceParams(**req.model_dump()))
+        if req.battery and req.battery.battery.capacity_kwh > 0:
+            pv, meta = _hourly_pv(req.battery.simulation.model_dump_json())
+            data["storage"] = battery_sim.storage_for_finance(
+                pv, meta["lat"], meta["lon"], req.battery.load, req.battery.battery, req.lifetime_years, req.degradation_pct)
+            # the production of the hourly simulation is the one the battery model works with
+            data["annual_kwh"] = data["storage"]["years"][0]["production"]
+        return finance.analyse(finance.FinanceParams(**data))
     except ValueError as e:
         raise HTTPException(400, str(e))
+    except Exception as e:
+        raise HTTPException(502, str(e))
 
 
 @app.get("/api/battery/presets")
@@ -318,6 +341,21 @@ def battery_presets():
 @app.post("/api/battery/autonomy")
 def battery_autonomy(req: battery.AutonomyRequest):
     return battery.autonomy(req)
+
+
+@app.post("/api/battery/simulate")
+def battery_simulate(req: BatterySimRequest):
+    """Year 1 with and without the battery: self-consumption, self-sufficiency, bought and sold energy, months, a day."""
+    try:
+        pv, meta = _hourly_pv(req.simulation.model_dump_json())
+        result = battery_sim.simulate_year(pv, meta["lat"], meta["lon"], req.load, req.battery)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    except Exception as e:
+        raise HTTPException(502, str(e))
+    result["source"] = meta["source"]
+    result["warning"] = meta["warning"]
+    return result
 
 
 @app.get("/api/inverters")
@@ -338,13 +376,29 @@ def electrical_design(req: ElectricalRequest):
         raise HTTPException(400, str(e))
 
 
-@app.post("/api/simulate")
-def simulate(req: SimulationRequest):
+def _simulation_args(req: SimulationRequest) -> dict:
     args = req.model_dump()
     args["tilt"], args["azimuth"] = args.pop("tilt_deg"), args.pop("azimuth_deg")
     if args["faces"]:
         args["faces"] = [{"dc_kwp": f["kwp"], "tilt": f["tilt_deg"], "azimuth": f["azimuth_deg"],
                           "shading_monthly_pct": f["shading_monthly_pct"]} for f in args["faces"]]
+    return args
+
+
+@lru_cache(maxsize=4)
+def _hourly_pv(simulation_json: str):
+    """The detailed simulation of one system with the energy of every hour; the last few are kept, so the battery
+    step, its proposals and the finance step do not run it again and again."""
+    req = SimulationRequest.model_validate_json(simulation_json)
+    res = simulation.simulate(**_simulation_args(req), hourly=True)
+    series = res.pop("_hourly_kwh")
+    return series, {"lat": req.lat, "lon": req.lon, "source": res.get("source"), "warning": res.get("warning"),
+                    "annual_kwh": res["annual_kwh"]}
+
+
+@app.post("/api/simulate")
+def simulate(req: SimulationRequest):
+    args = _simulation_args(req)
     try:
         return simulation.simulate(**args)
     except ValueError as e:

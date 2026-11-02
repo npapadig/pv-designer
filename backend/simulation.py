@@ -182,9 +182,12 @@ def simulate(
     shading_monthly_pct: list[float] | None = None,
     weather: pd.DataFrame | None = None,
     faces: list[dict] | None = None,
+    hourly: bool = False,
 ) -> dict:
     """faces (optional): roof faces [{"dc_kwp", "tilt", "azimuth", "shading_monthly_pct"}, ...] on one inverter.
-    Their dc_kwp give each face's share; they are scaled so that together they make dc_kwp."""
+    Their dc_kwp give each face's share; they are scaled so that together they make dc_kwp.
+    hourly: also return the AC energy of every hour (kWh, a pandas Series on the UTC time axis of the weather) under
+    "_hourly_kwh", for the battery model; the result is otherwise exactly the same."""
     import pvlib
 
     if dc_kwp <= 0 or ac_kw <= 0:
@@ -356,4 +359,6 @@ def simulate(
         result["annual_kwh_unshaded"] = round(sum(m["kwh_unshaded"] for m in result["monthly"]), 0)
     if warning:
         result["warning"] = warning
+    if hourly:
+        result["_hourly_kwh"] = ac / 1000.0
     return result

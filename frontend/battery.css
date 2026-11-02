@@ -19,3 +19,11 @@
 .bat-ok.warn { color: var(--danger); }
 .bat-need { margin: 10px 0 6px; font-size: 0.85rem; }
 .bat-need em { font-style: normal; font-weight: 700; }
+.bat-table { margin: 8px 0; }
+.bat-cmp { display: grid; grid-template-columns: minmax(0, 1.5fr) 1fr 1fr; gap: 6px; padding: 6px 0; border-bottom: 1px solid var(--line); font-size: 0.82rem; align-items: baseline; }
+.bat-cmp b { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.bat-cmp-head { border-bottom-color: var(--line-strong); }
+.bat-cmp-head b { color: var(--muted); font-size: 0.7rem; font-weight: 650; letter-spacing: 0.04em; text-transform: uppercase; white-space: normal; }
+#batSim { margin-top: 12px; }
+#batSim .chart-box { height: 240px; position: relative; margin-top: 8px; }
+#btnBatSim { margin-top: 4px; }
