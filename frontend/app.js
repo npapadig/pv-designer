@@ -905,7 +905,7 @@ function resetProject() {
   $("engineerName").value = "";
   $("parapetOn").checked = true; $("parapetHeight").value = 1; $("parapetThickness").value = 0.25;
   state.projectType = "existing";
-  state.roofType = "pitched";
+  state.roofType = "flat";
   window.faces?.syncRoof();
   clearLayout();
   window.battery?.reset();

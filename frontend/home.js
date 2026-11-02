@@ -145,7 +145,7 @@
     e.preventDefault();
     const name = $("homeName").value.trim() || "Νέο έργο";
     const engineer = $("homeEngineer").value.trim();
-    if (!(kind === "park" ? begin("park", "flat") : begin("existing", "pitched"))) return;
+    if (!(kind === "park" ? begin("park", "flat") : begin("existing", "flat"))) return;
     $("projectName").value = name;
     $("engineerName").value = engineer;
     try { localStorage.setItem(ENGINEER_KEY, engineer); } catch {}
