@@ -24,6 +24,8 @@ WINTER_SOLSTICE_DECLINATION = 23.44
 # upright and lying (portrait / landscape), and the one that fits the most panels wins (a tie keeps the tilt
 # closer to tilt_deg, then the user's own panel orientation). row_gap_m None = automatic (no shade at
 # winter-solstice noon).
+SLIDE_STEP_M = 0.05  # how far a panel that does not fit slides before the next try
+
 OPTION_ECONOMIC = {"tilt_deg": 30.0, "tilt_min_deg": 20.0, "azimuth_deg": 180.0, "row_gap_m": None}  # south
 OPTION_EAST_WEST = {"tilt_deg": 10.0, "tilt_min_deg": 8.0, "row_gap_m": 0.10}  # back to back, rows almost touching
 OPTION_AESTHETIC = {"tilt_deg": 15.0, "tilt_min_deg": 10.0, "row_gap_m": None}  # parallel to the longest wall
@@ -159,7 +161,7 @@ def compute_layout(area_latlngs: list, p: LayoutParams, neighbours: list | None 
                     if p.table_panels > 0 and in_row % p.table_panels == 0:
                         x += p.table_gap_m  # walkway between two tables
                 else:
-                    x += step_x / 4  # slide in smaller steps to pack edges tighter
+                    x += min(step_x / 4, SLIDE_STEP_M)  # slide in small steps to pack edges tight
             y -= step_y
 
     panels = []

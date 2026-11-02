@@ -130,7 +130,7 @@
     finance: () => !!state.finance,
   };
   const wasDone = {};
-  let hadEnergy = false;
+  let lastEnergy = null;
   function tick() {
     links.forEach((a, i) => {
       let done = false;
@@ -144,8 +144,12 @@
     });
     const dock = $("results");
     dock.classList.toggle("empty", !state.layout);
-    if (state.energy && !hadEnergy) dock.classList.add("open"); // show the analysis the first time
-    hadEnergy = !!state.energy;
+    if (state.energy && state.energy !== lastEnergy) { // every new calculation shows the analysis in full
+      dock.classList.add("open");
+      dock.classList.remove("gone", "mini");
+      $("btnDockShow").hidden = true;
+    }
+    lastEnergy = state.energy;
     updateHint();
   }
 
