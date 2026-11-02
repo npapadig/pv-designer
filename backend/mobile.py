@@ -19,7 +19,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, Field
 
-from . import appendix_i, lifecycle, plan_drawing, report, settings, single_line, storage, tech_description
+from . import appendix_i, battery_report, lifecycle, plan_drawing, report, settings, single_line, storage, tech_description
 
 TOKEN_DAYS = 30
 MAX_FAILURES = 5
@@ -172,11 +172,15 @@ def projects(_: str = Depends(require_token)):
 @router.get("/projects/{project_id}")
 def project(project_id: str, _: str = Depends(require_token)):
     p = _project(project_id)
-    return {"id": p["id"], "name": p.get("name", ""), "updated": p.get("updated_at", ""),
-            "areas": p.get("areas") or [], "keepouts": p.get("keepouts") or [],
-            "layout": p.get("layout") or {}, "settings": p.get("settings") or {},
-            "report_info": p.get("report_info") or {}, "energy": _summary(p.get("energy")),
-            "electrical_ready": _electrical_ready(p)}
+    out = {"id": p["id"], "name": p.get("name", ""), "updated": p.get("updated_at", ""),
+           "areas": p.get("areas") or [], "keepouts": p.get("keepouts") or [],
+           "layout": p.get("layout") or {}, "settings": p.get("settings") or {},
+           "report_info": p.get("report_info") or {}, "energy": _summary(p.get("energy")),
+           "electrical_ready": _electrical_ready(p)}
+    battery = battery_report.mobile_summary(p)
+    if battery:  # only projects with a battery get the key, so the others answer exactly as before
+        out["battery"] = battery
+    return out
 
 
 DOCUMENTS = (  # kind, title, needs the electrical design

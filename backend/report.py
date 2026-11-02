@@ -573,6 +573,12 @@ for _order, _key, _title in PLUGIN_SECTIONS:
     section(_order)(_plugin_section(_key, _title))
 
 
+@section(75)
+def battery_section(ctx: ReportContext):
+    from . import battery_report  # imports this module, so it is loaded only when needed
+    return battery_report.report_section(ctx)
+
+
 @section(90)
 def notes_section(ctx: ReportContext):
     notes = [

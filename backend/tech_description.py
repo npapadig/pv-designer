@@ -12,7 +12,7 @@ from datetime import date
 from reportlab.lib.pagesizes import A4
 from reportlab.platypus import BaseDocTemplate, Frame, PageTemplate, Paragraph, Spacer
 
-from . import i18n, report, single_line
+from . import battery_report, i18n, report, single_line
 
 BLANK = single_line.BLANK
 
@@ -120,7 +120,11 @@ def _build(project: dict) -> bytes:
         (tr("Μετρητής"), tr("αμφίδρομος ΔΕΔΔΗΕ (συμψηφισμός)")),
     ])]
 
-    story += [ctx.subheading("6. Χωροθέτηση"), ctx.para(_esc_(tr(
+    bat_rows = battery_report.description_rows(project)
+    if bat_rows:
+        story += [ctx.subheading("6. Σύστημα αποθήκευσης (μπαταρία)"), ctx.kv_table(bat_rows)]
+
+    story += [ctx.subheading("7. Χωροθέτηση" if bat_rows else "6. Χωροθέτηση"), ctx.para(_esc_(tr(
         "Η χωροθέτηση των πλαισίων φαίνεται στο σχέδιο κάτοψης (επιφάνεια πλαισίων {m} m²). "
         "Οι συντεταγμένες των κορυφών της περιοχής εγκατάστασης δίνονται στη 2η σελίδα της κάτοψης."
     )).format(m=num(layout.get("module_area_m2"), 1)))]

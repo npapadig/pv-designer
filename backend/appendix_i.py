@@ -13,7 +13,7 @@ from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle
 from reportlab.platypus import BaseDocTemplate, Frame, PageTemplate, Paragraph, Spacer, Table, TableStyle
 
-from . import report
+from . import battery_report, report
 
 ON, OFF = "☒", "☐"
 
@@ -62,6 +62,15 @@ def _build(project: dict, d: dict) -> bytes:
         return t
 
     yes_no = f"{OFF} ΝΑΙ    {OFF} ΟΧΙ"
+    bat = battery_report.appendix_rows(project)
+    if bat:
+        storage = [Paragraph("1.3 Μετασχηματιστής ανύψωσης ΧΤ/ΜΤ: δεν συμπληρώνεται (σύνδεση στη ΧΤ).", st["small"]),
+                   Paragraph("2. Σύστημα αποθήκευσης", st["h2"]), table(bat),
+                   Paragraph("Συμπληρώθηκαν μόνο η χωρητικότητα και η ισχύς· τα υπόλοιπα πεδία της ενότητας 2 του "
+                             "επίσημου εντύπου συμπληρώνονται από τα τεχνικά φυλλάδια της μπαταρίας.", st["small"])]
+    else:
+        storage = [Paragraph("1.3 Μετασχηματιστής ανύψωσης ΧΤ/ΜΤ και 2. Σύστημα αποθήκευσης: δεν συμπληρώνονται "
+                             "(σύνδεση στη ΧΤ, χωρίς αποθήκευση).", st["small"])]
     story = [
         Paragraph("ΠΑΡΑΡΤΗΜΑ Ι", st["h1"]),
         Paragraph("ΤΕΧΝΙΚΑ ΣΤΟΙΧΕΙΑ ΕΞΟΠΛΙΣΜΟΥ ΓΙΑ ΦΩΤΟΒΟΛΤΑΪΚΟ ΣΤΑΘΜΟ", st["h2"]),
@@ -99,8 +108,7 @@ def _build(project: dict, d: dict) -> bytes:
             ("Πιστοποιήσεις:", ""),
         ]),
         Spacer(1, 8),
-        Paragraph("1.3 Μετασχηματιστής ανύψωσης ΧΤ/ΜΤ και 2. Σύστημα αποθήκευσης: δεν συμπληρώνονται "
-                  "(σύνδεση στη ΧΤ, χωρίς αποθήκευση).", st["small"]),
+        *storage,
         Spacer(1, 6),
         Paragraph("Προσυμπληρώθηκαν μόνο τα στοιχεία που γνωρίζει η εφαρμογή. Τα υπόλοιπα (κατασκευαστής, "
                   "πιστοποιήσεις, συντελεστής ισχύος, THD κ.λπ.) συμπληρώνονται από τα τεχνικά φυλλάδια του "

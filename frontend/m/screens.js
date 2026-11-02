@@ -77,6 +77,7 @@
       ["Ισχύς", num(L.kwp, 2) && num(L.kwp, 2) + " kWp"],
       ["Πάνελ", L.count != null ? String(L.count) : null],
       ["Ετήσια παραγωγή", num(e.annual_kwh, 0) && num(e.annual_kwh, 0) + " kWh"],
+      ["Μπαταρία", p.battery && batteryText(p.battery)],
       ["Πελάτης", p.client], ["Διεύθυνση", p.address], ["Ενημερώθηκε", fmtDate(p.updated)],
     ].filter(([, v]) => v);
     const mapDiv = h("div", { id: "map", class: "map" });
@@ -86,6 +87,15 @@
       h("div", { class: "pad" }, h("a", { class: "big", href: "#/docs/" + encodeURIComponent(id) }, "Έγγραφα PDF")));
     drawMap(mapDiv, p);
   };
+
+  // "10 kWh · 5 kW · αυτάρκεια 38% → 61%" (the last part only when the savings were calculated)
+  function batteryText(b) {
+    const parts = [num(b.capacity_kwh, 1) + " kWh"];
+    if (b.power_kw != null) parts.push(num(b.power_kw, 1) + " kW");
+    if (b.self_consumption_with_pct != null && b.self_consumption_without_pct != null)
+      parts.push("ιδιοκατανάλωση " + num(b.self_consumption_without_pct, 0) + "% → " + num(b.self_consumption_with_pct, 0) + "%");
+    return parts.join(" · ");
+  }
 
   function drawMap(div, p) {
     dropMap();
