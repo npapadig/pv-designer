@@ -266,6 +266,12 @@ details[open] { padding-bottom: 4px; }
 .dock.mini #btnDockMin .ic { transform: rotate(180deg); }
 .dock.gone { display: none; }
 #btnDockShow { position: fixed; z-index: 10; left: var(--left); bottom: var(--gap); width: auto; padding: 0 16px; height: 42px; margin: 0; }
+/* The closed results bar: a solid panel like the side panel, so it stands out on the map. */
+#btnDockShow, #btnDockShow:hover {
+  background: var(--glass-strong); border: 1px solid var(--line); box-shadow: var(--shadow); color: var(--text);
+  backdrop-filter: blur(22px) saturate(1.4); -webkit-backdrop-filter: blur(22px) saturate(1.4);
+}
+#btnDockShow { font-weight: 700; border-radius: 16px; }
 @media print { #btnDockShow, .dock-ctl { display: none !important; } }
 .dock-actions button.primary { width: auto; height: 42px; margin: 0; padding: 0 18px; font-size: 0.86rem; }
 #btnDock .ic:last-child { transition: transform 0.3s; }
