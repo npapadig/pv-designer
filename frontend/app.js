@@ -167,11 +167,11 @@ function shapeName(layer) {
 
 // Obstacles carry a height (m above the panel surface) used by the shading analysis.
 function setObstacleHeight(layer, h) {
-  layer.pvHeight = Math.max(0, +h || 0);
+  layer.pvHeight = Math.max(-50, +h || 0); // below 0 = a pit (a hole in the roof, drawn in 3D; no shadow)
   // Worked out when shown, so a new name or place in the list shows at once; text, not HTML.
   if (!layer.getTooltip()) {
     layer.bindTooltip(() => {
-      let text = `${shapeName(layer)} · ${layer.pvHeight ? `${fmt(layer.pvHeight, 1)} m` : "χωρίς σκιά"}`;
+      let text = `${shapeName(layer)} · ${layer.pvHeight < 0 ? `τρύπα ${fmt(-layer.pvHeight, 1)} m` : layer.pvHeight ? `${fmt(layer.pvHeight, 1)} m` : "χωρίς σκιά"}`;
       if (layer.pvTree) {
         const b = layer.getBounds();
         text += ` · Ø ${fmt(map.distance(b.getSouthWest(), b.getSouthEast()), 1)} m`;
@@ -182,7 +182,7 @@ function setObstacleHeight(layer, h) {
   layer.off("click").on("click", () => {
     if (window.drawTools?.editing || layer.pvVoid) return;
     const box = L.DomUtil.create("div");
-    box.innerHTML = `<b></b><label>Ύψος (m) <input type="number" min="0" step="0.5" value="${layer.pvHeight}"></label>`;
+    box.innerHTML = `<b></b><label>Ύψος (m) <input type="number" min="-50" step="0.5" value="${layer.pvHeight}" title="Αρνητικό ύψος = τρύπα"></label>`;
     box.querySelector("b").textContent = shapeName(layer);
     const input = box.querySelector("input");
     input.onchange = () => { setObstacleHeight(layer, input.value); clearShading(); window.shapes?.record(); };
@@ -380,7 +380,7 @@ function parapetObstacles() {
 // The holes in the roof (light wells): sent with the layout requests so their area comes off the area figure.
 const voidsOf = () => keepouts.getLayers().filter((l) => l.pvVoid).map(latlngsOf);
 const obstaclesWithHeights = () =>
-  keepouts.getLayers().map((l) => ({ polygon: latlngsOf(l), height_m: l.pvHeight || 0 })).concat(parapetObstacles());
+  keepouts.getLayers().map((l) => ({ polygon: latlngsOf(l), height_m: Math.max(0, l.pvHeight || 0) })).concat(parapetObstacles());
 
 // "Avoid shaded positions" (step «Σκιές»): the obstacles with their heights go along with a layout request.
 function shadeOptions() {
@@ -394,6 +394,7 @@ function shadeOptions() {
 // ---------- Layout ----------
 function clearLayout() {
   panelsLayer.clearLayers();
+  removedLayer.clearLayers();
   window.manual?.reset();
   state.layout = null;
   clearShading();
@@ -404,15 +405,27 @@ function clearLayout() {
 const PANEL_FILL = "#1e3a8a";
 const PANEL_STYLE = { color: "#e2e8f0", weight: 0.8, opacity: 0.9, fillColor: PANEL_FILL, fillOpacity: 0.92, lineJoin: "miter" };
 // The step «Σκιές» shows the shadow map without the panels; the other steps show them (with the loss colours).
-window.setPanelsVisible = (on) => { if (on) panelsLayer.addTo(map); else panelsLayer.remove(); };
+window.setPanelsVisible = (on) => {
+  if (on) { panelsLayer.addTo(map); removedLayer.addTo(map); } else { panelsLayer.remove(); removedLayer.remove(); }
+};
 const addPanel = (latlngs) => L.polygon(latlngs, PANEL_STYLE).addTo(panelsLayer);
+// The positions dropped for shade: dashed outlines with the yearly loss; not panels, not saved.
+const removedLayer = new L.FeatureGroup().addTo(map);
+const REMOVED_STYLE = { color: "#ef4444", weight: 1.2, dashArray: "4 3", fillOpacity: 0, interactive: true };
+function showRemoved(list) {
+  (list || []).forEach((r) =>
+    L.polygon(r.polygon, REMOVED_STYLE).bindTooltip(`βγήκε: σκιά ${fmt(r.loss_pct)} % τον χρόνο`, { sticky: true }).addTo(removedLayer)
+  );
+}
 const NO_FIT = "Δεν χωράει κανένα πάνελ. Δοκίμασε μικρότερη απόσταση από τα άκρα ή οριζόντια πάνελ.";
 
 // Show a computed layout (panels + totals) on the map; also used by options.js for a chosen proposal.
-function setLayout(panels, res) {
+function setLayout(panels, { removed_panels, ...res }) {
   panelsLayer.clearLayers();
+  removedLayer.clearLayers();
   window.manual?.reset();
   panels.forEach((p) => addPanel(p));
+  showRemoved(removed_panels);
   state.layout = res;
   clearShading();
   window.elec?.reset();
@@ -426,6 +439,7 @@ async function runLayout() {
   const s = settings();
   const ko = keepouts.getLayers().map(latlngsOf);
   panelsLayer.clearLayers();
+  removedLayer.clearLayers();
   window.manual?.reset();
 
   // Roof faces with their own tilt/azimuth: one request for all, with the face of every panel.
@@ -445,6 +459,7 @@ async function runLayout() {
     res.panels.forEach((p) =>
       addPanel(p)
     );
+    showRemoved(res.removed_panels);
     total.count += res.count;
     total.kwp += res.kwp;
     total.area_m2 += res.area_m2;

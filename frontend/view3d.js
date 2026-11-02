@@ -38,17 +38,19 @@ function build() {
     return c;
   };
   const roofAt = (p) => { const f = faces.find((q) => inside(p, q.pts)); return f ? f.z(p) : null; };
-  return { lat0, ring, eave, faces, roofAt };
+  return { lat0, ring, eave, faces, roofAt, inside };
 }
 
 const V = (p, y) => new THREE.Vector3(p[0], y, -p[1]);
 const mat = (color, o = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.85, metalness: 0.05, side: THREE.DoubleSide, ...o });
 const centre = (pts) => [pts.reduce((a, p) => a + p[0], 0) / pts.length, pts.reduce((a, p) => a + p[1], 0) / pts.length];
 
-function polyMesh(pts, zOf, material) {
-  const tri = THREE.ShapeUtils.triangulateShape(pts.map((p) => new THREE.Vector2(p[0], p[1])), []);
+// holes: rings cut out of the surface (a pit in the roof); the triangles index pts followed by every hole.
+function polyMesh(pts, zOf, material, holes = []) {
+  const v2 = (r) => r.map((p) => new THREE.Vector2(p[0], p[1]));
+  const tri = THREE.ShapeUtils.triangulateShape(v2(pts), holes.map(v2));
   const pos = [];
-  pts.forEach((p) => pos.push(p[0], zOf(p), -p[1]));
+  pts.concat(...holes).forEach((p) => pos.push(p[0], zOf(p), -p[1]));
   const g = new THREE.BufferGeometry();
   g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
   g.setIndex(tri.flat());
@@ -87,14 +89,18 @@ function populate() {
 
   const ground = new THREE.Mesh(new THREE.PlaneGeometry(2000, 2000), mat(col.ground));
   ground.rotation.x = -Math.PI / 2;
-  ground.position.y = -0.02;
+  // a pit goes below the roof: the ground is lowered so that it does not hide the pit
+  const deepest = Math.min(0, ...keepouts.getLayers().map((l) => l.pvHeight || 0));
+  ground.position.y = deepest < 0 ? deepest - 0.1 : -0.02;
   ground.receiveShadow = true;
   const grid = new THREE.GridHelper(200, 100, light ? 0x94a3b8 : 0x334155, light ? 0xcbd5e1 : 0x1e293b);
   root.add(ground, grid);
 
   S.faces.forEach((f) => {
     if (view.whole) root.add(prism(f.pts, 0, S.eave, mat(col.wall)));
-    root.add(polyMesh(f.pts, (p) => f.z(p) + 0.001, mat(col.roof)));
+    const holes = keepouts.getLayers().filter((l) => l.pvHeight < 0 && !l.pvTree).map((l) => S.ring(latlngsOf(l)))
+      .filter((r) => r.every((p) => S.inside(p, f.pts)));
+    root.add(polyMesh(f.pts, (p) => f.z(p) + 0.001, mat(col.roof), holes));
   });
 
   // Panels: tilted rectangles built from the footprint; rows face the azimuth and rise towards the back.
@@ -138,6 +144,11 @@ function populate() {
       cr.position.set(c[0], y0 + trunk + (H - trunk) / 2, -c[1]);
       t.castShadow = cr.castShadow = true;
       root.add(t, cr);
+    } else if (h < 0) { // a pit: inner walls and a floor, the roof above it is cut open (see the faces above)
+      const m = mat(col.wall), grp = prism(pts, y0 + h, y0, m);
+      grp.remove(grp.children[1]); // the top cap would close the hole
+      grp.add(polyMesh(pts, () => y0 + h, mat(col.obstacle)));
+      root.add(grp);
     } else {
       root.add(prism(pts, y0, y0 + Math.max(h, 0.2), mat(col.obstacle, { transparent: true, opacity: h ? 0.9 : 0.5 })));
     }

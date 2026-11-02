@@ -1658,7 +1658,8 @@ window.I18N_EN =
 "π.χ. νότια στέγη": "e.g. south roof",
 "π.χ. δέντρο, φράχτης": "e.g. tree, fence",
 "Ύψος σε μέτρα": "Height in metres",
-"Αναίρεση της τελευταίας αλλαγής (Ctrl+Z)": "Undo the last change (Ctrl+Z)",
+"Ύψος σε μέτρα (αρνητικό = τρύπα)": "Height in metres (negative = pit)",
+"Αρνητικό ύψος = τρύπα": "Negative height = pit","Αναίρεση της τελευταίας αλλαγής (Ctrl+Z)": "Undo the last change (Ctrl+Z)",
 "Επανάληψη (Ctrl+Y)": "Redo (Ctrl+Y)",
 "Αντιγραφή του επιλεγμένου σχήματος (Ctrl+C)": "Copy the selected shape (Ctrl+C)",
 "Επικόλληση αντιγράφου (Ctrl+V)": "Paste a copy (Ctrl+V)",
@@ -1739,6 +1740,9 @@ window.I18N_EN =
 // mobile app: chip on a project card
 ["^(\\d+) πάνελ$", "$1 panels"],
 ["^(\\d+) θέσεις παραλείφθηκαν γιατί σκιάζονται πάνω από το όριο\\.$", "$1 positions were skipped because they are shaded above the limit."],
+["^βγήκε: σκιά (.+) % τον χρόνο$", "dropped: shade $1 % per year"],
+["^(.+) · τρύπα (.+) m$", "$1 · pit $2 m"],
+["^τρύπα (.+) m$", "pit $1 m"],
 // numbers and names inside texts
 ["^Βήμα (\\d+) από (\\d+)$", "Step $1 of $2"],
 ["^Εμπόδιο (\\d+)$", "Obstacle $1"],

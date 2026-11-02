@@ -386,7 +386,7 @@
     row.innerHTML = `<span class="shape-no"></span>
       <input name="name" maxlength="40" autocomplete="off" placeholder="${kind === "area" ? "π.χ. νότια στέγη" : "π.χ. δέντρο, φράχτης"}">
       ${kind === "area" ? '<span class="shape-num shape-m2"></span>'
-        : '<label class="shape-num"><input name="height" type="number" min="0" step="0.5" aria-label="Ύψος σε μέτρα"><span>m</span></label>'}
+        : '<label class="shape-num"><input name="height" type="number" min="-50" step="0.5" aria-label="Ύψος σε μέτρα (αρνητικό = τρύπα)"><span>m</span></label>'}
       <button type="button" class="ghost icon-btn shape-del" title="Διαγραφή" aria-label="Διαγραφή">${ICONS.remove}</button>
       ${kind === "area" ? `<div class="shape-face">
         <label>Κλίση <input name="tilt" type="number" min="0" max="90" step="1" aria-label="Κλίση σε μοίρες"><span>°</span></label>
