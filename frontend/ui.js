@@ -79,13 +79,21 @@
   const body = document.querySelector("#sidebar .panel-body");
   let current = 0;
 
+  // Steps that do not apply to the project (a link with `hidden`, e.g. the drawing steps of an existing PV system) are skipped.
+  const shownSteps = () => links.map((a, j) => j).filter((j) => !links[j].hidden);
+  function step(from, dir) {
+    const all = shownSteps();
+    const next = dir > 0 ? all.find((j) => j > from) : [...all].reverse().find((j) => j < from);
+    return next == null ? from : next;
+  }
   function show(i) {
     current = Math.max(0, Math.min(sections.length - 1, i));
     sections.forEach((s, j) => s.classList.toggle("active", j === current));
     links.forEach((a, j) => a.classList.toggle("active", j === current));
-    $("stepKicker").textContent = `Βήμα ${current + 1} από ${sections.length}`;
-    $("btnPrev").disabled = current === 0;
-    $("btnNext").hidden = current === sections.length - 1;
+    const all = shownSteps();
+    $("stepKicker").textContent = `Βήμα ${all.indexOf(current) + 1} από ${all.length}`;
+    $("btnPrev").disabled = step(current, -1) === current;
+    $("btnNext").hidden = step(current, 1) === current;
     $("btnNext").classList.remove("nudge");
     links[current].classList.remove("nudge");
     window.setPanelsVisible?.(sections[current].id !== "secShading"); // the shadow step shows shadows, not the layout
@@ -98,8 +106,9 @@
     if (i === current && !document.body.classList.contains("collapsed")) setCollapsed(true);
     else show(i);
   }));
-  $("btnPrev").onclick = () => show(current - 1);
-  $("btnNext").onclick = () => show(current + 1);
+  $("btnPrev").onclick = () => show(step(current, -1));
+  $("btnNext").onclick = () => show(step(current, 1));
+  window.refreshSteps = () => show(current); // after steps were hidden or shown
 
   function setCollapsed(on) {
     document.body.classList.toggle("collapsed", on);
@@ -111,6 +120,7 @@
   // A step is done when its result exists; a step that just finished points to the next one.
   const DONE = {
     secProject: () => !!state.projectId,
+    secExisting: () => !!(state.layout && state.layout.existing),
     secSite: () => areas.getLayers().length > 0,
     secPanels: () => !!state.layout,
     secShading: () => !!state.shading,

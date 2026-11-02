@@ -161,6 +161,15 @@
     for (const ev of ["pointerleave", "blur"]) $(id).addEventListener(ev, back);
   });
   $("homeNew").onclick = () => screen("choose");
+  // An existing PV system with a battery to add: no map drawing, the system is described in a form.
+  $("homeExisting").onclick = () => {
+    if (!newProject()) return;
+    state.projectType = "existing_pv";
+    window.existingPv.begin();
+    markSaved();
+    hide();
+    goStep("secExisting");
+  };
   $("homeBack").onclick = () => screen("start");
   $("homeRoofBack").onclick = () => screen("choose");
   $("homeContinue").onclick = hide;

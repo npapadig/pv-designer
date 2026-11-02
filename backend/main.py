@@ -177,6 +177,7 @@ class SimulationRequest(BaseModel):
     availability_pct: float = Field(0, ge=0, le=50)
     shading_monthly_pct: list[float] | None = Field(None, min_length=12, max_length=12)
     faces: list[EnergyFace] | None = None  # roof faces on this inverter; their kwp give each one's share
+    target_annual_kwh: float | None = Field(None, gt=0, le=1e9)  # existing system: the real yearly production; the hourly series is scaled to it
 
 
 class BatterySimRequest(BaseModel):
@@ -427,7 +428,7 @@ def electrical_design(req: ElectricalRequest):
 
 
 def _simulation_args(req: SimulationRequest) -> dict:
-    args = req.model_dump()
+    args = req.model_dump(exclude={"target_annual_kwh"})
     args["tilt"], args["azimuth"] = args.pop("tilt_deg"), args.pop("azimuth_deg")
     if args["faces"]:
         args["faces"] = [{"dc_kwp": f["kwp"], "tilt": f["tilt_deg"], "azimuth": f["azimuth_deg"],
@@ -442,8 +443,14 @@ def _hourly_pv(simulation_json: str):
     req = SimulationRequest.model_validate_json(simulation_json)
     res = simulation.simulate(**_simulation_args(req), hourly=True)
     series = res.pop("_hourly_kwh")
+    annual = res["annual_kwh"]
+    scale = 1.0
+    if req.target_annual_kwh and series.sum() > 0:   # an existing system: keep the shape of the hours, make the year the real one
+        scale = req.target_annual_kwh / float(series.sum())
+        series = series * scale
+        annual = req.target_annual_kwh
     return series, {"lat": req.lat, "lon": req.lon, "source": res.get("source"), "warning": res.get("warning"),
-                    "annual_kwh": res["annual_kwh"]}
+                    "annual_kwh": annual, "calibration": scale}
 
 
 @app.post("/api/simulate")

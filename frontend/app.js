@@ -596,6 +596,7 @@ $("btnEnergy").onclick = () => withBusy($("btnEnergy"), runEnergy);
 const fmt = (n, d = 0) => (n == null ? "–" : Number(n).toLocaleString("el-GR", { maximumFractionDigits: d }));
 
 function renderResults() {
+  if (window.existingPv?.active()) return; // an existing system has no drawing, shading or yearly chart here
   const l = state.layout, e = state.energy;
   $("statCount").textContent = l ? fmt(l.count) : "–";
   $("statKwp").textContent = l ? fmt(l.kwp, 2) : "–";
@@ -888,6 +889,7 @@ function collectProject() {
     finance: state.finance,
     electrical: window.elec?.collect(),
     battery: window.battery?.collect() || null,
+    existing_pv: window.existingPv?.collect() || null,
     plan: window.plan?.collect() || null,
     view: { center: map.getCenter(), zoom: map.getZoom() },
   };
@@ -907,6 +909,7 @@ function resetProject() {
   window.faces?.syncRoof();
   clearLayout();
   window.battery?.reset();
+  window.existingPv?.reset();
   updateShapesInfo();
   window.shapes?.resetHistory(); // undo does not go back to the previous project
   markSaved();
@@ -988,6 +991,7 @@ function loadProject(p) {
   colorPanels();
   window.elec?.load(p.electrical);
   window.battery?.load(p.battery);
+  window.existingPv?.load(p.existing_pv);
   window.plan?.load(p.plan);
   renderResults();
   if (p.view) map.setView(p.view.center, p.view.zoom);

@@ -40,6 +40,7 @@ const elec = {
 
   // The request of the detailed simulation (also used by the battery step, which needs the hourly energy).
   async simulationBody() {
+    if (window.existingPv?.active()) return window.existingPv.simulationBody(); // an existing system: no strings design
     if (!state.electrical) await runDesign();
     const d = state.electrical;
     if (!d.ok) toast("Προσοχή: ο σχεδιασμός strings έχει σφάλματα (δες την ενότητα 5).", 6000);

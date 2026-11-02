@@ -28,6 +28,10 @@
 #batSim .chart-box, #batPlan .chart-box { height: 240px; position: relative; margin-top: 8px; }
 #btnBatSim, #btnBatPlan { margin-top: 4px; }
 #batPlan { margin-top: 8px; }
+#rail a[hidden] { display: none; }
+body.existing-pv #results, body.existing-pv #btnDockShow { display: none !important; }
+#exAddress { flex: 1; }
+#secExisting .row.segmented { margin: 8px 0 4px; }
 #batCards .opt-card { justify-content: flex-start; }
 .opt-card.bad b { color: var(--danger); }
 .opt-num.bad em { color: var(--danger); }

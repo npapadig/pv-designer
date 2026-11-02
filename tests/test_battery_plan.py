@@ -267,3 +267,17 @@ def test_api_outage_per_month(monkeypatch):
     assert j["source"] == "offline" and j["start_kwh"] == round(5 * 0.9 * 0.5, 2) and j["worst_month"] in range(1, 13)
     assert client.post("/api/battery/outage", json={**body, "battery": {"capacity_kwh": -1}}).status_code == 422
     assert client.post("/api/battery/outage", json={**body, "load": {"profile": "nonsense"}}).status_code == 422
+
+
+def test_an_existing_system_is_scaled_to_its_real_yearly_production(monkeypatch):
+    _offline(monkeypatch)
+    plain = client.post("/api/battery/simulate", json={"simulation": SIM, "load": {"annual_kwh": 6000}, "battery": {"capacity_kwh": 5}}).json()
+    real = {**SIM, "target_annual_kwh": 9000}
+    r = client.post("/api/battery/simulate", json={"simulation": real, "load": {"annual_kwh": 6000}, "battery": {"capacity_kwh": 5}})
+    assert r.status_code == 200
+    j = r.json()
+    assert abs(j["production_kwh"] - 9000) < 1 and abs(plain["production_kwh"] - 9000) > 100
+    # the shape of the hours stays: every month keeps its share of the year
+    share = lambda d: [m["production_kwh"] / d["production_kwh"] for m in d["monthly"]]
+    assert all(abs(a - b) < 1e-3 for a, b in zip(share(j), share(plain)))
+    assert client.post("/api/battery/simulate", json={"simulation": {**SIM, "target_annual_kwh": 0}}).status_code == 422
