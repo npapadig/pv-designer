@@ -530,6 +530,16 @@ async function runShading() {
   if (!$("showShadows").checked) { $("showShadows").checked = true; refreshShadows(); } // the step shows the shadow map
 }
 $("btnShading").onclick = () => withBusy($("btnShading"), runShading);
+// «Να μη μπουν πάνελ σε σκιασμένες θέσεις» and its limit change the layout itself: fill again at once
+// (and redo the shading analysis if there was one), instead of keeping the old panels.
+["avoidShaded", "maxShade"].forEach((id) => $(id).addEventListener("change", async () => {
+  if (!state.layout?.count || !replaceOk()) return;
+  const hadShading = !!state.shading;
+  try {
+    await runLayout();
+    if (hadShading) await runShading();
+  } catch (e) { toast(e.message); }
+}));
 
 function renderShadingInfo() {
   const sh = state.shading;
