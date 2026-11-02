@@ -114,3 +114,33 @@ dispatch με υποβάθμιση PV και απώλεια χωρητικότη
 Συντονιστής (v0.30): `backend/battery.py`, `backend/main.py` (διαδρομές), `frontend/battery.js`, `frontend/index.html`,
 `frontend/ui.js`, `frontend/app.js` (μικρά hooks), `frontend/helptexts.js`, `frontend/lang/en.js`, `tests/`.
 Ροή «batteries-catalog» (αργότερα): μόνο `backend/catalog/batteries.json` + `tests/test_battery_catalog.py`.
+
+## 9. Σχήμα δεδομένων στο έργο (σύμβαση για τα έγγραφα: PDF, μονογραμμικό, κινητό)
+Το `project.battery` (αποθηκεύεται από το `frontend/battery.js`, `collect()`):
+```
+battery: {
+  enabled: true,                       // αν είναι false/λείπει: καμία αλλαγή στα έγγραφα
+  set: "basic|comfort|house|custom",   // σύνολο φορτίων εφεδρείας
+  rows: [{key, name, kwh_day, peak_w, on, custom?}],   // φορτία (on = μετράει)
+  inputs: {batDays, batCap, batPower, batUsable, batRound, batReserve, batSimul, batCost, batFixed, batSubsidy,
+           batFade, batReplYear, batReplPct, batProfile, batSeason},   // ΟΛΑ ως ΚΕΙΜΕΝΟ· κενό = αυτόματο/προεπιλογή
+  result: {                            // απάντηση του POST /api/battery/autonomy (v0.30)
+    daily_kwh, peak_kw, target_days, needed_capacity_kwh, needed_power_kw,
+    battery: {capacity_kwh, power_kw, power_auto, usable_kwh, guaranteed_kwh, days_full, days_guaranteed,
+              capacity_ok, power_ok, capex, investment},
+    cards: [...]
+  },
+  dispatch: {                          // v0.31, ΜΟΝΟ αν ο χρήστης έτρεξε «Υπολογισμός εξοικονόμησης»· αλλιώς λείπει/null
+    production_kwh, load_kwh, assumed_consumption,      // ετήσια παραγωγή PV (ωριαία προσομοίωση), κατανάλωση, αν η κατανάλωση ΥΠΟΤΕΘΗΚΕ
+    capacity_kwh, power_kw, usable_kwh, reserve_pct,
+    without: {self_kwh, export_kwh, import_kwh, self_consumption_pct, autarky_pct},
+    with:    {self_kwh, export_kwh, import_kwh, self_consumption_pct, autarky_pct, charged_kwh, discharged_kwh, cycles},
+    monthly: [{month, production_kwh, load_kwh, import_without_kwh, import_with_kwh, export_without_kwh, export_with_kwh}],
+    source, warning
+  }
+}
+```
+και το `project.finance.battery` (v0.31, μόνο όταν τα οικονομικά υπολογίστηκαν με μπαταρία):
+`{capex, investment, replacement_year, replacement_cost, extra_investment, first_year_gain, payback_years, npv_gain, irr_pct,
+  self_consumption_without_pct, self_consumption_with_pct, autarky_without_pct, autarky_with_pct}`.
+Όλα τα πεδία εκτός των `enabled/inputs/result` μπορεί να λείπουν· τα έγγραφα πρέπει να αντέχουν στην απουσία τους.
