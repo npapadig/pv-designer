@@ -68,6 +68,7 @@
 - ΜΑΛΛΟΝ ΕΛΕΥΘΕΡΑ (καμία εγγραφή): getsolly.com, getsolly.app, solly.energy, solly.gr, getsolly.gr, sollyapp.gr, solly.com.gr. Για .gr/.energy το RDAP δεν απαντά· βεβαιότητα μόνο με αναζήτηση σε καταχωρητή.
 
 ## Επόμενο βήμα για εφαρμογή (το κάνει ο συντονιστής, ΜΟΝΟ μετά από απόφαση σήματος)
+0. ΕΓΙΝΕ v0.35.0 (2026-11-02, ζήτημα του Νίκου): «Solly · Your Bright Friend» στην κεφαλίδα αρχικής, στη στήλη, στον τίτλο καρτέλας και στο κινητό (`frontend/index.html`, `home.css`, `app.js`, `m/index.html`, `m/m.js`, `m/m.css`, `tests/test_api.py`). ΔΕΝ έγιναν ακόμα: PDF (author), `backend/main.py`, `lifecycle.py`, README, εικόνες.
 1. Αντικατάσταση κειμένου «PV Designer» → «Solly» στα παραπάνω σημεία (+ `lang/en.js`, `tests/`, README, CHANGELOG, `docs/ARCHITECTURE.md`).
 2. Εικόνες Gemini (καθαρισμένο φόντο, σμικρυμένες) στο `.logo` της αρχικής και της ράγας, favicon, κινητό (κεφάλι), στην αρχική/είσοδο κινητού (μηχανικός), εξώφυλλο PDF (μηχανικός μέρα)· εναλλαγή μέρα/νύχτα με το σκούρο θέμα. Το `#i-sun` του κουμπιού θέματος μένει ως έχει.
 3. Έκδοση minor + τεστ baseline αμετάβλητο.
