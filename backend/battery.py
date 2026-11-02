@@ -17,9 +17,12 @@ Not modelled on purpose: start-up surges of appliances, phase limits, temperatur
 """
 from __future__ import annotations
 
+import json
 import math
+from pathlib import Path
+from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 # Typical appliances (average energy per day and power while running). Indicative values the user can edit.
 # groups: which ready-made sets the appliance belongs to.
@@ -56,6 +59,42 @@ PRESET_BATTERIES = [{"name": f"Γενική μπαταρία {c:g} kWh", "capaci
 
 DEFAULT_COST_PER_KWH = 800.0  # € per kWh installed with VAT: an indicative market value, not a checked price
 
+CATALOG_FILE = Path(__file__).parent / "catalog" / "batteries.json"
+
+
+class CatalogBattery(BaseModel):
+    """A real product in one fixed configuration, from the public datasheet of the manufacturer (see `source`)."""
+    name: str = Field(..., min_length=3)
+    brand: str = Field(..., min_length=2)
+    chemistry: Literal["LFP", "NMC", "other"]
+    capacity_kwh: float = Field(..., gt=0, lt=500, description="the capacity the datasheet calls nominal/total")
+    usable_kwh: float = Field(..., gt=0, lt=500, description="usable energy; equal to capacity when only one figure is given")
+    power_kw: float = Field(..., gt=0, lt=200, description="continuous discharge power of this configuration")
+    peak_power_kw: float | None = Field(None, gt=0, lt=400)
+    roundtrip_pct: float | None = Field(None, gt=50, le=100, description="None when the datasheet gives none")
+    coupling: Literal["ac", "dc"] = Field(..., description="dc = needs the manufacturer's hybrid inverter")
+    cycles: int | None = Field(None, gt=0, lt=100000)
+    warranty_years: int | None = Field(None, gt=0, lt=50)
+    eol_capacity_pct: float | None = Field(None, gt=0, le=100, description="capacity left at the end of the warranty")
+    notes: str = ""
+    source: str = Field(..., min_length=5)
+
+    @model_validator(mode="after")
+    def _usable_fits(self):
+        if self.usable_kwh > self.capacity_kwh + 1e-9:
+            raise ValueError("usable_kwh cannot be larger than capacity_kwh")
+        return self
+
+
+def load_catalog(path: Path = CATALOG_FILE) -> list[CatalogBattery]:
+    if not path.exists():
+        return []
+    with open(path, encoding="utf-8") as f:
+        return [CatalogBattery(**row) for row in json.load(f)]
+
+
+CATALOG_BATTERIES: list[CatalogBattery] = load_catalog()
+
 
 class LoadItem(BaseModel):
     kwh_day: float = Field(0, ge=0, le=1000)
@@ -90,6 +129,7 @@ def presets() -> dict:
         },
         "house": {"kwh_day": HOUSE_DEFAULT_KWH_DAY, "peak_w": HOUSE_PEAK_W},
         "batteries": PRESET_BATTERIES,
+        "catalog": [b.model_dump() for b in CATALOG_BATTERIES],
         "defaults": {
             "simultaneity_pct": SIMULTANEITY_PCT, "usable_pct": 90, "roundtrip_pct": 90, "reserve_pct": 100,
             "cost_per_kwh": DEFAULT_COST_PER_KWH, "power_per_kwh": POWER_PER_KWH, "target_days": 1,

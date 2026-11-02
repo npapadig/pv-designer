@@ -32,6 +32,8 @@
     sel.innerHTML = "";
     sel.add(new Option("Δική μου", ""));
     presets.batteries.forEach((b, i) => sel.add(new Option(b.name, String(i))));
+    // Real products of backend/catalog/batteries.json: value "c<index>".
+    presets.catalog.forEach((b, i) => sel.add(new Option(b.name, `c${i}`)));
     return presets;
   }
 
@@ -109,21 +111,22 @@
   };
 
   // ---------- Battery model ----------
+  const modelOf = (v) => (v === "" ? null : v[0] === "c" ? presets.catalog[+v.slice(1)] : presets.batteries[+v]);
   $("batPreset").addEventListener("change", () => {
-    const i = $("batPreset").value;
-    if (i === "") return;
-    const b = presets.batteries[+i];
+    const b = modelOf($("batPreset").value);
+    if (!b) return;
     $("batCap").value = b.capacity_kwh;
     $("batPower").value = b.power_kw ?? ""; // a generic size leaves the power automatic
+    if (b.usable_kwh) {                     // a real product brings its own usable share and efficiency
+      $("batUsable").value = Math.round((b.usable_kwh / b.capacity_kwh) * 1000) / 10;
+      if (b.roundtrip_pct) $("batRound").value = b.roundtrip_pct;
+    }
     schedule();
   });
   const custom = () => { $("batPreset").value = ""; };
   ["batCap", "batPower"].forEach((id) => $(id).addEventListener("input", () => {
-    const i = $("batPreset").value;
-    if (i !== "") {
-      const b = presets.batteries[+i];
-      if (num("batCap") !== b.capacity_kwh || num("batPower") !== b.power_kw) custom();
-    }
+    const b = modelOf($("batPreset").value);
+    if (b && (num("batCap") !== b.capacity_kwh || num("batPower") !== (b.power_kw ?? null))) custom();
   }));
 
   // The yearly consumption is the same number as the one in the finance step.

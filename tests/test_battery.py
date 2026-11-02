@@ -88,3 +88,14 @@ def test_api_presets_and_autonomy():
     assert j["needed_capacity_kwh"] == math.ceil(3.45 * 2 / (math.sqrt(0.9) * 0.9) * 2) / 2
     assert j["battery"]["capacity_kwh"] == 10 and j["battery"]["days_guaranteed"] > 2
     assert client.post("/api/battery/autonomy", json={"battery": {"usable_pct": 0}}).status_code == 422
+
+
+def test_catalog_entries_are_valid_and_reach_the_api():
+    for b in battery.CATALOG_BATTERIES:  # the catalog file may be empty; whatever is in it must be sane
+        assert b.usable_kwh <= b.capacity_kwh and 0.05 <= b.power_kw / b.capacity_kwh <= 2.5
+    assert client.get("/api/battery/presets").json()["catalog"] == [b.model_dump() for b in battery.CATALOG_BATTERIES]
+    import pytest
+    from pydantic import ValidationError
+    with pytest.raises(ValidationError):
+        battery.CatalogBattery(name="x" * 5, brand="Test", chemistry="LFP", capacity_kwh=5, usable_kwh=6,
+                               power_kw=2.5, coupling="ac", source="https://example.com/datasheet.pdf")
