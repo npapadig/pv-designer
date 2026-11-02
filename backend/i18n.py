@@ -81,6 +81,110 @@ EN: dict[str, str] = {
     "Χωρίς κλίμακα": "Not to scale",
     "Ενδεικτικό σχέδιο: οι προστασίες και οι διατομές καλωδίων πρέπει να ελεγχθούν και να υπογραφούν από τον υπεύθυνο μηχανικό/ηλεκτρολόγο.": "Indicative drawing: the protection devices and cable sections must be checked and signed by the responsible engineer/electrician.",
     "Κάνε πρώτα τον ηλεκτρολογικό σχεδιασμό (βήμα «Inverter»).": "Do the electrical design first (the “Inverter” step).",
+    "ΠΛΕΥΡΑ DC (=)": "DC SIDE (=)",
+    "ΠΛΕΥΡΑ AC (~)": "AC SIDE (~)",
+    "αποζεύκτης φορτίου DC": "DC switch-disconnector",
+    "Τύπος": "Type",
+    "Μετασχ. απομόνωσης": "Isolation transformer",
+    "Αντινησιδοποίηση: ΝΑΙ": "Anti-islanding: YES",
+    "ασφάλεια/αυτόματος DC": "DC fuse/breaker",
+    "αποζεύκτης μπαταρίας": "battery disconnector",
+    "εφεδρικά φορτία": "backup loads",
+    "Πίνακας εφεδρείας (EPS/backup)": "Backup board (EPS/backup)",
+    "Inverter μπαταρίας": "Battery inverter",
+    "αποζεύκτης AC ΦΒ": "PV AC isolator",
+    "καταναλώσεις": "loads",
+    "Γενικός": "Main",
+    "Γενικός πίνακας (Γ.Π.)": "Main distribution board (MDB)",
+    "ασφ. παροχής": "service fuse",
+    "Δίκτυο ΧΤ ΔΕΔΔΗΕ": "DEDDIE LV grid",
+    "μόνο ιδιοκατανάλωση": "self-consumption only",
+    "ισοδυναμική σύνδεση πλαισίων/βάσεων ΦΒ, inverter, SPD και πινάκων στον ΚΖΓ":
+        "equipotential bonding of PV module frames/mountings, inverter, SPDs and boards to the MET",
+    "ΚΖΓ – κύριος ζυγός γείωσης": "MET – main earthing terminal",
+    "ηλεκτρόδιο": "electrode",
+    "Σύστημα γείωσης περιοχής (TN-C-S / TT)": "Earthing system of the area (TN-C-S / TT)",
+    "Σύνδεση με αλεξικέραυνο (LPS), αν υπάρχει": "Connection to the lightning protection system (LPS), if any",
+    "Υπόμνημα συμβόλων": "Symbol legend",
+    "ΦΒ string / συστοιχία (G)": "PV string / array (G)",
+    "Ασφάλεια (F)": "Fuse (F)",
+    "Διακόπτης-αποζεύκτης φορτίου (Q)": "Switch-disconnector (Q)",
+    "Αυτόματος διακόπτης (Q)": "Circuit breaker (Q)",
+    "Διακόπτης διαφυγής RCD (F)": "Residual current device RCD (F)",
+    "Απαγωγός υπερτάσεων SPD (F)": "Surge protective device SPD (F)",
+    "Inverter DC/AC (T)": "Inverter DC/AC (T)",
+    "Μετρητής kWh αμφίδρομος (P)": "Bidirectional kWh meter (P)",
+    "Γείωση / ΚΖΓ": "Earth / MET",
+    "Πλήθος αγωγών (π.χ. 3/N/PE)": "Number of conductors (e.g. 3/N/PE)",
+    "Γραμμή DC": "DC line",
+    "Γραμμή AC": "AC line",
+    "Αγωγός γείωσης PE / ισοδυναμικός": "PE / equipotential bonding conductor",
+    "Όριο πίνακα": "Board boundary",
+    "W: καλώδιο · κωδικοί κατά IEC 81346": "W: cable · codes as in IEC 81346",
+    "Μπαταρία (G)": "Battery (G)",
+    "Επικοινωνία (RS485/CAN)": "Communication (RS485/CAN)",
+    "Ρυθμίσεις προστασίας διασύνδεσης": "Interface protection settings",
+    "Ενδεικτικά – σύμφωνα με τον ΔΕΔΔΗΕ/ρυθμίσεις inverter· να επιβεβαιωθούν.":
+        "Indicative – as required by DEDDIE / the inverter settings; to be verified.",
+    "Προστασία": "Protection",
+    "Όριο": "Limit",
+    "Χρόνος": "Time",
+    "U> υπέρταση": "U> overvoltage",
+    "U< υπόταση": "U< undervoltage",
+    "f> υπερσυχνότητα": "f> overfrequency",
+    "f< υποσυχνότητα": "f< underfrequency",
+    "Επανασύνδεση": "Reconnection",
+    "U, f εντός ορίων": "U, f within limits",
+    "Un = 230 V (φασική), fn = 50 Hz": "Un = 230 V (phase to neutral), fn = 50 Hz",
+    "Αντινησιδοποίηση: ΝΑΙ, κατά VDE 0126-1-1 / EN 50549-1": "Anti-islanding: YES, as in VDE 0126-1-1 / EN 50549-1",
+    "Οι ρυθμίσεις δεν αλλάζουν χωρίς τη σύμφωνη γνώμη του ΔΕΔΔΗΕ.":
+        "The settings are not changed without the agreement of DEDDIE.",
+    "Σημειώσεις": "Notes",
+    "Σήμανση «ΠΡΟΣΟΧΗ – διπλή τροφοδοσία (δίκτυο και ΦΒ)» στο σημείο σύνδεσης, στον Γ.Π. και στον μετρητή.":
+        "Label “WARNING – dual supply (grid and PV)” at the connection point, the main board and the meter.",
+    "Σήμανση «Ενεργά μέρη ΦΒ: υπό τάση DC και μετά την απόζευξη» σε κουτιά, αποζεύκτες και καλώδια DC.":
+        "Label “PV live parts: DC voltage remains after disconnection” on DC boxes, disconnectors and cables.",
+    "Απομόνωση έκτακτης ανάγκης: άνοιγμα του αποζεύκτη AC ΦΒ, μετά των αποζευκτών DC":
+        "Emergency isolation: open the PV AC isolator, then the DC disconnectors",
+    "και του αποζεύκτη μπαταρίας": "and the battery disconnector",
+    "Ασφάλειες string: gPV {a} A / {v} V DC.": "String fuses: gPV {a} A / {v} V DC.",
+    "Ασφάλειες string: όχι, εκτός αν απαιτούνται (EN 62548: ρεύμα επιστροφής από ≥ 3 παράλληλα strings).":
+        "String fuses: none, unless required (EN 62548: reverse current from ≥ 3 parallel strings).",
+    "RCD: Τύπου B ή inverter με RCMU (Τύπος A μόνο με δήλωση του κατασκευαστή).":
+        "RCD: Type B, or an inverter with RCMU (Type A only with the manufacturer's declaration).",
+    "Ενδεικτικές τιμές (καμπύλη C, 6 kA, H1Z2Z2-K 1×6 mm², SPD Τύπου 2· Τύπου 1+2 αν υπάρχει αλεξικέραυνο "
+    "χωρίς απόσταση ασφαλείας): η τελική επιλογή και οι διατομές «……» από τον ηλεκτρολόγο.":
+        "Indicative values (curve C, 6 kA, H1Z2Z2-K 1×6 mm², SPD Type 2; Type 1+2 if there is a lightning "
+        "protection system without separation distance): the final choice and the “……” sections by the electrician.",
+    "Γραμμή Γ.Π.–μετρητή: η διατομή της και η επιλογικότητα του γενικού διακόπτη με την ασφάλεια του "
+    "μετρητή ελέγχονται από τον ΔΕΔΔΗΕ.":
+        "Main board–meter line: its section and the selectivity of the main switch with the meter fuse are "
+        "checked by DEDDIE.",
+    "Μπαταρία: σύζευξη DC (υβριδικός inverter)": "Battery: DC-coupled (hybrid inverter)",
+    "Μπαταρία: σύζευξη AC (ξεχωριστός inverter μπαταρίας)": "Battery: AC-coupled (separate battery inverter)",
+    "– προεπιλογή, να επιβεβαιωθεί": "– default, to be confirmed",
+    "Σήμανση «Σύστημα αποθήκευσης – τάση DC …… V» και «πολλαπλές πηγές τροφοδοσίας».":
+        "Labels “Energy storage system – DC voltage …… V” and “multiple sources of supply”.",
+    "EPS/backup: συνέχεια ουδετέρου και λειτουργία RCD σε νησίδα κατά τον κατασκευαστή.":
+        "EPS/backup: neutral continuity and RCD operation in island mode as specified by the manufacturer.",
+    "ΠΡΟΣΟΧΗ: μονοφασική σύνδεση πάνω από 5 kW. Κατά το πληροφοριακό δελτίο του ΔΕΔΔΗΕ η μονοφασική σύνδεση "
+    "επιτρέπεται έως 5 kW· πάνω από αυτό απαιτείται τριφασική. Να επιβεβαιωθεί με τον ΔΕΔΔΗΕ.":
+        "WARNING: single-phase connection above 5 kW. According to the DEDDIE information sheet a single-phase "
+        "connection is allowed up to 5 kW; above that a three-phase one is required. To be confirmed with DEDDIE.",
+    "Μονογραμμικό σχέδιο ΦΒ": "PV single-line diagram",
+    "Αριθμός Παροχής": "Supply number",
+    "Όπως κατασκευάστηκε": "As built",
+    "Αρ. σχεδίου / αναθ.": "Drawing no. / rev.",
+    "Ο ηλεκτρολόγος εγκαταστάτης (σφραγίδα, υπογραφή, αρ. άδειας)":
+        "The licensed electrical installer (stamp, signature, licence no.)",
+    "Ο ιδιοκτήτης / χρήστης (υπογραφή)": "The owner / user (signature)",
+    "Καλώδιο AC": "AC cable",
+    "ενδεικτικά": "indicative",
+    "Ασφάλειες string": "String fuses",
+    "όχι, εκτός αν απαιτούνται": "none, unless required",
+    "Προστασία έναντι νησιδοποίησης": "Anti-islanding protection",
+    "ΝΑΙ, κατά VDE 0126-1-1 / EN 50549-1": "YES, as in VDE 0126-1-1 / EN 50549-1",
+    "αμφίδρομος ΔΕΔΔΗΕ": "bidirectional DEDDIE meter",
     # technical description (tech_description.py)
     "ΤΕΧΝΙΚΗ ΠΕΡΙΓΡΑΦΗ ΗΛΕΚΤΡΟΛΟΓΙΚΗΣ ΕΓΚΑΤΑΣΤΑΣΗΣ ΦΩΤΟΒΟΛΤΑΪΚΟΥ ΣΤΑΘΜΟΥ": "TECHNICAL DESCRIPTION OF THE ELECTRICAL INSTALLATION OF THE PHOTOVOLTAIC STATION",
     "1. Φωτοβολταϊκά πλαίσια": "1. Photovoltaic modules",

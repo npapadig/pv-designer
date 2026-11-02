@@ -78,7 +78,7 @@ def _build(project: dict) -> bytes:
 
     story += [ctx.subheading("2. Αντιστροφέας (inverter)"), ctx.kv_table([
         (tr("Πλήθος αντιστροφέων"), num(k)),
-        (tr("Μοντέλο"), inv.get("name") or "–"),
+        (tr("Μοντέλο"), tr(inv.get("name")) or "–"),
         (tr("Ονομαστική ισχύς AC"), f"{num(inv['pac_w'] / 1000, 2)} kW"),
         (tr("Μέγιστη ισχύς DC"), f"{num(inv['pdc_max_w'] / 1000, 2)} kWp"),
         (tr("Φάσεις"), tr("Μονοφασικός") if phases == 1 else tr("Τριφασικός")),
@@ -104,20 +104,26 @@ def _build(project: dict) -> bytes:
         (tr("Λόγος DC/AC"), num(d.get("dc_ac_ratio"), 2)),
     ])]
 
+    sl = single_line.values(project)
     story += [ctx.subheading("4. Καλώδια, προστασίες και γείωση"), ctx.kv_table([
-        (tr("Καλώδιο DC (ΦΒ)"), f"{tr('ειδικό ΦΒ, διατομή')} {over.get('dc_cable') or BLANK} mm²"),
-        (tr("Καλώδιο AC"), f"{tr('διατομή')} {over.get('ac_cable') or BLANK} mm²"),
-        (tr("Διακόπτης DC"), tr("αποζεύκτης στον inverter")),
-        (tr("Προστασία AC"), f"{tr('Αυτόματος')} {num(brk)} A" + (f" × {k}" if k > 1 else "")),
-        (tr("Ρελέ διαρροής"), f"{over.get('rcd_ma') or 30} mA"),
-        (tr("Αντικεραυνική προστασία"), tr("SPD στην πλευρά AC")),
+        (tr("Καλώδιο DC (ΦΒ)"), sl["dc_cable"] + (f" ({tr('ενδεικτικά')})" if sl["dc_cable_indicative"] else "")),
+        (tr("Καλώδιο AC"), sl["ac_cable"]),
+        (tr("Διακόπτης DC"), f"{tr('αποζεύκτης φορτίου DC')} ≥ {num(sl['vdc'])} V"
+                             + (f" / ≥ {num(sl['idc'])} A" if sl["idc"] else "")),
+        (tr("Ασφάλειες string"), f"gPV {num(sl['string_fuse_a'])} A" if sl["string_fuse_a"]
+         else tr("όχι, εκτός αν απαιτούνται")),
+        (tr("Προστασία AC"), f"{tr('Αυτόματος')} {sl['poles']} {sl['curve']}{num(brk)} {num(sl['icu'])} kA"
+                             + (f" × {k}" if k > 1 else "")),
+        (tr("Ρελέ διαρροής"), f"{num(sl['rcd_ma'])} mA, {tr('Τύπος')} {sl['rcd_type']}"),
+        (tr("Αντικεραυνική προστασία"), f"SPD {tr('Τύπος')} {sl['spd_dc']} DC · SPD {tr('Τύπος')} {sl['spd_ac']} AC"),
         (tr("Γείωση"), over.get("earthing") or BLANK),
     ])]
 
     story += [ctx.subheading("5. Σύνδεση με το Δίκτυο"), ctx.kv_table([
         (tr("Τάση σύνδεσης"), "1~ 230 V, 50 Hz" if phases == 1 else "3~ 400/230 V, 50 Hz"),
         (tr("Μέγιστη ισχύς παραγωγής (AC)"), f"{num(d.get('ac_kw'), 2)} kW"),
-        (tr("Μετρητής"), tr("αμφίδρομος ΔΕΔΔΗΕ (συμψηφισμός)")),
+        (tr("Μετρητής"), f"{tr('αμφίδρομος ΔΕΔΔΗΕ')} ({tr(single_line.SCHEMES[sl['scheme']])})"),
+        (tr("Προστασία έναντι νησιδοποίησης"), tr("ΝΑΙ, κατά VDE 0126-1-1 / EN 50549-1")),
     ])]
 
     bat_rows = battery_report.description_rows(project)
