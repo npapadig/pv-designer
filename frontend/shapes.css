@@ -63,3 +63,11 @@
 .shape-dir { white-space: nowrap; }
 .shape-face.common input { opacity: 0.7; }
 .shape-row.void label.shape-num { display: none; } /* a void has no height */
+
+/* Parapet per side (parapet.js): a switch for the whole area and one button per side. */
+.shape-row .shape-parapet { grid-column: 1 / -1; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 0 4px 2px 0; font-size: 0.76rem; }
+.shape-parapet[hidden] { display: none; }
+.shape-parapet .pp-all { display: flex; align-items: center; gap: 5px; margin: 0; }
+.shape-parapet .pp-sides { display: flex; gap: 4px; flex-wrap: wrap; }
+.shape-parapet .pp-side { width: 24px; height: 24px; padding: 0; border-radius: 50%; font-size: 0.7rem; background: transparent; border: 1px dashed var(--muted); color: var(--muted); }
+.shape-parapet .pp-side.on { background: #6b7280; border: 1px solid #374151; color: #fff; }

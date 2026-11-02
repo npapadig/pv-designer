@@ -259,6 +259,14 @@
         <h3>Χώροι πάνελ</h3>
         <div class="shape-rows"></div>
       </div>
+      <details id="parapetBox">
+        <summary>Στηθαίο</summary>
+        <label class="radio switch"><input type="checkbox" id="parapetOn" checked> Στηθαίο γύρω από τους χώρους (σκιάζει τα πάνελ). Κάθε πλευρά ανοιγοκλείνει ξεχωριστά στη λίστα παραπάνω ή με κλικ στο γκρι στον χάρτη.</label>
+        <div class="grid2">
+          <label>Ύψος (m) <input id="parapetHeight" type="number" value="1" step="0.1" min="0"></label>
+          <label>Πάχος (m) <input id="parapetThickness" type="number" value="0.25" step="0.05" min="0.05"></label>
+        </div>
+      </details>
       <div id="keepoutList" class="shape-list" data-help="list-keepouts" hidden>
         <h3>Εμπόδια</h3>
         <p class="muted small">Ύψος πάνω από την επιφάνεια των πάνελ (καμινάδα, τοιχίο, δέντρο, γειτονικό κτίριο). Με 0 το
@@ -308,14 +316,6 @@
           <input id="shadowHour" type="range" min="6" max="20" step="0.5" value="10"></label>
       </div>
       <p id="sunInfo" class="muted small"></p>
-      <details id="parapetBox">
-        <summary>Στηθαίο</summary>
-        <label class="radio switch"><input type="checkbox" id="parapetOn" checked> Στηθαίο γύρω από κάθε περιοχή (μόνο το περίγραμμα, σκιάζει τα πάνελ)</label>
-        <div class="grid2">
-          <label>Ύψος (m) <input id="parapetHeight" type="number" value="1" step="0.1" min="0"></label>
-          <label>Πάχος (m) <input id="parapetThickness" type="number" value="0.25" step="0.05" min="0.05"></label>
-        </div>
-      </details>
       <button id="btnShading" class="primary"><svg class="ic"><use href="#i-cloud-sun"/></svg>Ανάλυση σκιάσεων</button>
       <p id="shadingInfo" class="muted small"></p>
     </section>
@@ -692,6 +692,7 @@
   <script src="app.js?v=__VERSION__"></script>
   <script src="draw.js?v=__VERSION__"></script>
   <script src="shapes.js?v=__VERSION__"></script>
+  <script src="parapet.js?v=__VERSION__"></script>
   <script src="ruler.js?v=__VERSION__"></script>
   <script src="faces.js?v=__VERSION__"></script>
   <script src="options.js?v=__VERSION__"></script>

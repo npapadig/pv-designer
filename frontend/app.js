@@ -358,6 +358,7 @@ function parapetObstacles() {
   const out = [];
   const rings = [...areas.getLayers().map((l) => [l, 1]), ...keepouts.getLayers().filter((l) => l.pvVoid).map((l) => [l, -1])];
   rings.forEach(([layer, inward]) => { // the wall of a void stands on the roof side: outside its outline
+    const on = inward === 1 ? window.pvParapet?.flags(layer) : null; // sides without a wall (pvParapet.js)
     const ll = latlngsOf(layer);
     if (ll.length < 3) return;
     const lat0 = ll.reduce((a, p) => a + p[0], 0) / ll.length, lng0 = ll.reduce((a, p) => a + p[1], 0) / ll.length;
@@ -369,9 +370,9 @@ function parapetObstacles() {
     xy.forEach((a, i) => {
       const b = xy[(i + 1) % xy.length];
       const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
-      if (len < 0.01) return;
+      if (len < 0.01 || (on && on[i] === false)) return;
       const nx = (-(b[1] - a[1]) / len) * side * t, ny = ((b[0] - a[0]) / len) * side * t;
-      out.push({ polygon: [a, b, [b[0] + nx, b[1] + ny], [a[0] + nx, a[1] + ny]].map(back), height_m: h });
+      out.push({ polygon: [a, b, [b[0] + nx, b[1] + ny], [a[0] + nx, a[1] + ny]].map(back), height_m: h, side: inward === 1 ? i : null, layerId: L.stamp(layer) });
     });
   });
   return out;
@@ -537,8 +538,10 @@ function drawParapet() {
   $("parapetBox").hidden = !parapetApplies();
   parapetLayer.clearLayers();
   parapetObstacles().forEach((o) =>
-    L.polygon(o.polygon, { color: "#374151", weight: 1, fillColor: "#6b7280", fillOpacity: 0.9, interactive: false }).addTo(parapetLayer)
+    L.polygon(o.polygon, { color: "#374151", weight: 1, fillColor: "#6b7280", fillOpacity: 0.9, interactive: o.side != null })
+      .on("click", (e) => { L.DomEvent.stopPropagation(e); window.pvParapet?.wallClicked(o.layerId, o.side); }).addTo(parapetLayer)
   );
+  window.pvParapet?.drawOff(parapetLayer);
 }
 function refreshShadows() {
   drawParapet();
@@ -877,6 +880,7 @@ function collectProject() {
     report_info: { client: $("clientName").value, address: $("projectAddress").value, author: $("reportAuthor").value, engineer: $("engineerName").value },
     areas: areas.getLayers().map(latlngsOf),
     area_names: areas.getLayers().map((l) => l.pvName || ""),
+    area_parapet: areas.getLayers().map((l) => l.pvParapet || null), // per side: a wall or not (null = all sides)
     area_faces: window.faces?.collect() || null,
     keepouts: keepouts.getLayers().map(latlngsOf),
     keepout_heights: keepouts.getLayers().map((l) => l.pvHeight || 0),
@@ -958,6 +962,7 @@ function loadProject(p) {
   (p.areas || []).forEach((a, i) => {
     const layer = L.polygon(a);
     layer.pvName = (p.area_names || [])[i] || undefined; // older projects: «Χώρος N»
+    layer.pvParapet = (p.area_parapet || [])[i] || undefined;
     addShape(layer, "area");
   });
   window.faces?.load(p.area_faces);

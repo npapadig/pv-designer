@@ -126,6 +126,7 @@
 
   function openBox(layer, latlng) {
     if (editing || cutter) return;
+    if (state.projectType === "park" || state.roofType === "flat") return; // a flat roof or a park has no faces with their own tilt
     const s = settings();
     const f = layer.pvFace || { tilt_deg: s.tilt_deg, azimuth_deg: s.azimuth_deg };
     const roof0 = f.roof_tilt_deg ?? f.tilt_deg;

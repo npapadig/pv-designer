@@ -105,7 +105,7 @@
   function snapshot() {
     const one = (l) => ({
       kind: kindOf(l), pts: ring(l).map((p) => [p.lat, p.lng]), height: l.pvHeight ?? null, name: l.pvName ?? null,
-      face: l.pvFace || null, suggest: l.pvSuggest ?? null, tree: !!l.pvTree, void: !!l.pvVoid,
+      face: l.pvFace || null, suggest: l.pvSuggest ?? null, tree: !!l.pvTree, void: !!l.pvVoid, parapet: l.pvParapet || null,
     });
     return JSON.stringify([...areas.getLayers(), ...keepouts.getLayers()].map(one));
   }
@@ -141,6 +141,7 @@
       list.forEach((s, i) => {
         const l = layers[i];
         l.pvName = s.name ?? undefined;
+        l.pvParapet = s.parapet || undefined;
         l.setLatLngs([s.pts.map((p) => L.latLng(p[0], p[1]))]);
         if (s.kind === "keepout") setObstacleHeight(l, s.height);
       });
@@ -152,6 +153,7 @@
         if (s.name != null) l.pvName = s.name;
         if (s.tree) l.pvTree = true;
         if (s.void) l.pvVoid = true;
+        if (s.parapet) l.pvParapet = s.parapet;
         addShape(l, s.kind, s.height);
       }
     }
@@ -389,7 +391,7 @@
       ${kind === "area" ? `<div class="shape-face">
         <label>Κλίση <input name="tilt" type="number" min="0" max="90" step="1" aria-label="Κλίση σε μοίρες"><span>°</span></label>
         <label>Κατεύθυνση <input name="az" type="number" min="0" max="360" step="1" aria-label="Κατεύθυνση (αζιμούθιο) σε μοίρες"><span>°</span></label>
-        <small class="muted shape-dir"></small></div>` : ""}`;
+        <small class="muted shape-dir"></small></div><div class="shape-parapet" hidden></div>` : ""}`;
     return row;
   }
 
@@ -412,6 +414,7 @@
       setValue(row.querySelector("[name=name]"), l.pvName || "");
       if (kind === "area") {
         row.querySelector(".shape-m2").textContent = `${fmt(m2(l), 1)} m²`;
+        window.pvParapet?.renderRow(row, l);
         const fc = window.pvFaces?.get(l); // own tilt / azimuth, or the common ones of the «Πάνελ» step
         row.querySelector(".shape-face").hidden = !fc;
         if (fc) {
