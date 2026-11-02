@@ -31,6 +31,16 @@ def test_shaded_panels_are_dropped_and_limit_matters():
     assert strict["count"] + strict["removed_shaded"] == full["count"]
     assert len(strict["panels"]) == strict["count"]
     assert strict["kwp"] == round(strict["count"] * 0.41, 3)
+    assert "removed_panels" not in loose
+
+
+def test_dropped_positions_are_listed_with_their_loss():
+    full = client.post("/api/layout", json=_body()).json()
+    strict = client.post("/api/layout", json=_body(avoid_shaded=True, max_shade_pct=1)).json()
+    removed = strict["removed_panels"]
+    assert len(removed) == strict["removed_shaded"]
+    assert all(r["polygon"] in full["panels"] and r["polygon"] not in strict["panels"] for r in removed)
+    assert all(r["loss_pct"] > 1 for r in removed)
 
 
 def test_without_obstacle_height_nothing_is_dropped():

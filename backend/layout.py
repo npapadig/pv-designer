@@ -424,7 +424,8 @@ def remove_shaded(res: dict, obstacles: list, tilt_deg: float, azimuth_deg: floa
 
     obstacles: [{"polygon": [[lat, lng], ...], "height_m": float}, ...]. Without obstacles of any height
     nothing casts a shadow on a flush roof, so only rack rows could shade one another (and the automatic row
-    gap already avoids that); the layout is returned as it is. res["removed_shaded"] counts the dropped panels.
+    gap already avoids that); the layout is returned as it is. res["removed_shaded"] counts the dropped panels,
+    res["removed_panels"] lists them ({"polygon", "loss_pct"}).
     """
     res["removed_shaded"] = 0
     if not res["panels"] or not any(o.get("height_m", 0) > 0 for o in obstacles):
@@ -435,6 +436,9 @@ def remove_shaded(res: dict, obstacles: list, tilt_deg: float, azimuth_deg: floa
     res["removed_shaded"] = keep.count(False)
     if res["removed_shaded"] == 0:
         return res
+    # The map shows the dropped positions too, so the user sees why a gap was left.
+    res["removed_panels"] = [{"polygon": p, "loss_pct": round(pct, 1)}
+                             for p, pct, k in zip(res["panels"], analysis["panel_loss_pct"], keep) if not k]
     res["panels"] = [p for p, k in zip(res["panels"], keep) if k]
     if res.get("panel_face"):
         res["panel_face"] = [f for f, k in zip(res["panel_face"], keep) if k]
