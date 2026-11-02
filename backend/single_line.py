@@ -17,7 +17,7 @@ from reportlab.lib.pagesizes import A4, landscape
 from reportlab.lib.units import mm
 from reportlab.pdfgen import canvas as rl_canvas
 
-from . import i18n, report
+from . import battery_report, i18n, report
 
 INK = colors.HexColor("#111827")
 MUTED = colors.HexColor("#4b5563")
@@ -188,10 +188,22 @@ def _build(project: dict) -> bytes:
         if idx < len(chain) - 1:
             _line(c, x + bw, mid_y, x + bw + gap, mid_y)
         x += bw + gap
+    # battery: a box under the AC panel, only when the project has one
+    bat = battery_report.label(project)
+    earth_y = mid_y - 22 * mm
+    if bat:
+        f = battery_report.facts(project)
+        bx, bw, bh = bus_x + 6 * mm, 70 * mm * scale_w, 16 * mm
+        by = mid_y - 50 * mm
+        _line(c, bx + 10 * mm, mid_y - 12 * mm, bx + 10 * mm, by + bh)
+        _box(c, bx, by, bw, bh,
+             [bat, f"{battery_report._kw(f['power_kw'])} · {tr('μετατροπέας μπαταρίας / υβριδικός')}",
+              f"{tr('Αυτόματος DC μπαταρίας (ενδεικτικά)')}"], fill=PV_FILL, size=6)
+        earth_y = by - 6 * mm
     # earthing
     c.setFont("DejaVu", 6.5)
     c.setFillColor(MUTED)
-    c.drawString(bus_x + 6 * mm, mid_y - 22 * mm,
+    c.drawString(bus_x + 6 * mm, earth_y,
                  f"{tr('Γείωση / ισοδυναμικός ζυγός')}: {over.get('earthing') or BLANK}  ·  "
                  f"{tr('καλώδιο AC')} {over.get('ac_cable') or BLANK} mm²")
     c.setFillColor(INK)
