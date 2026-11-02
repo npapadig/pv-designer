@@ -22,6 +22,14 @@
 .home-head .logo { margin: 0; width: 54px; height: 54px; border-radius: 17px; }
 .home-head .logo .ic { width: 28px; height: 28px; }
 .home-title { flex: 1; min-width: 0; }
+/* Solly: the head is the icon, the engineer the big mascot; the night picture (glasses on the forehead) goes with the dark theme. */
+.logo.solly { background: none; box-shadow: none; overflow: visible; }
+.logo.solly img { width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 6px 12px rgba(255, 106, 61, 0.35)); }
+:root[data-theme="light"] .sn, :root:not([data-theme="light"]) .sd { display: none; }
+.home-wrap { position: relative; }
+.home-mascot { position: absolute; right: 24px; top: 20px; width: 190px; pointer-events: none; }
+.home-mascot img { width: 100%; height: auto; filter: drop-shadow(0 14px 24px rgba(0, 0, 0, 0.3)); }
+@media (max-width: 760px) { .home-mascot { display: none; } }
 .home-title h1 { margin: 0; font-size: 1.7rem; font-weight: 780; letter-spacing: -0.035em; line-height: 1.15; }
 .home-title p { margin: 2px 0 0; font-size: 0.9rem; }
 .home-title .tagline { font-size: 0.55em; font-weight: 650; letter-spacing: 0; color: var(--accent-text); white-space: nowrap; margin-left: 4px; }

@@ -76,7 +76,7 @@
     try { status = await api("/status"); }
     catch (e) { setView(errorBox(e.message, loginScreen)); return; }
 
-    const logo = h("img", { class: "logo", src: "icon.svg", alt: "" });
+    const logo = h("img", { class: "logo", src: "solly.png", alt: "" });
     if (!status.enabled) {
       setView(h("div", { class: "center" }, logo, h("h2", {}, "Το Κινητό είναι απενεργοποιημένο"),
         h("p", { class: "muted" }, "Άνοιξε την εφαρμογή στον υπολογιστή και ενεργοποίησε το «Κινητό» από την αρχική οθόνη."),

@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Solly</title>
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Ctext y=%22.9em%22 font-size=%2290%22%3E☀️%3C/text%3E%3C/svg%3E">
+  <link rel="icon" href="img/solly-head-day.png" type="image/png">
   <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
   <link rel="stylesheet" href="vendor/leaflet-draw/leaflet.draw.css">
   <link rel="stylesheet" href="style.css?v=__VERSION__">
@@ -59,8 +59,9 @@
     <button id="homeBack" class="ghost home-back" hidden type="button"><svg class="ic"><use href="#i-left"/></svg>Πίσω</button>
     <button id="homeRoofBack" class="ghost home-back" hidden type="button"><svg class="ic"><use href="#i-left"/></svg>Πίσω</button>
     <div class="home-wrap">
+      <div class="home-mascot" aria-hidden="true"><img class="sd" src="img/solly-day.png" alt=""><img class="sn" src="img/solly-night.png" alt=""></div>
       <header class="home-head">
-        <div class="logo"><svg class="ic"><use href="#i-sun"/></svg></div>
+        <div class="logo solly"><img class="sd" src="img/solly-head-day.png" alt=""><img class="sn" src="img/solly-head-night.png" alt=""></div>
         <div class="home-title"><h1>Solly <span class="tagline">Your Bright Friend</span> <small id="homeVersion" class="version"></small></h1>
           <p class="muted">Σχεδιασμός φωτοβολταϊκών συστημάτων</p></div>
         <button id="homeMobile" class="icon-btn ghost" type="button" title="Κινητό" aria-label="Κινητό"><svg class="ic" viewBox="0 0 24 24"><rect width="14" height="20" x="5" y="2" rx="2" ry="2"/><path d="M12 18h.01"/></svg></button>
@@ -117,7 +118,7 @@
   </div>
   <main id="map"></main>
   <nav id="rail" aria-label="Βήματα">
-    <button id="btnHome" class="logo" type="button" title="Αρχική οθόνη" aria-label="Αρχική οθόνη"><svg class="ic"><use href="#i-sun"/></svg><svg class="ic"><use href="#i-house"/></svg></button>
+    <button id="btnHome" class="logo solly" type="button" title="Αρχική οθόνη" aria-label="Αρχική οθόνη"><img class="sd" src="img/solly-head-day.png" alt=""><img class="sn" src="img/solly-head-night.png" alt=""></button>
     <a href="#secProject" data-step="secProject"><b><svg class="ic"><use href="#i-folder"/></svg><i>1</i></b><span>Έργο</span></a>
     <a href="#secExisting" data-step="secExisting" hidden><b><svg class="ic"><use href="#i-plug"/></svg><i>2</i></b><span>Σύστημα</span></a>
     <a href="#secSite" data-step="secSite"><b><svg class="ic"><use href="#i-pin"/></svg><i>2</i></b><span>Χώρος</span></a>
