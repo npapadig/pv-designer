@@ -9,7 +9,7 @@ NAME = "Solly"
 TAGLINE = "Your Bright Friend"
 FULL = f"{NAME} · {TAGLINE}"
 IMG = Path(__file__).resolve().parent.parent / "frontend" / "img"
-HEAD = IMG / "solly-head-day.png"
+HEAD = IMG / "solly-day.png"   # the whole character, small (no cropped head)
 MASCOT = IMG / "solly-day.png"
 
 
