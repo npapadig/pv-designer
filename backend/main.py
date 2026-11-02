@@ -12,7 +12,7 @@ from fastapi.responses import Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from . import electrical, energy, finance, plan_drawing, report, single_line, tech_description, appendix_i, settings, shading, simulation, storage
+from . import battery, electrical, energy, finance, plan_drawing, report, single_line, tech_description, appendix_i, settings, shading, simulation, storage
 from . import lifecycle, manual, mobile
 from .equipment import CATALOG_PANELS, PRESET_INVERTERS, Inverter
 from .layout import LayoutParams, compute_faces_layout, compute_layout, remove_shaded, split_area
@@ -308,6 +308,16 @@ def finance_analysis(req: FinanceRequest):
         return finance.analyse(finance.FinanceParams(**req.model_dump()))
     except ValueError as e:
         raise HTTPException(400, str(e))
+
+
+@app.get("/api/battery/presets")
+def battery_presets():
+    return battery.presets()
+
+
+@app.post("/api/battery/autonomy")
+def battery_autonomy(req: battery.AutonomyRequest):
+    return battery.autonomy(req)
 
 
 @app.get("/api/inverters")

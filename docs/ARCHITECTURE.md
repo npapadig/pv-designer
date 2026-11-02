@@ -4,7 +4,7 @@ PV Designer: a HelioScope-like PV design and yield tool. Runs locally on the own
 (`start_windows.bat` → http://127.0.0.1:8000). Owner: Νίκος, Greek-speaking, not technical.
 Repo: github.com/npapadig/pv-designer, single `main` branch, several Claude threads push to it.
 
-## Features (user flow = the 7 steps on the left rail)
+## Features (user flow = the 8 steps on the left rail)
 1. **Έργο**: save/load/delete projects (JSON in `data/projects/`), PDF report download.
 2. **Χώρος**: address search (suggestions while typing from Photon in `search.js`; the button uses Nominatim),
    draw panel areas and keep-outs/obstacles (with heights) on the map.
@@ -17,7 +17,8 @@ Repo: github.com/npapadig/pv-designer, single `main` branch, several Claude thre
 5. **Inverter**: inverter library + custom, string sizing by temperature-corrected voltages, DC/AC ratio.
 6. **Παραγωγή**: PVGIS PVcalc (fallback: offline pvlib clear-sky) and a detailed hourly pvlib simulation from
    PVGIS TMY (cached in `data/weather/`) with a loss breakdown.
-7. **Οικονομικά**: self-consumption / net billing / net metering, payback, ROI, NPV, IRR, LCOE, 25-year cash flow.
+7. **Μπαταρία** (v0.30): loads to keep during a grid outage, battery size, days of autonomy without sun (`backend/battery.py`, `POST /api/battery/autonomy`, `frontend/battery.js`; saved as `project.battery`). Design and the next pieces: `docs/streams/batteries.md`.
+8. **Οικονομικά**: self-consumption / net billing / net metering, payback, ROI, NPV, IRR, LCOE, 25-year cash flow.
 
 ## Architecture
 - Backend: FastAPI (`backend/main.py` holds all routes and request models). One module per domain:

@@ -885,6 +885,7 @@ function collectProject() {
     finance_settings: financeSettings(),
     finance: state.finance,
     electrical: window.elec?.collect(),
+    battery: window.battery?.collect() || null,
     plan: window.plan?.collect() || null,
     view: { center: map.getCenter(), zoom: map.getZoom() },
   };
@@ -903,6 +904,7 @@ function resetProject() {
   state.roofType = "pitched";
   window.faces?.syncRoof();
   clearLayout();
+  window.battery?.reset();
   updateShapesInfo();
   window.shapes?.resetHistory(); // undo does not go back to the previous project
   markSaved();
@@ -983,6 +985,7 @@ function loadProject(p) {
   state.finance = p.finance || null;
   colorPanels();
   window.elec?.load(p.electrical);
+  window.battery?.load(p.battery);
   window.plan?.load(p.plan);
   renderResults();
   if (p.view) map.setView(p.view.center, p.view.zoom);

@@ -14,6 +14,7 @@
   <link rel="stylesheet" href="draw.css?v=__VERSION__">
   <link rel="stylesheet" href="shapes.css?v=__VERSION__">
   <link rel="stylesheet" href="options.css?v=__VERSION__">
+  <link rel="stylesheet" href="battery.css?v=__VERSION__">
   <link rel="stylesheet" href="manual.css?v=__VERSION__">
   <link rel="stylesheet" href="help.css?v=__VERSION__">
   <link rel="stylesheet" href="i18n.css?v=__VERSION__">
@@ -37,6 +38,7 @@
     <symbol id="i-plug" viewBox="0 0 24 24"><path d="M6.3 20.3a2.4 2.4 0 0 0 3.4 0L12 18l-6-6-2.3 2.3a2.4 2.4 0 0 0 0 3.4Z"/><path d="m2 22 3-3"/><path d="M7.5 13.5 10 11"/><path d="M10.5 16.5 13 14"/><path d="m18 3-4 4h6l-4 4"/></symbol>
     <symbol id="i-zap" viewBox="0 0 24 24"><path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"/></symbol>
     <symbol id="i-file-text" viewBox="0 0 24 24"><path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z"/><path d="M14 2v5a1 1 0 0 0 1 1h5"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></symbol>
+    <symbol id="i-battery" viewBox="0 0 24 24"><rect width="16" height="10" x="2" y="7" rx="2" ry="2"/><line x1="22" x2="22" y1="11" y2="13"/><line x1="6" x2="6" y1="11" y2="13"/><line x1="10" x2="10" y1="11" y2="13"/></symbol>
     <symbol id="i-euro" viewBox="0 0 24 24"><path d="M4 10h12"/><path d="M4 14h9"/><path d="M19 6a7.7 7.7 0 0 0-5.2-2A7.9 7.9 0 0 0 6 12c0 4.4 3.5 8 7.8 8 2 0 3.8-.8 5.2-2"/></symbol>
     <symbol id="i-chart" viewBox="0 0 24 24"><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></symbol>
     <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></symbol>
@@ -120,7 +122,8 @@
     <a href="#secPanels" data-step="secPanels"><b><svg class="ic"><use href="#i-grid"/></svg><i>4</i></b><span>Πάνελ</span></a>
     <a href="#electrical" data-step="electrical"><b><svg class="ic"><use href="#i-plug"/></svg><i>5</i></b><span>Inverter</span></a>
     <a href="#secEnergy" data-step="secEnergy"><b><svg class="ic"><use href="#i-zap"/></svg><i>6</i></b><span>Παραγωγή</span></a>
-    <a href="#finance" data-step="finance"><b><svg class="ic"><use href="#i-euro"/></svg><i>7</i></b><span>Οικονομικά</span></a>
+    <a href="#battery" data-step="battery"><b><svg class="ic"><use href="#i-battery"/></svg><i>7</i></b><span>Μπαταρία</span></a>
+    <a href="#finance" data-step="finance"><b><svg class="ic"><use href="#i-euro"/></svg><i>8</i></b><span>Οικονομικά</span></a>
     <button id="btnTheme" class="icon-btn" type="button" title="Σκούρο / φωτεινό θέμα" aria-label="Σκούρο / φωτεινό θέμα"><svg class="ic"><use href="#i-moon"/></svg><svg class="ic"><use href="#i-sun"/></svg></button>
   </nav>
   <aside id="sidebar">
@@ -454,6 +457,61 @@
       <button id="btnEnergy" class="primary"><svg class="ic"><use href="#i-zap"/></svg>Υπολογισμός παραγωγής</button>
     </section>
 
+    <section id="battery" class="step">
+      <h2>Μπαταρία</h2>
+      <p class="muted small">Αποθηκεύει ρεύμα για να το έχεις όταν πέσει το δίκτυο. Διάλεξε τι θέλεις να κρατήσει και για
+        πόσες ημέρες· η εφαρμογή βρίσκει το μέγεθος της μπαταρίας.</p>
+      <label class="radio switch"><input type="checkbox" id="batOn"> Θέλω μπαταρία σε αυτό το έργο</label>
+      <div id="batBody" hidden>
+        <h3 class="bat-h">1. Τι να κρατήσει όταν πέσει το δίκτυο</h3>
+        <div class="row segmented" id="batSets">
+          <label class="radio"><input type="radio" name="batSet" value="basic" checked> Βασικά</label>
+          <label class="radio"><input type="radio" name="batSet" value="comfort"> Άνετη</label>
+          <label class="radio"><input type="radio" name="batSet" value="house"> Όλο το σπίτι</label>
+          <label class="radio"><input type="radio" name="batSet" value="custom"> Δικά μου</label>
+        </div>
+        <p class="muted small" id="batSetInfo"></p>
+        <details id="batLoadsBox">
+          <summary>Συσκευές και ισχύς</summary>
+          <div id="batLoads" class="bat-loads"></div>
+          <button id="batAddLoad" type="button" class="secondary small">Πρόσθεσε φορτίο</button>
+          <p class="muted small">Οι τιμές είναι ενδεικτικές· άλλαξέ τες αν ξέρεις τις πραγματικές.</p>
+        </details>
+        <div class="grid2">
+          <label>Ημέρες αυτονομίας (στόχος) <input id="batDays" type="number" value="1" min="0.5" step="0.5"></label>
+          <label>Ετήσια κατανάλωση (kWh) <input id="batConsumption" type="number" min="0" step="100" placeholder="π.χ. 5000"></label>
+        </div>
+
+        <h3 class="bat-h">2. Η μπαταρία</h3>
+        <label>Μοντέλο
+          <select id="batPreset"></select>
+        </label>
+        <div class="grid2">
+          <label>Χωρητικότητα (kWh) <input id="batCap" type="number" min="0" step="0.5"></label>
+          <label>Ισχύς (kW) <input id="batPower" type="number" min="0" step="0.5" placeholder="αυτόματο"></label>
+        </div>
+        <details>
+          <summary>Περισσότερες ρυθμίσεις</summary>
+          <div class="grid2">
+            <label>Χρήσιμο μέρος (%) <input id="batUsable" type="number" value="90" min="10" max="100" step="1"></label>
+            <label>Απόδοση φόρτισης-εκφόρτισης (%) <input id="batRound" type="number" value="90" min="60" max="100" step="1"></label>
+            <label>Εφεδρεία που κρατιέται πάντα (%) <input id="batReserve" type="number" value="100" min="0" max="100" step="5"></label>
+            <label>Ταυτοχρονισμός φορτίων (%) <input id="batSimul" type="number" value="70" min="10" max="100" step="5"></label>
+            <label>Κόστος (€ ανά kWh, με ΦΠΑ) <input id="batCost" type="number" value="800" min="0" step="50"></label>
+            <label>Σταθερό κόστος (€) <input id="batFixed" type="number" value="0" min="0" step="100"></label>
+            <label>Επιδότηση (€) <input id="batSubsidy" type="number" value="0" min="0" step="100"></label>
+          </div>
+          <p class="muted small">Το κόστος είναι ενδεικτικό· βάλε την τιμή της προσφοράς που έχεις.</p>
+        </details>
+
+        <div id="batResult" class="bat-result"></div>
+        <h3 class="bat-h">3. Προτάσεις</h3>
+        <div id="batCards" class="opt-cards"></div>
+        <p class="muted small">Κάθε πρόταση αλλάζει μόνο τη χωρητικότητα· όλες οι ρυθμίσεις που έδωσες πάνω ισχύουν σε όλες.
+          Οι υπολογισμοί είναι χωρίς ήλιο (η πιο αυστηρή περίπτωση) και δεν υπολογίζουν ρεύμα εκκίνησης συσκευών.</p>
+      </div>
+    </section>
+
     <section id="finance" class="step">
       <h2>Οικονομική ανάλυση</h2>
       <div class="finance-inputs">
@@ -561,6 +619,7 @@
   <script src="options.js?v=__VERSION__"></script>
   <script src="manual.js?v=__VERSION__"></script>
   <script src="electrical.js?v=__VERSION__"></script>
+  <script src="battery.js?v=__VERSION__"></script>
   <script src="ui.js?v=__VERSION__"></script>
   <script src="search.js?v=__VERSION__"></script>
   <script src="plan.js?v=__VERSION__"></script>

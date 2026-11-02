@@ -116,6 +116,7 @@
     secShading: () => !!state.shading,
     electrical: () => !!state.electrical,
     secEnergy: () => !!state.energy,
+    battery: () => !!state.battery,
     finance: () => !!state.finance,
   };
   const wasDone = {};

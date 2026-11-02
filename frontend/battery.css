@@ -1,0 +1,21 @@
+/* Step «Μπαταρία» (battery.js). The proposal cards reuse the look of options.css. */
+.bat-h { margin: 16px 0 8px; }
+.bat-loads { display: grid; gap: 4px; margin: 6px 0 8px; }
+.bat-load { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto auto; align-items: center; gap: 6px; font-size: 0.8rem; }
+.bat-load.off .bat-name { color: var(--muted); }
+.bat-load .bat-num { display: flex; align-items: center; gap: 3px; margin: 0; color: var(--muted); font-size: 0.72rem; }
+.bat-load .bat-num input { width: 58px; padding: 5px 6px; }
+.bat-name input { width: 100%; padding: 5px 6px; }
+.bat-del { width: 24px; height: 24px; }
+#batAddLoad { margin: 2px 0 6px; }
+.bat-result { margin-top: 12px; }
+.bat-row { display: flex; justify-content: space-between; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--line); font-size: 0.85rem; }
+.bat-row b { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.bat-big { display: flex; align-items: baseline; gap: 8px; margin: 12px 0 4px; flex-wrap: wrap; }
+.bat-big em { font-style: normal; font-size: 2rem; font-weight: 750; letter-spacing: -0.03em; line-height: 1.1; color: var(--accent-text); font-variant-numeric: tabular-nums; }
+.bat-big span { color: var(--muted); font-size: 0.85rem; }
+.bat-ok { margin: 4px 0; font-size: 0.85rem; font-weight: 650; }
+.bat-ok.ok { color: var(--teal); }
+.bat-ok.warn { color: var(--danger); }
+.bat-need { margin: 10px 0 6px; font-size: 0.85rem; }
+.bat-need em { font-style: normal; font-weight: 700; }
