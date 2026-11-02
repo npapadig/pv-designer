@@ -1,7 +1,7 @@
 {
-  "name": "PV Designer",
-  "short_name": "PV",
-  "description": "PV Designer: έργα, χάρτης και έγγραφα (μόνο ανάγνωση)",
+  "name": "Solly · Your Bright Friend",
+  "short_name": "Solly",
+  "description": "Solly · Your Bright Friend: έργα, χάρτης και έγγραφα (μόνο ανάγνωση)",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

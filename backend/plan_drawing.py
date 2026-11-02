@@ -16,7 +16,7 @@ from reportlab.lib.units import mm
 from pyproj import Transformer
 from reportlab.pdfgen import canvas as rl_canvas
 
-from . import i18n, report
+from . import brand, i18n, report
 
 PAPERS = {"a4": landscape(A4), "a3": landscape(A3)}
 SCALES = [20, 25, 50, 75, 100, 125, 150, 200, 250, 300, 400, 500, 750, 1000, 1500, 2000, 5000]
@@ -117,6 +117,7 @@ def _title_block(c, x: float, y0: float, w: float, h: float, rows: list[tuple[st
     c.drawString(x + 4 * mm, top - 9 * mm, report.tr("ΚΑΤΟΨΗ ΦΩΤΟΒΟΛΤΑΪΚΟΥ ΣΥΣΤΗΜΑΤΟΣ"))
     c.setFont("DejaVu", 8)
     c.drawString(x + 4 * mm, top - 14 * mm, report.tr("Διάταξη πάνελ"))
+    brand.mark(c, x + w - 3 * mm, top - 16.5 * mm, h=5 * mm, right=True, size=6, color=INK)
     c.line(x, top - 18 * mm, x + w, top - 18 * mm)
 
     y = top - 18 * mm
@@ -200,7 +201,7 @@ def _build(project: dict, paper: str) -> bytes:
     name = project.get("name") or tr("Έργο")
     c = rl_canvas.Canvas(buf, pagesize=(page_w, page_h))
     c.setTitle(f"{tr('Κάτοψη φωτοβολταϊκού συστήματος')} – {name}")
-    c.setAuthor((project.get("report_info") or {}).get("author") or "PV Designer")
+    c.setAuthor((project.get("report_info") or {}).get("author") or brand.FULL)
 
     c.setStrokeColor(INK)
     c.setLineWidth(1.2)

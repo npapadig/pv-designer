@@ -106,7 +106,7 @@ def test_english_report_numbers_and_words(samples):
     assert "PHOTOVOLTAIC SYSTEM STUDY" in text and "Energy losses" in text and "Financial analysis" in text
     assert any("kWp / 20.0 kW" in t for t in text)  # electrical summary: 24,60 kWp / 20,0 kW in Greek
     assert "4 × Single-phase 5 kW (2 MPPT)" in text
-    assert drawn_text(samples["basic"], lang="en")[3] == "24.60"  # cover KPI, 24,60 in Greek
+    assert "24.60" in drawn_text(samples["basic"], lang="en")[:12]  # cover KPI, 24,60 in Greek
 
 
 def test_greek_texts_come_back_unchanged():

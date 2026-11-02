@@ -12,7 +12,7 @@ from datetime import date
 from reportlab.lib.pagesizes import A4
 from reportlab.platypus import BaseDocTemplate, Frame, PageTemplate, Paragraph, Spacer
 
-from . import battery_report, i18n, report, single_line
+from . import battery_report, brand, i18n, report, single_line
 
 BLANK = single_line.BLANK
 
@@ -138,8 +138,8 @@ def _build(project: dict) -> bytes:
     doc = BaseDocTemplate(buf, pagesize=A4, leftMargin=report.MARGIN, rightMargin=report.MARGIN,
                           topMargin=report.MARGIN, bottomMargin=report.MARGIN,
                           title=f"{tr('Τεχνική περιγραφή ηλεκτρολογικής εγκατάστασης')} – {name}",
-                          author=info.get("author") or "PV Designer")
-    doc.addPageTemplates([PageTemplate("body", [Frame(report.MARGIN, report.MARGIN, report.CONTENT_W,
+                          author=info.get("author") or brand.FULL)
+    doc.addPageTemplates([PageTemplate("body", onPage=brand.footer, frames=[Frame(report.MARGIN, report.MARGIN, report.CONTENT_W,
                                                       A4[1] - 2 * report.MARGIN, id="main")])])
     doc.build(story)
     return buf.getvalue()

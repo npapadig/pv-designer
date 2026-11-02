@@ -129,7 +129,7 @@ def tell(text: str):
     print(text, flush=True)
     if sys.platform == "win32":
         import ctypes
-        ctypes.windll.user32.MessageBoxW(None, text, "PV Designer", 0x10)
+        ctypes.windll.user32.MessageBoxW(None, text, "Solly", 0x10)
 
 
 def main():

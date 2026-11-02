@@ -13,7 +13,7 @@ from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle
 from reportlab.platypus import BaseDocTemplate, Frame, PageTemplate, Paragraph, Spacer, Table, TableStyle
 
-from . import battery_report, report
+from . import battery_report, brand, report
 
 ON, OFF = "☒", "☐"
 
@@ -121,8 +121,8 @@ def _build(project: dict, d: dict) -> bytes:
     buf = io.BytesIO()
     doc = BaseDocTemplate(buf, pagesize=A4, leftMargin=report.MARGIN, rightMargin=report.MARGIN,
                           topMargin=40, bottomMargin=40, title="Παράρτημα Ι – " + (project.get("name") or ""),
-                          author=info.get("author") or "PV Designer")
-    doc.addPageTemplates([PageTemplate("p", [Frame(report.MARGIN, 40, w, A4[1] - 80, id="m")])])
+                          author=info.get("author") or brand.FULL)
+    doc.addPageTemplates([PageTemplate("p", [Frame(report.MARGIN, 40, w, A4[1] - 80, id="m")], onPage=brand.footer)])
     doc.build(story)
     return buf.getvalue()
 

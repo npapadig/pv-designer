@@ -16,8 +16,8 @@ powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0update.ps1" & if exist
 echo.
 set "APPVER=?"
 if exist VERSION set /p APPVER=<VERSION
-title PV Designer v%APPVER%
-echo === PV Designer v%APPVER% ===
+title Solly - Your Bright Friend v%APPVER%
+echo === Solly - Your Bright Friend v%APPVER% ===
 echo.
 
 rem The app needs Python 3.12: newer versions (3.13+) lack ready-made packages

@@ -53,7 +53,7 @@ from reportlab.platypus import (
     PageTemplate, Paragraph, Spacer, Table, TableStyle,
 )
 
-from . import i18n, mapimage, settings
+from . import brand, i18n, mapimage, settings
 
 FONT_DIR = Path(__file__).resolve().parent / "fonts"
 pdfmetrics.registerFont(TTFont("DejaVu", str(FONT_DIR / "DejaVuSans.ttf")))
@@ -320,13 +320,20 @@ def _faces_table(ctx: "ReportContext", rows: list[dict]):
 # ---------------------------------------------------------------- cover
 def cover(ctx: ReportContext) -> list:
     p, info, st = ctx.project, ctx.info, ctx.styles
-    out = [
-        Spacer(1, 0.6 * cm),
+    head = [
         Paragraph(tr("ΜΕΛΕΤΗ ΦΩΤΟΒΟΛΤΑΪΚΟΥ ΣΥΣΤΗΜΑΤΟΣ"), st["cover_kicker"]),
         Paragraph(_esc(p.get("name") or tr("Έργο")), st["cover_title"]),
     ]
     if info.get("address"):
-        out.append(Paragraph(_esc(info["address"]), st["cover_sub"]))
+        head.append(Paragraph(_esc(info["address"]), st["cover_sub"]))
+    out = [Spacer(1, 0.6 * cm)]
+    if brand.MASCOT.exists():   # the title on the left, Solly on the right
+        size = 3.2 * cm
+        out.append(Table([[head, Image(str(brand.MASCOT), size, size)]], colWidths=[CONTENT_W - size - 0.4 * cm, size + 0.4 * cm],
+                         style=TableStyle([("VALIGN", (0, 0), (-1, -1), "TOP"), ("LEFTPADDING", (0, 0), (-1, -1), 0),
+                                           ("RIGHTPADDING", (0, 0), (-1, -1), 0)])))
+    else:
+        out += head
     out.append(Spacer(1, 0.6 * cm))
     m = ctx.map_image()
     if m:
@@ -629,6 +636,7 @@ class _NumberedCanvas(rl_canvas.Canvas):
         self.drawString(MARGIN, MARGIN - 0.9 * cm, date.today().strftime("%d/%m/%Y"))
         self.drawRightString(PAGE_W - MARGIN, MARGIN - 0.9 * cm,
                              tr("Σελίδα {page} από {total}").format(page=self._pageNumber, total=total))
+        brand.footer(self, type("D", (), {"pagesize": (PAGE_W, PAGE_H)}))
         self.restoreState()
 
 
@@ -637,6 +645,7 @@ def _cover_band(canvas, doc):
     canvas.setFillColor(ACCENT)
     canvas.rect(0, PAGE_H - 0.5 * cm, PAGE_W, 0.5 * cm, stroke=0, fill=1)
     canvas.rect(0, 0, PAGE_W, 0.25 * cm, stroke=0, fill=1)
+    brand.footer(canvas, doc)
     canvas.restoreState()
 
 
@@ -656,7 +665,7 @@ def _build_pdf(project: dict, imagery: bool) -> bytes:
     doc = BaseDocTemplate(buf, pagesize=A4, leftMargin=MARGIN, rightMargin=MARGIN,
                           topMargin=MARGIN, bottomMargin=MARGIN,
                           title=tr("Μελέτη φωτοβολταϊκού – {name}").format(name=name),
-                          author=ctx.info.get("author") or "PV Designer")
+                          author=ctx.info.get("author") or brand.FULL)
     frame = Frame(MARGIN, MARGIN, CONTENT_W, PAGE_H - 2 * MARGIN, id="main")
     doc.addPageTemplates([PageTemplate("cover", [frame], onPage=_cover_band), PageTemplate("body", [frame])])
 

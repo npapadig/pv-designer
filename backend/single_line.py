@@ -17,7 +17,7 @@ from reportlab.lib.pagesizes import A4, landscape
 from reportlab.lib.units import mm
 from reportlab.pdfgen import canvas as rl_canvas
 
-from . import battery_report, i18n, report
+from . import battery_report, brand, i18n, report
 
 INK = colors.HexColor("#111827")
 MUTED = colors.HexColor("#4b5563")
@@ -111,13 +111,14 @@ def _build(project: dict) -> bytes:
     c = rl_canvas.Canvas(buf, pagesize=(page_w, page_h))
     name = project.get("name") or tr("Έργο")
     c.setTitle(f"{tr('Μονογραμμικό ηλεκτρολογικό σχέδιο')} – {name}")
-    c.setAuthor(info.get("author") or "PV Designer")
+    c.setAuthor(info.get("author") or brand.FULL)
     c.setStrokeColor(INK)
     c.setLineWidth(1.2)
     c.rect(margin, margin, page_w - 2 * margin, page_h - 2 * margin)
     c.setFillColor(INK)
     c.setFont("DejaVu-Bold", 12)
     c.drawString(margin + 6 * mm, page_h - margin - 9 * mm, tr("ΜΟΝΟΓΡΑΜΜΙΚΟ ΗΛΕΚΤΡΟΛΟΓΙΚΟ ΣΧΕΔΙΟ ΦΩΤΟΒΟΛΤΑΪΚΟΥ ΣΥΣΤΗΜΑΤΟΣ"))
+    brand.mark(c, page_w - margin - 6 * mm, page_h - margin - 12 * mm, h=8 * mm, right=True, color=INK)
 
     # --- left: PV strings per MPPT, then inverters ---
     rows = [(i, j) for i in range(k) for j in range(inv["n_mppt"]) if _mppt_label(d, i, j)[0]]
