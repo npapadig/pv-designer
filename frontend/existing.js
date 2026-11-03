@@ -28,15 +28,27 @@
   document.addEventListener("pv:found", (e) => {
     if (!on) return;
     place = { lat: e.detail.lat, lon: e.detail.lng, label: $("exAddress").value };
-    $("exPlace").textContent = `${place.lat.toFixed(4)}, ${place.lon.toFixed(4)}`;
+    showPlace();
     apply();
   });
+  const showPlace = () => {
+    $("exLat").value = place ? place.lat.toFixed(5) : "";
+    $("exLon").value = place ? place.lon.toFixed(5) : "";
+  };
+  // The coordinates can also be typed: the place is the two numbers (the map is not shown in this mode).
+  ["exLat", "exLon"].forEach((id) => $(id).addEventListener("input", () => {
+    const lat = num("exLat"), lon = num("exLon");
+    const ok = lat != null && lon != null && Math.abs(lat) <= 90 && Math.abs(lon) <= 180;
+    place = ok ? { lat, lon, label: $("exAddress").value } : null;
+    if (ok) map.setView([lat, lon], 18);
+    apply();
+  }));
   const find = () => { $("searchBox").value = $("exAddress").value; $("btnSearch").click(); };
   $("btnExSearch").onclick = find;
   $("exAddress").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); find(); } });
 
   function missing() {
-    if (!place) return "Βρες πρώτα την τοποθεσία (διεύθυνση ή συντεταγμένες).";
+    if (!place) return "Βρες πρώτα την τοποθεσία (διεύθυνση, ή γεωγραφικό πλάτος και μήκος).";
     if (!(num("exKwp") > 0)) return "Γράψε την ισχύ των πάνελ (kWp).";
     return "";
   }
@@ -95,8 +107,8 @@
     FIELDS.forEach((id) => { $(id).value = DEFAULTS[id]; });
     $("exHybrid").checked = false;
     document.querySelector("input[name=exCoupling][value=ac]").checked = true;
-    $("exPlace").textContent = "";
     place = null;
+    showPlace();
     couplingInfo();
   }
 
@@ -130,7 +142,7 @@
       const r = document.querySelector(`input[name=exCoupling][value=${saved.coupling || "ac"}]`);
       if (r) r.checked = true;
       place = saved.place || null;
-      $("exPlace").textContent = place ? `${place.lat.toFixed(4)}, ${place.lon.toFixed(4)}` : "";
+      showPlace();
       couplingInfo();
       apply();
       if (place) map.setView([place.lat, place.lon], 18);

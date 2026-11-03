@@ -31,6 +31,15 @@
 #rail a[hidden] { display: none; }
 body.existing-pv #results, body.existing-pv #btnDockShow { display: none !important; }
 #exAddress { flex: 1; }
+/* An existing system has no drawing: the map is hidden and the questions sit in a framed panel in the middle. */
+body.existing-pv #map, body.existing-pv #mapHint, body.existing-pv #btnExpand { visibility: hidden; }
+body.existing-pv { background: radial-gradient(circle at 30% 15%, rgba(249, 115, 22, 0.18), transparent 55%), #0a0d16; }
+:root[data-theme="light"] body.existing-pv { background: radial-gradient(circle at 30% 15%, rgba(249, 115, 22, 0.16), transparent 55%), #eef2f9; }
+body.existing-pv #btnCollapse { display: none; }
+body.existing-pv #sidebar {
+  left: calc(var(--gap) * 2 + var(--rail) + (100vw - var(--gap) * 2 - var(--rail) - 10px) / 2);
+  transform: translateX(-50%); width: min(560px, calc(100vw - var(--rail) - var(--gap) * 4 - 10px));
+}
 #secExisting .row.segmented { margin: 8px 0 4px; }
 #batCards .opt-card { justify-content: flex-start; }
 .opt-card.bad b { color: var(--danger); }

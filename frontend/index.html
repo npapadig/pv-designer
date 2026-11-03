@@ -163,7 +163,11 @@
         <input id="exAddress" placeholder="Διεύθυνση ή συντεταγμένες (π.χ. 39.64, 22.42)…" autocomplete="off">
         <button id="btnExSearch" class="icon-btn" type="button" title="Αναζήτηση" aria-label="Αναζήτηση"><svg class="ic"><use href="#i-search"/></svg></button>
       </div>
-      <p id="exPlace" class="muted small"></p>
+      <p id="exPlace" class="muted small">Η αναζήτηση βρίσκει την τοποθεσία· μπορείς και να γράψεις τις συντεταγμένες απευθείας.</p>
+      <div class="grid2">
+        <label>Γεωγραφικό πλάτος (°) <input id="exLat" type="number" min="-90" max="90" step="0.0001" placeholder="π.χ. 39.6390"></label>
+        <label>Γεωγραφικό μήκος (°) <input id="exLon" type="number" min="-180" max="180" step="0.0001" placeholder="π.χ. 22.4190"></label>
+      </div>
       <div class="grid2">
         <label>Ισχύς πάνελ (kWp) <input id="exKwp" type="number" min="0" step="0.1" placeholder="π.χ. 10"></label>
         <label>Αριθμός πάνελ <span class="muted">(προαιρετικό)</span> <input id="exPanels" type="number" min="0" step="1"></label>
