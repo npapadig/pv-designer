@@ -1660,7 +1660,7 @@ window.I18N_EN =
 "π.χ. δέντρο, φράχτης": "e.g. tree, fence",
 "Ύψος σε μέτρα": "Height in metres",
 "Ύψος σε μέτρα (αρνητικό = τρύπα)": "Height in metres (negative = pit)",
-"Αρνητικό ύψος = τρύπα": "Negative height = pit","Αναίρεση της τελευταίας αλλαγής (Ctrl+Z)": "Undo the last change (Ctrl+Z)",
+"Αρνητικό ύψος = τρύπα": "Negative height = pit","Ανατολή-δύση «πλάτη με πλάτη» (οι σειρές κοιτάζουν εναλλάξ ανατολή και δύση)": "East-west “back to back” (the rows face east and west in turn)","Κατεύθυνση της ανατολικής πλευράς (°)": "Direction of the east side (°)","90 = ακριβώς ανατολή (οι σειρές τρέχουν βορρά-νότο). Αν γυρίσεις τον άξονα, π.χ. 100, η ανατολική πλευρά κοιτάζει 100° και η δυτική 280°. Η κλίση και το κενό σειρών ρυθμίζονται όπως πάντα· στην ανατολή-δύση η κλίση είναι συνήθως μικρή (5-15°).": "90 = exactly east (the rows run north-south). If you turn the axis, e.g. 100, the east side faces 100° and the west side 280°. Tilt and row gap are set as usual; in east-west the tilt is usually small (5-15°).","Αναίρεση της τελευταίας αλλαγής (Ctrl+Z)": "Undo the last change (Ctrl+Z)",
 "Επανάληψη (Ctrl+Y)": "Redo (Ctrl+Y)",
 "Αντιγραφή του επιλεγμένου σχήματος (Ctrl+C)": "Copy the selected shape (Ctrl+C)",
 "Επικόλληση αντιγράφου (Ctrl+V)": "Paste a copy (Ctrl+V)",
@@ -1745,6 +1745,7 @@ window.I18N_EN =
 ["^βγήκε: σκιά (.+) % τον χρόνο$", "dropped: shade $1 % per year"],
 ["^(.+) · τρύπα (.+) m$", "$1 · pit $2 m"],
 ["^τρύπα (.+) m$", "pit $1 m"],
+["^Κατεύθυνση ανατολικής πλευράς: (.+)°$", "Direction of the east side: $1°"],
 // numbers and names inside texts
 ["^Βήμα (\\d+) από (\\d+)$", "Step $1 of $2"],
 ["^Εμπόδιο (\\d+)$", "Obstacle $1"],

@@ -273,6 +273,14 @@ $("mounting").onchange = () => {
 };
 
 // Azimuth facing away from the longest edge of the first area, on the side closest to south.
+$("btnAutoEw").onclick = (e) => {
+  e.preventDefault();
+  const layer = areas.getLayers()[0];
+  if (!layer) return toast("Σχεδίασε πρώτα μια περιοχή.");
+  const az = longEdgeAzimuth(layer, 90);
+  $("ewAz").value = az;
+  toast(`Κατεύθυνση ανατολικής πλευράς: ${az}°`);
+};
 $("btnAutoAz").onclick = (e) => {
   e.preventDefault();
   const layer = areas.getLayers()[0];
@@ -283,7 +291,7 @@ $("btnAutoAz").onclick = (e) => {
 };
 const angDiff = (a, b) => Math.abs(((a - b + 540) % 360) - 180);
 
-function longEdgeAzimuth(layer) {
+function longEdgeAzimuth(layer, near = 180) {
   const pts = layer.getLatLngs()[0];
   let best = null, bestLen = -1;
   for (let i = 0; i < pts.length; i++) {
@@ -295,7 +303,7 @@ function longEdgeAzimuth(layer) {
   const dy = b.lat - a.lat, dx = (b.lng - a.lng) * Math.cos((a.lat * Math.PI) / 180);
   const bearing = ((Math.atan2(dx, dy) * 180) / Math.PI + 360) % 360;
   const options = [(bearing + 90) % 360, (bearing + 270) % 360];
-  const az = options.reduce((x, y) => (angDiff(x, 180) <= angDiff(y, 180) ? x : y));
+  const az = options.reduce((x, y) => (angDiff(x, near) <= angDiff(y, near) ? x : y));
   return Math.round(az) % 360;
 }
 
@@ -335,6 +343,7 @@ function settings() {
     panel_power_w: +$("panelPower").value,
     orientation: $("orientation").value,
     azimuth_deg: +$("azimuth").value,
+    ew_azimuth_deg: +$("ewAz").value || 90,
     tilt_deg: +$("tilt").value,
     mounting: $("mounting").value,
     row_spacing_m: rowGap === "" ? null : +rowGap,
@@ -478,7 +487,7 @@ async function runLayout() {
 // The main button shows the three proposals (options.js); the second one uses the settings as they are.
 const replaceOk = () => window.manual?.confirmReplace() ?? true; // hand-moved panels are replaced only after a yes
 $("btnLayout").onclick = () => replaceOk() && withBusy($("btnLayout"), () => (window.options ? options.show() : runLayout()));
-$("btnLayoutCustom").onclick = () => replaceOk() && withBusy($("btnLayoutCustom"), () => { $("ewMode").checked = false; $("azimuth").disabled = false; return runLayout(); });
+$("btnLayoutCustom").onclick = () => replaceOk() && withBusy($("btnLayoutCustom"), () => { return runLayout(); });
 
 // ---------- Shading ----------
 function shadingInput() {

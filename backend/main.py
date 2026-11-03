@@ -50,6 +50,7 @@ class LayoutRequest(BaseModel):
     panel_power_w: float = Field(410, gt=0, lt=2000)
     orientation: Literal["portrait", "landscape"] = "portrait"
     azimuth_deg: float = Field(180, ge=0, le=360)
+    ew_azimuth_deg: float = Field(90, ge=0, le=360)  # east-west racks: direction of the east face
     tilt_deg: float = Field(30, ge=0, le=90)
     mounting: Literal["flush", "rack"] = "flush"
     row_spacing_m: float | None = Field(None, ge=0, le=20)

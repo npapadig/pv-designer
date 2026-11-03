@@ -382,7 +382,14 @@
         </div>
         <p class="muted small">Αζιμούθιο: 180 = Νότος, 90 = Ανατολή, 270 = Δύση.
           <a href="#" id="btnAutoAz">Ευθυγράμμιση με την περιοχή</a></p>
-        <label class="radio switch" id="ewRow" hidden><input type="checkbox" id="ewMode"> Ανατολή-δύση</label>
+        <label class="radio switch" id="ewRow"><input type="checkbox" id="ewMode"> Ανατολή-δύση «πλάτη με πλάτη» (οι σειρές κοιτάζουν εναλλάξ ανατολή και δύση)</label>
+        <div id="ewBox" hidden>
+          <label>Κατεύθυνση της ανατολικής πλευράς (°) <input id="ewAz" type="number" value="90" min="0" max="360"></label>
+          <p class="muted small">90 = ακριβώς ανατολή (οι σειρές τρέχουν βορρά-νότο). Αν γυρίσεις τον άξονα, π.χ. 100, η ανατολική
+            πλευρά κοιτάζει 100° και η δυτική 280°. Η κλίση και το κενό σειρών ρυθμίζονται όπως πάντα· στην
+            ανατολή-δύση η κλίση είναι συνήθως μικρή (5-15°).
+            <a href="#" id="btnAutoEw">Ευθυγράμμιση με την περιοχή</a></p>
+        </div>
         <button id="btnLayoutCustom" class="secondary">Με τις ρυθμίσεις μου</button>
       </details>
       <details id="manualBox">

@@ -257,3 +257,16 @@ def test_typed_row_gap_is_used_by_the_proposals():
     auto = layout_options([roof], LayoutParams(setback_m=0))[0]
     wide = layout_options([roof], LayoutParams(setback_m=0, row_spacing_m=3.0))[0]
     assert wide["row_spacing_m"] == 3.0 and wide["count"] < auto["count"]
+
+
+def test_east_west_axis_can_be_turned():
+    """The east face direction is the user's (ew_azimuth_deg); the west face is always 180° opposite."""
+    p = LayoutParams(tilt_deg=10, mounting="rack", ew_azimuth_deg=100)
+    ew = layout_options([ROOF], p, east_west=True)[3]
+    assert ew["east_west"] and ew["azimuth_deg"] == 100
+    assert [f["azimuth_deg"] for f in ew["faces"]] == [100, 280]
+    assert ew["count"] > 0 and len(ew["panel_face"]) == ew["count"]
+    r = client.post("/api/layout/ew", json={"areas": [ROOF], "tilt_deg": 10, "ew_azimuth_deg": 80}).json()
+    assert [f["azimuth_deg"] for f in r["faces"]] == [80, 260] and r["count"] > 0
+    default = client.post("/api/layout/ew", json={"areas": [ROOF], "tilt_deg": 10}).json()
+    assert [f["azimuth_deg"] for f in default["faces"]] == [90, 270]

@@ -38,6 +38,7 @@ class LayoutParams:
     panel_power_w: float = 410.0
     orientation: str = "portrait"      # "portrait" | "landscape"
     azimuth_deg: float = 180.0         # compass: 0=N, 90=E, 180=S, 270=W
+    ew_azimuth_deg: float = 90.0       # east-west racks: direction of the "east" face (the "west" one is opposite)
     tilt_deg: float = 30.0
     mounting: str = "flush"            # "flush" (on pitched roof) | "rack" (flat roof / ground)
     row_spacing_m: float | None = None  # gap between rows; None = automatic
@@ -295,11 +296,12 @@ def wall_azimuth(area_latlngs: list) -> int:
 def compute_ew_layout(area_latlngs: list, p: LayoutParams, row_gap_m: float) -> dict:
     """East-west racks "back to back": rows run north-south and face east and west in turn.
 
-    The grid is the one of compute_layout facing east; every second row is then turned to the west,
-    so each pair of rows meets at its high edge. The result has the shape of compute_faces_layout
-    with two faces: 0 = east (90°), 1 = west (270°).
+    The grid is the one of compute_layout facing east (p.ew_azimuth_deg, 90° unless the user turned the axis);
+    every second row is then turned the opposite way, so each pair of rows meets at its high edge. The result
+    has the shape of compute_faces_layout with two faces: 0 = east side, 1 = west side (180° opposite).
     """
-    q = replace(p, azimuth_deg=90.0, mounting="rack", row_spacing_m=row_gap_m)
+    east = p.ew_azimuth_deg % 360.0
+    q = replace(p, azimuth_deg=east, mounting="rack", row_spacing_m=row_gap_m)
     res = compute_layout(area_latlngs, q)
     along_slope = q.panel_width_m if q.orientation == "landscape" else q.panel_length_m
     step = along_slope * math.cos(math.radians(q.tilt_deg)) + row_gap_m
@@ -312,7 +314,7 @@ def compute_ew_layout(area_latlngs: list, p: LayoutParams, row_gap_m: float) -> 
     # Row 0 is the westernmost (the back of an east-facing grid); it leans against row 1, so it faces west.
     panel_face = [1 - round((top - y) / step) % 2 for y in ys]
     per_face = []
-    for k, az in ((0, 90.0), (1, 270.0)):
+    for k, az in ((0, east), (1, (east + 180.0) % 360.0)):
         n = panel_face.count(k)
         per_face.append({"tilt_deg": q.tilt_deg, "azimuth_deg": az, "count": n,
                          "kwp": round(n * q.panel_power_w / 1000.0, 3), "row_gap_m": res["row_gap_m"]})
@@ -376,7 +378,7 @@ def layout_options(areas: list, p: LayoutParams, east_west: bool = False) -> lis
     plans = [
         ("economic", "Οικονομική", "Νότια, βέλτιστη απόδοση για το κόστος", OPTION_ECONOMIC,
          OPTION_ECONOMIC["azimuth_deg"]),
-        ("east_west", "Μέγιστη ενέργεια", "Ανατολή-δύση πλάτη με πλάτη, τα περισσότερα πάνελ", OPTION_EAST_WEST, 90.0),
+        ("east_west", "Μέγιστη ενέργεια", "Ανατολή-δύση πλάτη με πλάτη, τα περισσότερα πάνελ", OPTION_EAST_WEST, p.ew_azimuth_deg),
         ("aesthetic", "Αισθητική", "Παράλληλα με τον τοίχο του κτιρίου", OPTION_AESTHETIC, wall),
     ]
     out, extra = [], []
@@ -414,7 +416,7 @@ def layout_options(areas: list, p: LayoutParams, east_west: bool = False) -> lis
     ew = east_west and p.mounting == "rack"
     manual = compute_ew_areas(areas, p) if ew else _merge([compute_layout(a, p) for a in areas], p)
     out.append({"key": "manual", "title": "Χειροκίνητα", "note": "Οι ρυθμίσεις του βήματος «Πάνελ» όπως είναι",
-                "tilt_deg": p.tilt_deg, "azimuth_deg": 90.0 if ew else p.azimuth_deg, "mounting": p.mounting,
+                "tilt_deg": p.tilt_deg, "azimuth_deg": p.ew_azimuth_deg if ew else p.azimuth_deg, "mounting": p.mounting,
                 "orientation": p.orientation,
                 "row_spacing_m": p.row_spacing_m, "east_west": ew, **manual})
     return out + extra

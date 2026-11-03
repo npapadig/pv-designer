@@ -8,14 +8,17 @@
   let shown = [];
   let chosen = null;
 
-  // East-west mode is no longer shown: it is one of the proposals, and the hidden checkbox just remembers it.
+  // East-west mode: a switch of its own in the "Θέλω να το ρυθμίσω μόνος μου" box, with the direction of the
+  // east face (the axis can be turned). Only for racks; the single azimuth is not used while it is on.
   function syncEw() {
     const rack = $("mounting").value === "rack";
-    $("ewRow").hidden = true;
+    $("ewRow").hidden = !rack;
+    $("ewBox").hidden = !(rack && $("ewMode").checked);
     $("azimuth").disabled = rack && $("ewMode").checked;
   }
   $("mounting").addEventListener("change", syncEw);
   $("ewMode").addEventListener("change", () => { syncEw(); clearLayout(); });
+  $("ewAz").addEventListener("change", () => clearLayout());
   syncEw();
 
   // Small top-down drawing of the areas and the panels of one proposal (north up).
@@ -71,7 +74,8 @@
   function apply(o) {
     const ew = o.key === "east_west" || !!o.east_west;
     $("tilt").value = o.tilt_deg;
-    if (!ew) $("azimuth").value = Math.round(o.azimuth_deg);
+    if (ew) $("ewAz").value = Math.round(o.azimuth_deg);
+    else $("azimuth").value = Math.round(o.azimuth_deg);
     $("mounting").value = o.mounting;
     $("orientation").value = o.orientation;
     // The row gap field is left as the user typed it: a proposal never overwrites it.
