@@ -8,6 +8,7 @@
   const HIDDEN_STEPS = ["secSite", "secShading", "secPanels", "electrical", "secEnergy"]; // the drawing and design steps
   const KWH_PER_KWP = 1400;  // only to fill the finance step when the real production is not given
   const DC_ROUNDTRIP = 94;   // % for a battery on the DC side (a manufacturer claim, 92-96); the AC side keeps the default of the battery step
+  const EX_PLACE_HINT = "Γράψε τη διεύθυνση της εγκατάστασης και πάτα την αναζήτηση.";
   let place = null;          // {lat, lon, label}
   let on = false;
 
@@ -32,23 +33,14 @@
     apply();
   });
   const showPlace = () => {
-    $("exLat").value = place ? place.lat.toFixed(5) : "";
-    $("exLon").value = place ? place.lon.toFixed(5) : "";
+    $("exPlace").textContent = place ? `✓ Βρέθηκε η τοποθεσία (${place.lat.toFixed(4)}, ${place.lon.toFixed(4)}).` : EX_PLACE_HINT;
   };
-  // The coordinates can also be typed: the place is the two numbers (the map is not shown in this mode).
-  ["exLat", "exLon"].forEach((id) => $(id).addEventListener("input", () => {
-    const lat = num("exLat"), lon = num("exLon");
-    const ok = lat != null && lon != null && Math.abs(lat) <= 90 && Math.abs(lon) <= 180;
-    place = ok ? { lat, lon, label: $("exAddress").value } : null;
-    if (ok) map.setView([lat, lon], 18);
-    apply();
-  }));
   const find = () => { $("searchBox").value = $("exAddress").value; $("btnSearch").click(); };
   $("btnExSearch").onclick = find;
   $("exAddress").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); find(); } });
 
   function missing() {
-    if (!place) return "Βρες πρώτα την τοποθεσία (διεύθυνση, ή γεωγραφικό πλάτος και μήκος).";
+    if (!place) return "Βρες πρώτα την τοποθεσία (διεύθυνση ή συντεταγμένες).";
     if (!(num("exKwp") > 0)) return "Γράψε την ισχύ των πάνελ (kWp).";
     return "";
   }
