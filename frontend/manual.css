@@ -17,3 +17,13 @@
 .manual-btns button { margin: 0; white-space: normal; height: auto; padding: 7px 8px; font-size: 0.8rem; }
 .manual-list li button { justify-content: flex-start; align-items: baseline; }
 .manual-list hr { border: 0; border-top: 1px solid var(--line-strong); margin: 6px 0; }
+.manual-tools { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; margin: 8px 0 4px; }
+.manual-tools button { margin: 0; white-space: normal; height: auto; padding: 8px; font-size: 0.82rem; }
+.manual-tools #manualAdd { grid-column: 1 / -1; font-size: 0.9rem; }
+.manual-tools #manualAdd.active { box-shadow: 0 0 0 3px rgba(250, 204, 21, 0.55); }
+.manual-status { margin: 4px 0 8px; font-size: 0.8rem; font-weight: 650; color: var(--accent-text); }
+.manual-adding .leaflet-container, .manual-adding .leaflet-interactive { cursor: crosshair !important; }
+/* A button that has nothing to act on is just dimmed (the busy spinner of style.css is for running work). */
+.manual-tools button:disabled, .manual-btns button:disabled { opacity: 0.4; cursor: not-allowed; }
+.manual-tools button:disabled::before, .manual-btns button:disabled::before { display: none; }
+

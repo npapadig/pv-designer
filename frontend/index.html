@@ -393,15 +393,23 @@
         <button id="btnLayoutCustom" class="secondary">Με τις ρυθμίσεις μου</button>
       </details>
       <details id="manualBox">
-        <summary>Χειροκίνητη μετακίνηση πάνελ</summary>
-        <label class="radio switch"><input type="checkbox" id="manualOn"> Μετακίνηση πάνελ με το ποντίκι</label>
+        <summary>Χειροκίνητη επεξεργασία πάνελ</summary>
+        <p class="muted small">Πρόσθεσε, μετακίνησε, γύρνα ή σβήσε πάνελ ένα-ένα, με το ποντίκι πάνω στον χάρτη.</p>
+        <label class="radio switch"><input type="checkbox" id="manualOn"> Επεξεργασία πάνελ με το ποντίκι</label>
+        <div class="manual-tools">
+          <button id="manualAdd" class="primary" type="button">＋ Προσθήκη πάνελ</button>
+          <button id="manualDel" class="secondary" type="button" disabled>Διαγραφή επιλεγμένων</button>
+          <button id="manualRot" class="secondary" type="button" disabled>Περιστροφή 90°</button>
+          <button id="manualUndo" class="secondary" type="button" disabled>Αναίρεση</button>
+        </div>
+        <p class="manual-status" id="manualStatus"></p>
         <p class="muted small">Πάτα ένα πάνελ και σύρε το. Με Shift ή Ctrl προσθέτεις πάνελ στην επιλογή και σέρνονται όλα μαζί.
-          Πάτα στο κενό για να καθαρίσει η επιλογή.</p>
-        <label class="radio switch"><input type="checkbox" id="manualSnap" checked> Κόλλημα στις γωνίες των διπλανών πάνελ</label>
+          Πάτα στο κενό για να καθαρίσει η επιλογή. Βέλη = μικρή μετακίνηση (με Shift μεγαλύτερη), Delete = διαγραφή,
+          R = περιστροφή, Ctrl+Z = αναίρεση.</p>
+        <label class="radio switch"><input type="checkbox" id="manualSnap" checked> Κόλλημα στα διπλανά πάνελ (με το κενό που έχεις βάλει)</label>
         <div class="manual-btns">
           <button id="manualAll" class="secondary" type="button">Επιλογή όλων</button>
           <button id="manualNone" class="secondary" type="button">Καθαρισμός επιλογής</button>
-          <button id="manualUndo" class="secondary" type="button" disabled>Αναίρεση μετακίνησης</button>
           <button id="manualCheck" class="secondary" type="button">Έλεγχος περιορισμών</button>
         </div>
         <div id="manualList" class="manual-list"></div>

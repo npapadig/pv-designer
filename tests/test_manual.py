@@ -112,5 +112,6 @@ def test_page_loads_the_script_after_app_js():
     from pathlib import Path
     html = (Path(__file__).resolve().parent.parent / "frontend" / "index.html").read_text(encoding="utf-8")
     assert html.index("app.js") < html.index("manual.js") < html.index("ui.js")
-    for ident in ("manualOn", "manualSnap", "manualAll", "manualNone", "manualUndo", "manualCheck", "manualList"):
+    for ident in ("manualOn", "manualSnap", "manualAll", "manualNone", "manualUndo", "manualCheck", "manualList",
+                  "manualAdd", "manualDel", "manualRot", "manualStatus"):
         assert f'id="{ident}"' in html
