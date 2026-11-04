@@ -26,4 +26,8 @@
 /* A button that has nothing to act on is just dimmed (the busy spinner of style.css is for running work). */
 .manual-tools button:disabled, .manual-btns button:disabled { opacity: 0.4; cursor: not-allowed; }
 .manual-tools button:disabled::before, .manual-btns button:disabled::before { display: none; }
+.manual-ew { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 6px; align-items: end; margin: 4px 0; }
+.manual-ew[hidden] { display: none; }
+.manual-ew label { margin: 0; font-size: 0.78rem; }
+.manual-ew button { margin: 0; white-space: normal; height: auto; padding: 8px; font-size: 0.8rem; }
 

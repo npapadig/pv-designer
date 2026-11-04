@@ -96,9 +96,28 @@ def test_several_areas_are_added_up():
     assert len(two["east_west"]["panel_face"]) == two["east_west"]["count"]
 
 
-def test_existing_layout_is_untouched():
+def test_east_west_panels_always_come_in_pairs():
+    """Every east panel has its west partner right behind it, back to back; none stands alone."""
+    res = compute_ew_layout(ROOF, LayoutParams(tilt_deg=10), 0.1)
+    east = [pl for pl, f in zip(res["panels"], res["panel_face"]) if f == 0]
+    west = [pl for pl, f in zip(res["panels"], res["panel_face"]) if f == 1]
+    assert len(east) == len(west) > 0
+    depth = 1.722 * math.cos(math.radians(10)) + 0.1  # one panel on the map plus the gap, in metres
+    kx = 111320 * math.cos(math.radians(LAT0))
+    centre = lambda pl: (sum(pt[0] for pt in pl) / 4, sum(pt[1] for pt in pl) / 4)
+    for e in east:
+        (ela, eln) = centre(e)
+        partners = [w for w in west if abs((centre(w)[0] - ela) * 110540) < 0.01
+                    and abs((eln - centre(w)[1]) * kx - depth) < 0.01]
+        assert len(partners) == 1
+
+
+def test_east_west_leaves_out_a_pair_that_does_not_fit():
+    """A strip with room for one row but not for two: the single panel is not placed."""
+    strip = rect(-1.5, -5, 1.5, 5)  # 3 m across the east-west direction, 0.5 m kept clear on each side
     p = LayoutParams(tilt_deg=10, mounting="rack", azimuth_deg=90, row_spacing_m=0.1)
-    assert compute_ew_layout(ROOF, p, 0.1)["panels"] == compute_layout(ROOF, p)["panels"]
+    assert compute_layout(strip, p)["count"] > 0
+    assert compute_ew_layout(strip, p, 0.1)["count"] == 0
 
 
 def test_options_api_power_only():

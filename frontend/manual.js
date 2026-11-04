@@ -1,4 +1,5 @@
-// Editing panels by hand on top of the automatic layout: add, move, turn and delete them, and check which
+// Editing panels by hand on top of the automatic layout: add, move, turn, delete them (and, in east-west, switch
+// them between the east and the west side), and check which
 // placement rules they break. The panels are the polygons of panelsLayer, so shading, production, electrical
 // and saving use the edited positions with no extra step. Everything works in lat/lng (metres around a local
 // origin), so it is the same on a rotated map. Rules are checked by the server (POST /api/layout/check,
@@ -110,13 +111,17 @@
 
   function updateUi() {
     const n = selected.size;
-    $("manualDel").disabled = $("manualRot").disabled = !n;
+    $("manualDel").disabled = $("manualRot").disabled = $("manualFlip").disabled = !n;
+    const ew = isEwLayout();
+    $("manualEw").hidden = !ew;
     $("manualUndo").disabled = !undoStack.length;
     $("manualAdd").classList.toggle("active", adding);
     $("manualAdd").textContent = adding ? "✓ Τέλος προσθήκης" : "＋ Προσθήκη πάνελ";
     $("manualStatus").textContent = adding
       ? "Κάνε κλικ στον χάρτη όπου θέλεις πάνελ· όσα θέλεις. R = γύρισέ το στο πλάι, Esc = τέλος."
-      : `Πάνελ: ${layers().length} · επιλεγμένα: ${n}`;
+      : ew
+        ? `Πάνελ: ${layers().length} · ανατολή ${layers().filter((l) => !l.pvFaceIdx).length} · δύση ${layers().filter((l) => l.pvFaceIdx === 1).length} · επιλεγμένα: ${n}`
+        : `Πάνελ: ${layers().length} · επιλεγμένα: ${n}`;
   }
 
   // ---------- State that follows the panels ----------
@@ -260,6 +265,9 @@
       base = { pts: rectOf(0, 0, along * Math.cos(rad(plane.tilt)), across, frame(plane.az)), plane, face: f0 ? 0 : null };
     }
     if (flip) base.pts = turned(base.pts, base.plane);
+    // East-west: the user may choose the side of the new panel instead of taking the neighbour's.
+    const side = $("manualSide").value;
+    if (isEwLayout() && side !== "auto") base.face = +side;
     return base;
   }
 
@@ -277,9 +285,10 @@
   const removeGhost = () => { hover = null; if (ghost) { ghost.remove(); ghost = null; } };
   function showGhost(latlng) {
     hover = latlng;
-    const { ring } = placement(latlng);
-    if (!ghost) ghost = L.polygon(ring, GHOST_STYLE).addTo(map);
-    else ghost.setLatLngs([ring]);
+    const { ring, face } = placement(latlng);
+    const fillColor = isEwLayout() && face === 1 ? PANEL_FILL_WEST : PANEL_FILL;
+    if (!ghost) ghost = L.polygon(ring, { ...GHOST_STYLE, fillColor }).addTo(map);
+    else { ghost.setLatLngs([ring]); ghost.setStyle({ fillColor }); }
   }
 
   function place(latlng) {
@@ -313,6 +322,19 @@
     selected.clear();
     nudging = null;
     push(() => gone.forEach((l) => panelsLayer.addLayer(l)));
+    afterChange();
+  }
+
+  // East-west: the selected panels switch sides (the footprint stays, the panel now leans the other way).
+  function flipSelected() {
+    const list = [...selected];
+    if (!list.length) return;
+    if (!isEwLayout()) { toast("Η αλλαγή πλευράς είναι για διάταξη ανατολή-δύση.", 4000); return; }
+    ensureFaces();
+    const before = list.map((l) => l.pvFaceIdx ?? 0);
+    list.forEach((l) => { l.pvFaceIdx = 1 - (l.pvFaceIdx ?? 0); });
+    nudging = null;
+    push(() => list.forEach((l, i) => { l.pvFaceIdx = before[i]; }));
     afterChange();
   }
 
@@ -468,6 +490,8 @@
   $("manualAdd").onclick = () => setAdding(!adding);
   $("manualDel").onclick = removeSelected;
   $("manualRot").onclick = rotateSelected;
+  $("manualFlip").onclick = flipSelected;
+  $("manualSide").onchange = () => { if (hover) showGhost(hover); };
   $("manualAll").onclick = () => select(layers());
   $("manualNone").onclick = () => select([]);
   $("manualUndo").onclick = undo;
@@ -484,6 +508,7 @@
     const arrows = { arrowleft: [-1, 0], arrowright: [1, 0], arrowup: [0, 1], arrowdown: [0, -1] };
     if (arrows[key] && selected.size) { e.preventDefault(); nudge(...arrows[key], e.shiftKey); }
     else if (key === "delete" || key === "backspace") { if (selected.size) { e.preventDefault(); removeSelected(); } }
+    else if (key === "f") flipSelected();
     else if (key === "r") {
       if (adding) { flip = !flip; if (hover) showGhost(hover); }
       else rotateSelected();

@@ -402,10 +402,20 @@
           <button id="manualRot" class="secondary" type="button" disabled>Περιστροφή 90°</button>
           <button id="manualUndo" class="secondary" type="button" disabled>Αναίρεση</button>
         </div>
+        <div class="manual-ew" id="manualEw" hidden>
+          <label>Πλευρά νέων πάνελ
+            <select id="manualSide">
+              <option value="auto">Όπως το διπλανό</option>
+              <option value="0">Ανατολή</option>
+              <option value="1">Δύση</option>
+            </select>
+          </label>
+          <button id="manualFlip" class="secondary" type="button" disabled>Αλλαγή πλευράς (Α↔Δ)</button>
+        </div>
         <p class="manual-status" id="manualStatus"></p>
         <p class="muted small">Πάτα ένα πάνελ και σύρε το. Με Shift ή Ctrl προσθέτεις πάνελ στην επιλογή και σέρνονται όλα μαζί.
           Πάτα στο κενό για να καθαρίσει η επιλογή. Βέλη = μικρή μετακίνηση (με Shift μεγαλύτερη), Delete = διαγραφή,
-          R = περιστροφή, Ctrl+Z = αναίρεση.</p>
+          R = περιστροφή, F = αλλαγή πλευράς (ανατολή-δύση), Ctrl+Z = αναίρεση.</p>
         <label class="radio switch"><input type="checkbox" id="manualSnap" checked> Κόλλημα στα διπλανά πάνελ (με το κενό που έχεις βάλει)</label>
         <div class="manual-btns">
           <button id="manualAll" class="secondary" type="button">Επιλογή όλων</button>

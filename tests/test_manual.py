@@ -113,5 +113,13 @@ def test_page_loads_the_script_after_app_js():
     html = (Path(__file__).resolve().parent.parent / "frontend" / "index.html").read_text(encoding="utf-8")
     assert html.index("app.js") < html.index("manual.js") < html.index("ui.js")
     for ident in ("manualOn", "manualSnap", "manualAll", "manualNone", "manualUndo", "manualCheck", "manualList",
-                  "manualAdd", "manualDel", "manualRot", "manualStatus"):
+                  "manualAdd", "manualDel", "manualRot", "manualStatus", "manualEw", "manualSide", "manualFlip"):
         assert f'id="{ident}"' in html
+
+
+def test_separate_windows_are_served():
+    """The 3D view and the analysis open in windows of their own (view3d.html, analysis.html)."""
+    for page, marker in (("view3d.html", "pvStandalone"), ("analysis.html", "pvOpener")):
+        r = client.get(f"/{page}")
+        assert r.status_code == 200 and marker in r.text
+

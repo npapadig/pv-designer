@@ -2,6 +2,8 @@
 // optionally the whole building with walls of a chosen height, and the sun shadows. It only reads what the project
 // already holds (app.js globals) and calculates nothing: it is a picture, not a result. Drag = turn, wheel = zoom,
 // Shift+drag or right drag = move.
+// The «3D» button opens it in a window of its own (view3d.html, which sets window.pvStandalone and borrows the
+// project of this page); when pop-ups are blocked it opens over the page as before.
 import * as THREE from "./vendor/three/three.module.min.js";
 
 const $ = (id) => document.getElementById(id);
@@ -254,7 +256,7 @@ function setup() {
   $("v3Shadows").onchange = () => { view.shadows = $("v3Shadows").checked; updateSun(); };
   $("v3Month").onchange = () => { view.month = +$("v3Month").value; updateSun(); };
   $("v3Hour").oninput = () => { view.hour = +$("v3Hour").value; box.sync(); updateSun(); };
-  $("v3Close").onclick = close;
+  $("v3Close").onclick = window.pvStandalone ? () => window.close() : close;
 
   // Mouse / touch: one pointer turns (Shift or right button moves), the wheel zooms.
   let drag = null;
@@ -281,7 +283,7 @@ function setup() {
   }, { passive: false });
   addEventListener("resize", () => box.classList.contains("on") && resize());
   document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape" && box.classList.contains("on")) { close(); e.stopImmediatePropagation(); }
+    if (e.key === "Escape" && box.classList.contains("on") && !window.pvStandalone) { close(); e.stopImmediatePropagation(); }
   }, true);
   return true;
 }
@@ -302,5 +304,41 @@ function close() {
   box?.classList.remove("on");
 }
 
-$("btn3d").onclick = open;
-window.view3d = { open, close };
+// A number that changes whenever something the picture shows changes (the window follows the project).
+function signature() {
+  let h = 0;
+  const add = (n) => { h = (h * 31 + Math.round((n || 0) * 1e6)) % 1000000007; };
+  [areas, keepouts, panelsLayer].forEach((g) => g.getLayers().forEach((l) => {
+    l.getLatLngs().flat(Infinity).forEach((p) => { add(p.lat); add(p.lng); });
+    add(l.pvHeight); add(l.pvFaceIdx ?? -1);
+    if (l.pvFace) { add(l.pvFace.tilt_deg); add(l.pvFace.azimuth_deg); add(l.pvFace.roof_tilt_deg); }
+  }));
+  const s = settings(), lay = state.layout || {};
+  return [h, s.tilt_deg, s.azimuth_deg, s.mounting, lay.tilt_deg, lay.azimuth_deg, JSON.stringify(lay.faces || null),
+    JSON.stringify(parapetObstacles()), document.documentElement.dataset.theme].join("|");
+}
+
+function startStandalone() {
+  document.title = "3D προβολή";
+  if (!window.pvStandaloneOk || window.opener.closed) {
+    document.body.textContent = "Άνοιξε το 3D από την εφαρμογή (κουμπί «3D»).";
+    return;
+  }
+  open();
+  let last = signature();
+  setInterval(() => {
+    if (window.opener.closed) return;
+    const now = signature();
+    if (now !== last) { last = now; refresh(); }
+  }, 1000);
+}
+
+if (window.pvStandalone) {
+  startStandalone();
+} else {
+  $("btn3d").onclick = () => {
+    if (!areas.getLayers().length) return toast("Σχεδίασε πρώτα μια περιοχή στον χάρτη για να δεις το 3D.");
+    if (!openWin("view3d", "view3d.html")) open(); // pop-ups blocked: over this page
+  };
+  window.view3d = { open, close };
+}

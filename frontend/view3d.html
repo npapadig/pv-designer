@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="el">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>3D προβολή</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="view3d.css">
+  <link rel="stylesheet" href="i18n.css">
+  <script>
+    // The 3D picture is drawn from the project of the page that opened this window (same site, so it can read it).
+    (() => {
+      const o = window.opener;
+      window.pvStandalone = true;
+      if (!o || o.closed || !o.pvShare) return;
+      document.documentElement.dataset.theme = o.document.documentElement.dataset.theme || "";
+      Object.assign(window, o.pvShare); // state, areas, keepouts, panelsLayer
+      ["settings", "latlngsOf", "parapetObstacles"].forEach((n) => { window[n] = (...a) => o[n](...a); });
+      window.toast = (m) => { document.getElementById("v3Info") ? (document.getElementById("v3Info").textContent = m) : console.log(m); };
+      window.pvStandaloneOk = true;
+    })();
+  </script>
+  <script src="lang/en.js"></script>
+  <script src="i18n.js"></script>
+</head>
+<body>
+  <script type="module" src="view3d.js"></script>
+</body>
+</html>

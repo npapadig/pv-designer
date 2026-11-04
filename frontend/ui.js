@@ -154,7 +154,8 @@
   }
 
   // ---------- Results dock and map hint ----------
-  $("btnDock").onclick = () => $("results").classList.toggle("open");
+  // The analysis opens in a window of its own; with pop-ups blocked it opens in the bar as before.
+  $("btnDock").onclick = () => { if (!openWin("analysis", "analysis.html")) $("results").classList.toggle("open"); };
   // The dock can shrink to just its numbers ("mini") or disappear; a small button brings it back.
   $("btnDockMin").onclick = () => $("results").classList.toggle("mini");
   $("btnDockClose").onclick = () => { $("results").classList.add("gone"); $("btnDockShow").hidden = false; };

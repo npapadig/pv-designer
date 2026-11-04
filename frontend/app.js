@@ -98,6 +98,8 @@ L.control.scale({ imperial: false }).addTo(map);
 const areas = new L.FeatureGroup().addTo(map);
 const keepouts = new L.FeatureGroup().addTo(map);
 const panelsLayer = new L.FeatureGroup().addTo(map);
+// What the separate windows (3D view, analysis) read from this page.
+window.pvShare = { state, areas, keepouts, panelsLayer };
 const shadowsLayer = new L.FeatureGroup().addTo(map);
 const parapetLayer = new L.FeatureGroup().addTo(map);
 // className hooks the shapes to draw.css (soft dark halo, hover); it applies when a shape is added to the map.
@@ -418,6 +420,17 @@ window.setPanelsVisible = (on) => {
   if (on) { panelsLayer.addTo(map); removedLayer.addTo(map); } else { panelsLayer.remove(); removedLayer.remove(); }
 };
 const addPanel = (latlngs) => L.polygon(latlngs, PANEL_STYLE).addTo(panelsLayer);
+// East-west racks: the west side is a slightly different blue, so the two sides can be told apart.
+const PANEL_FILL_WEST = "#2447a0";
+function isEwLayout() {
+  const f = state.layout?.faces;
+  return !!f && f.length === 2 && !window.faces?.active() && Math.abs(((f[1].azimuth_deg - f[0].azimuth_deg + 360) % 360) - 180) < 1;
+}
+// Every panel layer remembers its face (index into state.layout.faces) in pvFaceIdx; manual.js keeps it up to date.
+function tagFaces() {
+  const pf = state.layout?.panel_face, all = panelsLayer.getLayers();
+  all.forEach((l, i) => { l.pvFaceIdx = pf && pf.length === all.length ? pf[i] : undefined; });
+}
 // The positions dropped for shade: dashed outlines with the yearly loss; not panels, not saved.
 const removedLayer = new L.FeatureGroup().addTo(map);
 const REMOVED_STYLE = { color: "#ef4444", weight: 1.2, dashArray: "4 3", fillOpacity: 0, interactive: true };
@@ -436,6 +449,7 @@ function setLayout(panels, { removed_panels, ...res }) {
   panels.forEach((p) => addPanel(p));
   showRemoved(removed_panels);
   state.layout = res;
+  tagFaces();
   clearShading();
   window.elec?.reset();
   if (!res.count) toast(NO_FIT, 6000);
@@ -518,9 +532,10 @@ function lossColor(pct) {
 
 function colorPanels() {
   const losses = state.shading && state.shading.panel_loss_pct;
+  const ew = isEwLayout();
   panelsLayer.getLayers().forEach((l, i) => {
     const pct = losses ? losses[i] : null;
-    l.setStyle({ fillColor: pct == null ? PANEL_FILL : lossColor(pct) });
+    l.setStyle({ fillColor: pct == null || pct < 1 ? (ew && l.pvFaceIdx === 1 ? PANEL_FILL_WEST : PANEL_FILL) : lossColor(pct) });
     if (pct == null) l.unbindTooltip(); else l.bindTooltip(`Σκίαση: ${fmt(pct, 1)}% τον χρόνο`);
   });
   $("shadingLegend").hidden = !losses;
@@ -761,7 +776,61 @@ function activeBasemap() {
   return "esri";
 }
 
-async function downloadReport() {
+// ---------- Windows of their own ----------
+// The PDFs (and the 3D view and the analysis) open in a window each, so several can stay open at the same time.
+const WIN_FEATURES = "width=1100,height=800,resizable=yes,scrollbars=yes";
+const wins = {};
+// Opens the window called name (or brings the open one forward). null when the browser blocks pop-ups.
+function openWin(name, url) {
+  if (wins[name] && !wins[name].closed) { wins[name].focus(); return wins[name]; }
+  wins[name] = window.open(url, `pv-${name}`, WIN_FEATURES);
+  return wins[name];
+}
+const escHtml = (t) => String(t).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+// The window is opened at the click (so it is not blocked) and filled when the PDF is ready; with no window
+// (blocked) the PDF is saved as a file instead.
+function pdfButton(id, key, makePdf) {
+  const win = window.open("", `pv-pdf-${key}`, WIN_FEATURES);
+  if (win && !win.closed) {
+    const t = window.I18N?.t || ((x) => x);
+    win.document.open();
+    win.document.write(`<!doctype html><meta charset="utf-8"><title>PDF</title><body style="font:16px system-ui,sans-serif;padding:32px;background:#f4f6fb;color:#334155">${escHtml(t("Ετοιμάζεται το PDF…"))}</body>`);
+    win.document.close();
+    win.pvPdfReady = false;
+  }
+  return withBusy($(id), async () => {
+    try { await makePdf(win); } finally { if (win && !win.closed && !win.pvPdfReady) win.close(); }
+  });
+}
+function showPdf(win, blob, filename, message) {
+  const url = URL.createObjectURL(blob);
+  setTimeout(() => URL.revokeObjectURL(url), 3600000);
+  const t = window.I18N?.t || ((x) => x);
+  const name = t(filename);
+  if (win && !win.closed) {
+    win.document.open();
+    win.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${escHtml(name)}</title>
+      <style>html,body{margin:0;height:100%}body{display:flex;flex-direction:column;font:14px system-ui,sans-serif;background:#e8edf5}
+      .bar{display:flex;gap:16px;align-items:center;padding:8px 14px;background:#fff;border-bottom:1px solid #cbd5e1;color:#0f172a}
+      .bar a{margin-left:auto;padding:6px 14px;border-radius:10px;background:#f97316;color:#fff;font-weight:700;text-decoration:none}
+      iframe{flex:1;border:0;width:100%}</style></head>
+      <body><div class="bar"><b>${escHtml(name)}</b><a href="${url}" download="${escHtml(name)}">${escHtml(t("Αποθήκευση PDF"))}</a></div>
+      <iframe src="${url}" title="${escHtml(name)}"></iframe></body></html>`);
+    win.document.close();
+    win.pvPdfReady = true;
+    toast(message, 5000);
+    return;
+  }
+  const a = document.createElement("a"); // pop-ups are blocked: save the file
+  a.href = url;
+  a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  toast("Το πρόγραμμα περιήγησης μπλόκαρε το νέο παράθυρο, οπότε το PDF κατέβηκε στα «Λήψεις» (Downloads).", 6000);
+}
+
+async function downloadReport(win) {
   if (!state.layout || !state.layout.count) await runLayout();
   if (!state.layout.count) return;
   if (!state.energy) {
@@ -777,18 +846,10 @@ async function downloadReport() {
     const data = await r.json().catch(() => ({}));
     throw new Error(typeof data.detail === "string" ? data.detail : "Η αναφορά δεν δημιουργήθηκε.");
   }
-  const url = URL.createObjectURL(await r.blob());
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `Μελέτη ΦΒ - ${$("projectName").value || "έργο"}.pdf`;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 60000);
-  toast("Η αναφορά κατέβηκε στα «Λήψεις» (Downloads).", 5000);
+  showPdf(win, await r.blob(), `Μελέτη ΦΒ - ${$("projectName").value || "έργο"}.pdf`, "Η αναφορά άνοιξε σε νέο παράθυρο.");
 }
 // Clean floor plan (white, to scale, no satellite picture) for permit applications such as DEDDIE.
-async function downloadPlanPdf() {
+async function downloadPlanPdf(win) {
   if (!state.layout || !state.layout.count) await runLayout();
   if (!state.layout.count) return;
   toast("Ετοιμάζεται η κάτοψη…", 15000);
@@ -801,18 +862,10 @@ async function downloadPlanPdf() {
     const data = await r.json().catch(() => ({}));
     throw new Error(typeof data.detail === "string" ? data.detail : "Η κάτοψη δεν δημιουργήθηκε.");
   }
-  const url = URL.createObjectURL(await r.blob());
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `Κάτοψη ΦΒ - ${$("projectName").value || "έργο"}.pdf`;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 60000);
-  toast("Η κάτοψη κατέβηκε στα «Λήψεις» (Downloads).", 5000);
+  showPdf(win, await r.blob(), `Κάτοψη ΦΒ - ${$("projectName").value || "έργο"}.pdf`, "Η κάτοψη άνοιξε σε νέο παράθυρο.");
 }
 // Single-line electrical diagram (needs the electrical design of the "Inverter" step).
-async function downloadSingleLine() {
+async function downloadSingleLine(win) {
   if (!state.electrical) {
     toast("Κάνε πρώτα τον ηλεκτρολογικό σχεδιασμό στο βήμα «Inverter».", 6000);
     return;
@@ -827,18 +880,10 @@ async function downloadSingleLine() {
     const data = await r.json().catch(() => ({}));
     throw new Error(typeof data.detail === "string" ? data.detail : "Το μονογραμμικό δεν δημιουργήθηκε.");
   }
-  const url = URL.createObjectURL(await r.blob());
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `Μονογραμμικό ΦΒ - ${$("projectName").value || "έργο"}.pdf`;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 60000);
-  toast("Το μονογραμμικό κατέβηκε στα «Λήψεις» (Downloads).", 5000);
+  showPdf(win, await r.blob(), `Μονογραμμικό ΦΒ - ${$("projectName").value || "έργο"}.pdf`, "Το μονογραμμικό άνοιξε σε νέο παράθυρο.");
 }
 // Technical description of the electrical installation (needs the electrical design).
-async function downloadTechDesc() {
+async function downloadTechDesc(win) {
   if (!state.electrical) {
     toast("Κάνε πρώτα τον ηλεκτρολογικό σχεδιασμό στο βήμα «Inverter».", 6000);
     return;
@@ -853,18 +898,10 @@ async function downloadTechDesc() {
     const data = await r.json().catch(() => ({}));
     throw new Error(typeof data.detail === "string" ? data.detail : "Η τεχνική περιγραφή δεν δημιουργήθηκε.");
   }
-  const url = URL.createObjectURL(await r.blob());
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `Τεχνική περιγραφή ΦΒ - ${$("projectName").value || "έργο"}.pdf`;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 60000);
-  toast("Η τεχνική περιγραφή κατέβηκε στα «Λήψεις» (Downloads).", 5000);
+  showPdf(win, await r.blob(), `Τεχνική περιγραφή ΦΒ - ${$("projectName").value || "έργο"}.pdf`, "Η τεχνική περιγραφή άνοιξε σε νέο παράθυρο.");
 }
 // DEDDIE «Παράρτημα Ι» (equipment data), pre-filled from the electrical design.
-async function downloadAppendixI() {
+async function downloadAppendixI(win) {
   if (!state.electrical) {
     toast("Κάνε πρώτα τον ηλεκτρολογικό σχεδιασμό στο βήμα «Inverter».", 6000);
     return;
@@ -879,21 +916,13 @@ async function downloadAppendixI() {
     const data = await r.json().catch(() => ({}));
     throw new Error(typeof data.detail === "string" ? data.detail : "Το Παράρτημα Ι δεν δημιουργήθηκε.");
   }
-  const url = URL.createObjectURL(await r.blob());
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `Παράρτημα Ι ΦΒ - ${$("projectName").value || "έργο"}.pdf`;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 60000);
-  toast("Το Παράρτημα Ι κατέβηκε στα «Λήψεις» (Downloads).", 5000);
+  showPdf(win, await r.blob(), `Παράρτημα Ι ΦΒ - ${$("projectName").value || "έργο"}.pdf`, "Το Παράρτημα Ι άνοιξε σε νέο παράθυρο.");
 }
-$("btnAppendixI").onclick = () => withBusy($("btnAppendixI"), downloadAppendixI);
-$("btnTechDesc").onclick = () => withBusy($("btnTechDesc"), downloadTechDesc);
-$("btnSingleLine").onclick = () => withBusy($("btnSingleLine"), downloadSingleLine);
-$("btnPlanPdf").onclick = () => withBusy($("btnPlanPdf"), downloadPlanPdf);
-$("btnReport").onclick = () => withBusy($("btnReport"), downloadReport);
+$("btnAppendixI").onclick = () => pdfButton("btnAppendixI", "appendix", downloadAppendixI);
+$("btnTechDesc").onclick = () => pdfButton("btnTechDesc", "tech", downloadTechDesc);
+$("btnSingleLine").onclick = () => pdfButton("btnSingleLine", "singleline", downloadSingleLine);
+$("btnPlanPdf").onclick = () => pdfButton("btnPlanPdf", "plan", downloadPlanPdf);
+$("btnReport").onclick = () => pdfButton("btnReport", "report", downloadReport);
 
 // The author is usually the same for every project, so remember it on this computer.
 const AUTHOR_KEY = "pv-designer.author";
@@ -1017,6 +1046,7 @@ function loadProject(p) {
     );
     const { panels, ...rest } = p.layout;
     state.layout = rest;
+    tagFaces();
   }
   window.manual?.loaded();
   for (const [id, key] of Object.entries(FINANCE_FIELDS)) {

@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="el">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ανάλυση</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="i18n.css">
+  <style>
+    html, body { height: auto; overflow: auto; }
+    body { padding: 20px 24px 32px; max-width: 1100px; margin: 0 auto; }
+    #an h1 { margin: 0 0 10px; font-size: 1.3rem; }
+    #an .stats { grid-template-columns: repeat(4, max-content); column-gap: 8px; margin-bottom: 14px; }
+    #an .cols { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 24px; padding-top: 14px; border-top: 1px solid var(--line); }
+    @media (max-width: 760px) { #an .cols { grid-template-columns: 1fr; } }
+  </style>
+  <script>
+    // The numbers are copied from the page that opened this window and refreshed every second.
+    (() => {
+      const o = window.opener;
+      window.pvOpener = o && !o.closed && o.pvShare ? o : null;
+      if (window.pvOpener) document.documentElement.dataset.theme = o.document.documentElement.dataset.theme || "";
+    })();
+  </script>
+  <script src="lang/en.js"></script>
+  <script src="i18n.js"></script>
+  <script src="vendor/chartjs/chart.umd.js"></script>
+</head>
+<body>
+  <div id="an" hidden>
+    <h1>Ανάλυση</h1>
+    <div class="stats">
+      <div><span id="statCount">–</span><small>πάνελ</small></div>
+      <div><span id="statKwp">–</span><small>kWp</small></div>
+      <div class="hero"><span id="statKwh">–</span><small>kWh / έτος</small></div>
+      <div><span id="statYield">–</span><small>kWh / kWp</small></div>
+    </div>
+    <div class="cols">
+      <div class="dock-col">
+        <p id="energyWarning" class="warning small" hidden></p>
+        <h3>Μηνιαία παραγωγή</h3>
+        <div class="chart-box"><canvas id="chart" height="180" hidden></canvas><p id="chartNone" class="muted small">Πάτα «Υπολογισμός παραγωγής» για να εμφανιστεί το διάγραμμα.</p></div>
+        <p id="statExtra" class="muted small"></p>
+        <div id="elecSummary"></div>
+        <div id="facesTable"></div>
+      </div>
+      <div class="dock-col" id="lossTable"></div>
+    </div>
+  </div>
+  <p id="anNone" hidden>Άνοιξε την ανάλυση από την εφαρμογή (κουμπί «Ανάλυση»).</p>
+  <script>
+    (() => {
+      const o = window.pvOpener;
+      if (!o) { document.getElementById("anNone").hidden = false; return; }
+      document.getElementById("an").hidden = false;
+      const mine = (id) => document.getElementById(id), theirs = (id) => o.document.getElementById(id);
+      let energy = null, theme = null;
+      function paint() {
+        if (o.closed) return;
+        ["statCount", "statKwp", "statKwh", "statYield", "statExtra", "energyWarning"].forEach((id) => {
+          const t = theirs(id).textContent;
+          if (mine(id).textContent !== t) mine(id).textContent = t;
+        });
+        mine("energyWarning").hidden = theirs("energyWarning").hidden;
+        ["elecSummary", "facesTable", "lossTable"].forEach((id) => {
+          const h = theirs(id).innerHTML;
+          if (mine(id).innerHTML !== h) mine(id).innerHTML = h;
+        });
+        const e = o.pvShare.state.energy, th = o.document.documentElement.dataset.theme || "";
+        if (th !== theme) { theme = th; document.documentElement.dataset.theme = th; energy = null; }
+        if (e !== energy) { drawChart(e); energy = e; }
+      }
+      // The monthly chart is drawn again here from the same numbers (the one in the page may be hidden).
+      const MONTHS = ["Ιαν", "Φεβ", "Μαρ", "Απρ", "Μάι", "Ιουν", "Ιουλ", "Αυγ", "Σεπ", "Οκτ", "Νοε", "Δεκ"];
+      let chart = null;
+      function drawChart(e) {
+        if (chart) { chart.destroy(); chart = null; }
+        mine("chart").hidden = !e;
+        mine("chartNone").hidden = !!e;
+        if (!e) return;
+        const t = window.I18N?.t || ((x) => x), css = getComputedStyle(document.documentElement);
+        const muted = css.getPropertyValue("--muted").trim(), grid = theme === "light" ? "rgba(17,24,39,0.07)" : "rgba(255,255,255,0.07)";
+        const d = Chart.defaults;
+        d.font.family = css.getPropertyValue("--font").trim(); d.font.size = 11; d.color = muted; d.borderColor = grid;
+        d.maintainAspectRatio = false; d.scale.grid.color = grid; d.scale.border.display = false; d.scale.ticks.color = muted;
+        d.elements.bar.borderRadius = 6; d.datasets.bar.maxBarThickness = 26;
+        chart = new Chart(mine("chart"), {
+          type: "bar",
+          data: {
+            labels: e.monthly.map((m) => t(MONTHS[m.month - 1])),
+            datasets: [
+              { label: t("Παραγωγή μετά τις σκιές (kWh)"), data: e.monthly.map((m) => m.kwh), backgroundColor: "#f59e0b" },
+              ...(e.annual_kwh_unshaded ? [{
+                label: t("Χάνεται από σκιές (kWh) · μαζί = χωρίς σκιές"),
+                data: e.monthly.map((m) => Math.round((m.kwh_unshaded - m.kwh) * 10) / 10),
+                backgroundColor: "#9ca3af",
+              }] : []),
+            ],
+          },
+          options: {
+            plugins: { legend: { display: !!e.annual_kwh_unshaded, labels: { boxWidth: 12 } } },
+            scales: { x: { stacked: true }, y: { stacked: true, title: { display: true, text: "kWh" } } },
+          },
+        });
+      }
+      paint();
+      setInterval(paint, 1000);
+    })();
+  </script>
+</body>
+</html>

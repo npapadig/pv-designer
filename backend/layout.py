@@ -103,9 +103,14 @@ def _voids_in(area: Polygon, voids: list, fwd) -> float:
     return float(unary_union(holes).intersection(area).area) if holes else 0.0
 
 
-def compute_layout(area_latlngs: list, p: LayoutParams, neighbours: list | None = None) -> dict:
+def compute_layout(area_latlngs: list, p: LayoutParams, neighbours: list | None = None,
+                   pair_gap_m: float | None = None) -> dict:
     """Fill one area. neighbours: outlines of the other roof faces; the part of this outline that
-    touches them is kept clear by p.ridge_gap_m instead of p.setback_m."""
+    touches them is kept clear by p.ridge_gap_m instead of p.setback_m.
+
+    pair_gap_m (east-west racks): every cell is a PAIR of panels, the back one turned the opposite way, with
+    that gap between them. A pair is placed whole or not at all. The result then has panel_face: 0 = the
+    front panel (faces the azimuth), 1 = the back one."""
     if len(area_latlngs) < 3:
         raise ValueError("Η περιοχή χρειάζεται τουλάχιστον 3 σημεία.")
 
@@ -135,6 +140,8 @@ def compute_layout(area_latlngs: list, p: LayoutParams, neighbours: list | None 
     else:
         across, along_slope = p.panel_width_m, p.panel_length_m
     depth = along_slope * math.cos(math.radians(p.tilt_deg))
+    pair = pair_gap_m is not None
+    cell_depth = 2 * depth + pair_gap_m if pair else depth
 
     if p.row_spacing_m is not None:
         row_gap = p.row_spacing_m
@@ -148,13 +155,13 @@ def compute_layout(area_latlngs: list, p: LayoutParams, neighbours: list | None 
         minx, miny, maxx, maxy = rot.bounds
         fit = rot.buffer(1e-6)  # tolerate floating-point noise from projection and rotation
         step_x = across + p.col_spacing_m
-        step_y = depth + row_gap
-        y = maxy - depth  # start at the back (north side in the rotated frame)
+        step_y = cell_depth + row_gap
+        y = maxy - cell_depth  # start at the back (north side in the rotated frame)
         while y >= miny - 1e-9:
             x = minx
             in_row = 0
             while x + across <= maxx + 1e-9:
-                cell = box(x, y, x + across, y + depth)
+                cell = box(x, y, x + across, y + cell_depth)
                 if fit.contains(cell):
                     panels_xy.append(cell)
                     in_row += 1
@@ -165,14 +172,19 @@ def compute_layout(area_latlngs: list, p: LayoutParams, neighbours: list | None 
                     x += min(step_x / 4, SLIDE_STEP_M)  # slide in small steps to pack edges tight
             y -= step_y
 
-    panels = []
+    panels, panel_face = [], []
     for cell in panels_xy:
-        back = affinity.rotate(cell, -angle, origin=(0, 0))
-        coords = [inv.transform(x, y) for x, y in list(back.exterior.coords)[:-1]]
-        panels.append([[lat, lng] for lng, lat in coords])
+        x0, y0, x1, y1 = cell.bounds
+        # a pair: the back panel first (faces away), then the front one
+        parts = [(box(x0, y1 - depth, x1, y1), 1), (box(x0, y0, x1, y0 + depth), 0)] if pair else [(cell, 0)]
+        for part, face in parts:
+            back = affinity.rotate(part, -angle, origin=(0, 0))
+            coords = [inv.transform(x, y) for x, y in list(back.exterior.coords)[:-1]]
+            panels.append([[lat, lng] for lng, lat in coords])
+            panel_face.append(face)
 
     count = len(panels)
-    return {
+    out = {
         "panels": panels,
         "count": count,
         "kwp": round(count * p.panel_power_w / 1000.0, 3),
@@ -182,6 +194,9 @@ def compute_layout(area_latlngs: list, p: LayoutParams, neighbours: list | None 
         "row_gap_m": round(row_gap, 2),
         "center": [lat0, lon0],
     }
+    if pair:
+        out["panel_face"] = panel_face
+    return out
 
 
 def compute_faces_layout(faces: list, p: LayoutParams) -> dict:
@@ -296,23 +311,16 @@ def wall_azimuth(area_latlngs: list) -> int:
 def compute_ew_layout(area_latlngs: list, p: LayoutParams, row_gap_m: float) -> dict:
     """East-west racks "back to back": rows run north-south and face east and west in turn.
 
-    The grid is the one of compute_layout facing east (p.ew_azimuth_deg, 90° unless the user turned the axis);
-    every second row is then turned the opposite way, so each pair of rows meets at its high edge. The result
-    has the shape of compute_faces_layout with two faces: 0 = east side, 1 = west side (180° opposite).
+    The grid is the one of compute_layout facing east (p.ew_azimuth_deg, 90° unless the user turned the axis),
+    made of pairs: the back panel of every pair is turned the opposite way, so the two meet at their high edge.
+    A panel never stands alone. The result has the shape of compute_faces_layout with two faces: 0 = east side,
+    1 = west side (180° opposite).
     """
     east = p.ew_azimuth_deg % 360.0
     q = replace(p, azimuth_deg=east, mounting="rack", row_spacing_m=row_gap_m)
-    res = compute_layout(area_latlngs, q)
-    along_slope = q.panel_width_m if q.orientation == "landscape" else q.panel_length_m
-    step = along_slope * math.cos(math.radians(q.tilt_deg)) + row_gap_m
-    fwd, _ = _transformers(*res["center"])
-    ys = []
-    for panel in res["panels"]:
-        c = Polygon([fwd.transform(lng, lat) for lat, lng in panel]).centroid
-        ys.append(affinity.rotate(c, q.azimuth_deg - 180.0, origin=(0, 0)).y)
-    top = max(ys, default=0.0)
-    # Row 0 is the westernmost (the back of an east-facing grid); it leans against row 1, so it faces west.
-    panel_face = [1 - round((top - y) / step) % 2 for y in ys]
+    # Pairs (east panel + west panel back to back, high edges meeting): a pair that does not fit whole is left out.
+    res = compute_layout(area_latlngs, q, pair_gap_m=row_gap_m)
+    panel_face = res.pop("panel_face")
     per_face = []
     for k, az in ((0, east), (1, (east + 180.0) % 360.0)):
         n = panel_face.count(k)
