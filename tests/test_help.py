@@ -7,7 +7,7 @@ import pytest
 
 FRONTEND = Path(__file__).resolve().parent.parent / "frontend"
 PARTS = ("short", "what", "why", "example")  # bubble, «Τι κάνει», «Γιατί είναι χρήσιμο», «Παράδειγμα»
-OPTIONAL = ("sel", "name", "place", "text")
+OPTIONAL = ("sel", "name", "place", "text", "anchor")
 PLACES = ("top", "bottom", "left", "right")
 GREEK = re.compile("[Ͱ-Ͽ]")
 

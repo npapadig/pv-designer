@@ -513,7 +513,8 @@ window.HELP_TEXTS = {
   "map-layer-clarity": {
     sel: ".leaflet-control-layers-base label",
     text: "Δορυφόρος (Esri Clarity, συχνά πιο καθαρός)",
-    place: "left",
+    place: "bottom",
+    anchor: ".leaflet-control-layers",
     short: "Δορυφορική φωτογραφία της Esri σε άλλη έκδοση, συχνά πιο καθαρή.",
     what: "Η ίδια υπηρεσία της Esri με λίγο διαφορετικές φωτογραφίες, που σε πολλά μέρη είναι πιο καθαρές ή πιο πρόσφατες.",
     why: "Η καθαρότητα αλλάζει από περιοχή σε περιοχή· αξίζει να συγκρίνεις.",
@@ -522,7 +523,8 @@ window.HELP_TEXTS = {
   "map-esri": {
     sel: ".leaflet-control-layers-base label",
     text: "Δορυφόρος (Esri)",
-    place: "left",
+    place: "bottom",
+    anchor: ".leaflet-control-layers",
     short: "Δορυφορική φωτογραφία από την Esri. Η βασική επιλογή.",
     what: "Δείχνει τον χάρτη ως φωτογραφία από ψηλά (δορυφόρος ή αεροπλάνο), από την εταιρεία Esri. " +
       "Πάνω σε αυτή σχεδιάζεις τη στέγη και τα εμπόδια.",
@@ -533,7 +535,8 @@ window.HELP_TEXTS = {
   "map-layer-ktimatologio": {
     sel: ".leaflet-control-layers-base label",
     text: "Ορθοφωτογραφίες Κτηματολογίου (Ελλάδα, 2007-09)",
-    place: "left",
+    place: "bottom",
+    anchor: ".leaflet-control-layers",
     short: "Αεροφωτογραφίες του Ελληνικού Κτηματολογίου (μόνο Ελλάδα, του 2007-09).",
     what: "Δείχνει τις ορθοφωτογραφίες του Κτηματολογίου: αεροφωτογραφίες διορθωμένες ώστε οι αποστάσεις να είναι σωστές.",
     why: "Σε ορισμένες περιοχές είναι πιο καθαρές από τον δορυφόρο. Είναι όμως παλιές: νεότερα κτίρια δεν φαίνονται.",
@@ -542,7 +545,8 @@ window.HELP_TEXTS = {
   "map-layer-streets": {
     sel: ".leaflet-control-layers-base label",
     text: "Χάρτης δρόμων",
-    place: "left",
+    place: "bottom",
+    anchor: ".leaflet-control-layers",
     short: "Απλός χάρτης με δρόμους και ονόματα (OpenStreetMap), χωρίς φωτογραφία.",
     what: "Δείχνει σχέδιο με δρόμους, ονόματα και περιγράμματα κτιρίων αντί για φωτογραφία.",
     why: "Βοηθά να προσανατολιστείς και να βρεις τη σωστή οδό και το οικόπεδο.",
@@ -551,7 +555,8 @@ window.HELP_TEXTS = {
   "map-layer-google": {
     sel: ".leaflet-control-layers-base label",
     text: "Δορυφόρος Google",
-    place: "left",
+    place: "bottom",
+    anchor: ".leaflet-control-layers",
     short: "Δορυφορικές εικόνες της Google, συχνά οι πιο καθαρές.",
     what: "Δείχνει τις δορυφορικές εικόνες της Google. Χρειάζεται δικό σου κλειδί Google, που μένει μόνο στον υπολογιστή σου.",
     why: "Σε πολλές περιοχές της Ελλάδας οι εικόνες της Google είναι πιο καθαρές και πιο πρόσφατες.",

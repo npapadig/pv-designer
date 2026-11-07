@@ -89,8 +89,12 @@
   function show(t, keyboard) {
     clearTimeout(showTimer);
     clearTimeout(hideTimer);
-    const r = t.el.getBoundingClientRect();
+    // "anchor" in an entry: the bubble is placed by that bigger element (the map menu), not by the small one under the mouse.
+    const base = (t.e.anchor && t.el.closest(t.e.anchor)) || t.el;
+    const r = base.getBoundingClientRect();
     if (!t.el.isConnected || (!r.width && !r.height) || dialog.open) return;
+    // The map menu already shows its list: a bubble about the menu as a whole would only lie on top of it.
+    if (t.e.key === "map-layers" && t.el.classList.contains("leaflet-control-layers-expanded")) return;
     shown = t;
     bubble.querySelector(".help-short").textContent = t.e.short;
     bubble.classList.toggle("keys", !!keyboard);
