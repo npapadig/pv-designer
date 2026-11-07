@@ -224,6 +224,13 @@
             <button type="button" id="btnPlanCenter" class="secondary">Στο κέντρο του χάρτη</button>
             <button type="button" id="btnPlanScale" class="secondary">Κλίμακα (2 σημεία)</button>
           </div>
+          <div class="row">
+            <button type="button" id="btnPlanFit" class="secondary">Ταίριαξε με τον χάρτη (2+2 σημεία)</button>
+          </div>
+          <div id="planFitRow" class="plan-scale" hidden>
+            <p class="muted small" id="planFitInfo"></p>
+            <button type="button" id="btnPlanFitCancel" class="ghost">Ακύρωση</button>
+          </div>
           <div id="planScaleRow" class="plan-scale" hidden>
             <p class="muted small" id="planScaleInfo"></p>
             <div class="row" id="planScaleSet" hidden>
@@ -232,6 +239,16 @@
               <button type="button" id="btnPlanScaleOk">Εφαρμογή</button>
             </div>
             <button type="button" id="btnPlanScaleCancel" class="ghost">Ακύρωση</button>
+          </div>
+          <p class="muted small">Σύρε τις γωνίες για να μεγαλώσει ή να μικρύνει, και τον στρογγυλό κύκλο από πάνω για να γυρίσει
+            (με Shift ανά 15°). Με τον τροχό του ποντικιού μεγαλώνει γύρω από τον δείκτη, με Shift+τροχό γυρίζει.</p>
+          <div id="planNudge" class="plan-nudge">
+            <span class="muted small">Μέγεθος</span>
+            <button type="button" class="secondary" data-what="size" data-dir="-1" title="Μικρότερο κατά 1 % (Shift: 10 %)">−1 %</button>
+            <button type="button" class="secondary" data-what="size" data-dir="1" title="Μεγαλύτερο κατά 1 % (Shift: 10 %)">+1 %</button>
+            <span class="muted small">Γωνία</span>
+            <button type="button" class="secondary" data-what="rot" data-dir="-1" title="0,1° αριστερά (Shift: 1°)">⟲ 0,1°</button>
+            <button type="button" class="secondary" data-what="rot" data-dir="1" title="0,1° δεξιά (Shift: 1°)">⟳ 0,1°</button>
           </div>
           <label>Περιστροφή <input id="planRot" type="range" min="-180" max="180" step="0.5" value="0"></label>
           <div class="grid2">

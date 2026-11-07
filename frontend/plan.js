@@ -1,5 +1,8 @@
 // Floor plan on the map: an image the user places under the drawings, moves, rotates, sizes with two
-// points of known distance and makes see-through, then locks to draw the roof on top of it.
+// points of known distance and makes see-through, then locks to draw the roof on top of it. Corner handles
+// grow or shrink it (the opposite corner stays), the round handle on top turns it (Shift = steps of 15°), the
+// wheel grows it (Shift+wheel turns it), and «Ταίριαξε με τον χάρτη» lines it up with the satellite picture from
+// two matching points (size, turn and place at once).
 // Uses app.js globals (map, $, toast, fmt). No library: an <img> in its own Leaflet pane.
 (() => {
   const EARTH = 40075016.686; // equator length in metres (Web Mercator)
@@ -17,6 +20,13 @@
   pane.appendChild(img);
   L.DomEvent.disableClickPropagation(img);
   L.DomEvent.disableScrollPropagation(img);
+  // The frame with the handles follows the picture (same place and turn, its own size in pixels).
+  const frame = document.createElement("div");
+  frame.className = "plan-frame leaflet-zoom-animated";
+  frame.hidden = true;
+  frame.innerHTML = '<i class="ph" data-c="-1,-1"></i><i class="ph" data-c="1,-1"></i><i class="ph" data-c="1,1"></i><i class="ph" data-c="-1,1"></i><i class="ph rot" data-c="rot" title="Γύρισέ το"></i>';
+  pane.appendChild(frame);
+  L.DomEvent.disableClickPropagation(frame);
 
   // ---------- Drawing the image ----------
   const metresPerPixel = (lat, zoom) => (EARTH * Math.cos((lat * Math.PI) / 180)) / (256 * 2 ** zoom);
@@ -24,6 +34,9 @@
   function place(pt, zoom) {
     const scale = p.widthM / metresPerPixel(p.center.lat, zoom) / p.natW;
     img.style.transform = `translate(${pt.x}px, ${pt.y}px) rotate(${p.rot}deg) scale(${scale}) translate(-50%, -50%)`;
+    frame.style.width = `${p.natW * scale}px`;
+    frame.style.height = `${p.natH * scale}px`;
+    frame.style.transform = `translate(${pt.x}px, ${pt.y}px) rotate(${p.rot}deg) translate(-50%, -50%)`;
   }
   function update() {
     if (!p.image || !p.natW) return;
@@ -37,9 +50,15 @@
     img.style.opacity = p.opacity;
     pane.style.zIndex = p.locked ? PANE_LOCKED : PANE_EDIT;
     img.classList.toggle("locked", p.locked);
-    ["btnPlanCenter", "btnPlanScale", "planRot", "planRotNum", "planWidth", "btnPlanReplace"]
+    ["btnPlanCenter", "btnPlanScale", "btnPlanFit", "planRot", "planRotNum", "planWidth", "btnPlanReplace"]
       .forEach((id) => { $(id).disabled = p.locked; });
-    if (p.locked) cancelScale();
+    document.querySelectorAll("#planNudge button").forEach((b) => { b.disabled = p.locked; });
+    if (p.locked) { cancelScale(); cancelFit(); }
+    showFrame();
+  }
+  // Handles only while the picture can be changed by hand.
+  function showFrame() {
+    frame.hidden = !(p.image && p.natW) || p.locked || scaling || fitting;
   }
 
   function syncControls() {
@@ -195,6 +214,7 @@
   function clear() {
     loading++;
     cancelScale();
+    cancelFit();
     ask(null);
     Object.assign(p, { image: "", natW: 0, natH: 0, center: null, widthM: 20, rot: 0, opacity: 0.6, locked: false });
     img.removeAttribute("src");
@@ -234,7 +254,7 @@
   // ---------- Moving with the mouse ----------
   let drag = null;
   img.addEventListener("pointerdown", (e) => {
-    if (p.locked || scaling || e.button !== 0) return;
+    if (p.locked || scaling || fitting || e.button !== 0) return;
     e.preventDefault();
     e.stopPropagation();
     img.setPointerCapture(e.pointerId);
@@ -256,9 +276,62 @@
   img.addEventListener("pointerup", endDrag);
   img.addEventListener("pointercancel", endDrag);
 
+  // ---------- Handles: corners grow or shrink, the round one turns ----------
+  // Grow the plan by f around the layer point a (a stays where it is).
+  function scaleAbout(a, f) {
+    const c = map.latLngToLayerPoint(p.center);
+    p.center = map.layerPointToLatLng(a.add(c.subtract(a).multiplyBy(f)));
+    p.widthM *= f;
+  }
+  const rad = (d) => (d * Math.PI) / 180;
+  let grab = null;
+  frame.addEventListener("pointerdown", (e) => {
+    const h = e.target.closest(".ph");
+    if (!h || p.locked || scaling || fitting || e.button !== 0) return;
+    e.preventDefault();
+    e.stopPropagation();
+    h.setPointerCapture(e.pointerId);
+    map.dragging.disable();
+    const c = map.latLngToLayerPoint(p.center);
+    if (h.dataset.c === "rot") { grab = { kind: "rot", c }; return; }
+    // the corner and the opposite one (which stays) in layer points
+    const [sx, sy] = h.dataset.c.split(",").map(Number);
+    const w = frame.offsetWidth / 2, hh = frame.offsetHeight / 2, r = rad(p.rot);
+    const off = L.point(sx * w * Math.cos(r) - sy * hh * Math.sin(r), sx * w * Math.sin(r) + sy * hh * Math.cos(r));
+    grab = { kind: "size", c, corner: c.add(off), anchor: c.subtract(off), w0: p.widthM, center0: p.center };
+  });
+  frame.addEventListener("pointermove", (e) => {
+    if (!grab) return;
+    const pt = map.mouseEventToLayerPoint(e);
+    if (grab.kind === "rot") {
+      let deg = (Math.atan2(pt.x - grab.c.x, -(pt.y - grab.c.y)) * 180) / Math.PI;
+      if (e.shiftKey) deg = Math.round(deg / 15) * 15;
+      setRot(deg);
+      return;
+    }
+    const d = grab.corner.subtract(grab.anchor), v = pt.subtract(grab.anchor);
+    const f = Math.max(0.05, (v.x * d.x + v.y * d.y) / (d.x * d.x + d.y * d.y)); // along the diagonal: the shape stays
+    p.center = map.layerPointToLatLng(grab.anchor.add(map.latLngToLayerPoint(grab.center0).subtract(grab.anchor).multiplyBy(f)));
+    p.widthM = grab.w0 * f;
+    syncControls();
+    update();
+  });
+  const endGrab = () => { if (grab) { grab = null; map.dragging.enable(); } };
+  frame.addEventListener("pointerup", endGrab);
+  frame.addEventListener("pointercancel", endGrab);
+
+  // The wheel over the picture grows it around the pointer; with Shift it turns it (a little at a time).
+  img.addEventListener("wheel", (e) => {
+    if (p.locked || scaling || fitting) return;
+    e.preventDefault();
+    const dir = e.deltaY < 0 ? 1 : -1;
+    if (e.shiftKey) setRot(p.rot + dir * 0.5);
+    else { scaleAbout(map.mouseEventToLayerPoint(e), Math.pow(1.03, dir)); syncControls(); update(); }
+  }, { passive: false });
+
   // ---------- Scale from two points of known distance ----------
   const marks = L.layerGroup().addTo(map);
-  let scaling = false, pts = [];
+  let scaling = false, fitting = false, pts = [], fitPts = [];
 
   function startScale() {
     scaling = true;
@@ -269,16 +342,78 @@
     $("planScaleInfo").textContent = "Κάνε κλικ στο 1ο σημείο της κάτοψης.";
     img.classList.add("measuring");
     map.getContainer().classList.add("plan-measuring");
+    showFrame();
   }
 
   function cancelScale() {
+    if (!scaling) return;
     scaling = false;
     pts = [];
     marks.clearLayers();
     $("planScaleRow").hidden = true;
     img.classList.remove("measuring");
     map.getContainer().classList.remove("plan-measuring");
+    showFrame();
   }
+
+  // ---------- Line it up with the map: two features, each clicked on the plan and then on the map ----------
+  const FIT_TEXT = [
+    "1/4: Κάνε κλικ σε ένα αναγνωρίσιμο σημείο ΠΑΝΩ ΣΤΗΝ ΚΑΤΟΨΗ (π.χ. μια γωνία του κτιρίου).",
+    "2/4: Τώρα κάνε κλικ στο ΙΔΙΟ σημείο στον δορυφορικό ΧΑΡΤΗ (εκεί που πρέπει να πάει).",
+    "3/4: Διάλεξε ένα δεύτερο σημείο, μακριά από το πρώτο, ΠΑΝΩ ΣΤΗΝ ΚΑΤΟΨΗ.",
+    "4/4: Και το ίδιο σημείο στον ΧΑΡΤΗ.",
+  ];
+  const FIT_COLORS = ["#ff8a3d", "#14b8a6", "#ff8a3d", "#14b8a6"];
+  const FIT_LABELS = ["Α κάτοψη", "Α χάρτης", "Β κάτοψη", "Β χάρτης"];
+  function startFit() {
+    cancelScale();
+    fitting = true;
+    fitPts = [];
+    marks.clearLayers();
+    $("planFitRow").hidden = false;
+    $("planFitInfo").textContent = FIT_TEXT[0];
+    img.classList.add("measuring");
+    map.getContainer().classList.add("plan-measuring");
+    showFrame();
+  }
+  function cancelFit() {
+    if (!fitting) return;
+    fitting = false;
+    fitPts = [];
+    marks.clearLayers();
+    $("planFitRow").hidden = true;
+    img.classList.remove("measuring");
+    map.getContainer().classList.remove("plan-measuring");
+    showFrame();
+  }
+  // The turn, size and place that bring the two points on the plan onto the two on the map.
+  function applyFit() {
+    const [p1, q1, p2, q2] = fitPts.map((ll) => map.latLngToLayerPoint(ll));
+    const vp = p2.subtract(p1), vq = q2.subtract(q1);
+    const lp = Math.hypot(vp.x, vp.y), lq = Math.hypot(vq.x, vq.y);
+    if (lp < 8 || lq < 8) { toast("Τα δύο σημεία είναι πολύ κοντά· διάλεξε σημεία πιο μακριά το ένα από το άλλο.", 6000); return false; }
+    const s = lq / lp, d = Math.atan2(vq.y, vq.x) - Math.atan2(vp.y, vp.x);
+    const rel = map.latLngToLayerPoint(p.center).subtract(p1);
+    const moved = L.point(rel.x * Math.cos(d) - rel.y * Math.sin(d), rel.x * Math.sin(d) + rel.y * Math.cos(d)).multiplyBy(s);
+    p.center = map.layerPointToLatLng(q1.add(moved));
+    p.widthM *= s;
+    setRot(p.rot + (d * 180) / Math.PI);
+    return true;
+  }
+  map.on("click", (e) => {
+    if (!fitting || fitPts.length >= 4) return;
+    const i = fitPts.length;
+    fitPts.push(e.latlng);
+    L.circleMarker(e.latlng, { radius: 6, color: "#fff", weight: 2, fillColor: FIT_COLORS[i], fillOpacity: 1, interactive: false })
+      .bindTooltip(FIT_LABELS[i], { permanent: true, direction: "top", offset: [0, -6] }).addTo(marks);
+    if (i === 3) {
+      const ok = applyFit();
+      cancelFit();
+      if (ok) toast("Η κάτοψη ταίριαξε με τον χάρτη. Αν θες, διόρθωσέ την ακόμα με τις λαβές.", 6000);
+      return;
+    }
+    $("planFitInfo").textContent = FIT_TEXT[i + 1];
+  });
 
   map.on("click", (e) => {
     if (!scaling || pts.length >= 2) return;
@@ -316,10 +451,18 @@
   $("btnPlanRemove").onclick = () => { if (confirm("Να αφαιρεθεί η κάτοψη από το έργο;")) clear(); };
   $("btnPlanCenter").onclick = () => { p.center = visibleCenter(); update(); };
   $("btnPlanScale").onclick = startScale;
+  $("btnPlanFit").onclick = startFit;
+  $("btnPlanFitCancel").onclick = cancelFit;
+  // Small steps: one press = 1 % bigger or smaller / 0,1° (with Shift ten times as much), around the middle.
+  document.querySelectorAll("#planNudge button").forEach((b) => (b.onclick = (e) => {
+    const k = e.shiftKey ? 10 : 1, dir = +b.dataset.dir;
+    if (b.dataset.what === "size") { scaleAbout(map.latLngToLayerPoint(p.center), Math.pow(1.01, dir * k)); syncControls(); update(); }
+    else setRot(Math.round((p.rot + dir * 0.1 * k) * 10) / 10);
+  }));
   $("btnPlanScaleCancel").onclick = cancelScale;
   $("btnPlanScaleOk").onclick = applyScale;
   $("planDist").addEventListener("keydown", (e) => { if (e.key === "Enter") applyScale(); });
-  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && scaling) cancelScale(); });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape") { cancelScale(); cancelFit(); } });
 
   const setRot = (v) => {
     p.rot = ((((+v || 0) + 180) % 360) + 360) % 360 - 180;
