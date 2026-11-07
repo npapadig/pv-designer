@@ -179,7 +179,7 @@
     $("manualAdd").textContent = adding ? "✓ Τέλος προσθήκης" : "＋ Προσθήκη πάνελ";
     updateHandles();
     $("manualStatus").textContent = adding
-      ? "Κάνε κλικ στον χάρτη όπου θέλεις πάνελ· όσα θέλεις. Ο τροχός το γυρίζει (Shift = λεπτά), R = στο πλάι, Esc ή δεξί κλικ = τέλος."
+      ? "Κάνε κλικ στο άδειο σημείο όπου θέλεις πάνελ· όσα θέλεις. Ο τροχός το γυρίζει (Shift = λεπτά), R = στο πλάι, Esc ή δεξί κλικ = τέλος. Πάνω σε υπάρχον πάνελ το κλικ το επιλέγει και το σύρεις."
       : ew
         ? `Πάνελ: ${layers().length} · ανατολή ${layers().filter((l) => !l.pvFaceIdx).length} · δύση ${layers().filter((l) => l.pvFaceIdx === 1).length} · επιλεγμένα: ${n}`
         : `Πάνελ: ${layers().length} · επιλεγμένα: ${n}`;
@@ -241,11 +241,17 @@
   // ---------- Dragging ----------
   let drag = null;
 
+  // The panel drawn under an event target (null on empty ground).
+  function panelAt(target) {
+    const path = target?.closest?.("path");
+    return (path && layers().find((l) => l.getElement?.() === path)) || null;
+  }
+
   function onDown(e) {
-    if (!on() || adding || e.button !== 0) return;
-    const path = e.target.closest?.("path");
-    const hit = path && layers().find((l) => l.getElement?.() === path);
+    if (!on() || e.button !== 0) return; // also while adding: a press on a panel moves / selects it, it never adds one
+    const hit = panelAt(e.target);
     if (!hit) return;
+    removeGhost();
     e.stopPropagation(); // the map must not pan
     e.preventDefault();
     const additive = e.shiftKey || e.ctrlKey || e.metaKey;
@@ -358,16 +364,35 @@
     if (!ghost) ghost = L.polygon(ring, { ...GHOST_STYLE, fillColor }).addTo(map);
     else { ghost.setLatLngs([ring]); ghost.setStyle({ fillColor }); }
     if (plane) { // turned with the wheel: show the direction
-      const text = `${Math.round(plane.az)}°`;
+      const text = `${Math.round(plane.az * 10) / 10}°`; // one decimal: the notch is 2.5°
       if (ghost.getTooltip()) ghost.setTooltipContent(text);
       else ghost.bindTooltip(text, { permanent: true, direction: "top", offset: [0, -4] });
     } else if (ghost.getTooltip()) ghost.unbindTooltip();
+  }
+
+  // Is the middle of one of the two panels inside the other? Then they lie on top of each other.
+  function onTopOfPanel(ring) {
+    const c = centroidOf(ring), [kx, ky] = kOf(c[0]);
+    const mine = toXY(ring, c, kx, ky);
+    const within = (pt, poly) => {
+      let in_ = false;
+      for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+        const [xi, yi] = poly[i], [xj, yj] = poly[j];
+        if (yi > pt[1] !== yj > pt[1] && pt[0] < ((xj - xi) * (pt[1] - yi)) / (yj - yi) + xi) in_ = !in_;
+      }
+      return in_;
+    };
+    return layers().some((l) => {
+      const other = toXY(ringOf(l), c, kx, ky), mid = centroidOf(other);
+      return within([0, 0], other) || within(mid, mine);
+    });
   }
 
   function place(latlng) {
     ensureLayout();
     ensureFaces();
     const { ring, face, plane } = placement(latlng);
+    if (onTopOfPanel(ring)) { toast("Εκεί υπάρχει ήδη πάνελ. Διάλεξε άδειο σημείο.", 3000); return; }
     const layer = addPanel(ring);
     if (face != null) layer.pvFaceIdx = face;
     if (plane) layer.pvPlane = { ...plane }; // next to a panel with its own tilt / direction: the same
@@ -806,22 +831,28 @@
   // Adding listens to the plain DOM click: a click on the drawn area or on a panel never reaches the map
   // otherwise. A press that moved (the map was dragged) is not a click.
   let press = null;
-  map.getContainer().addEventListener("mousedown", (e) => { press = [e.clientX, e.clientY]; }, true);
+  map.getContainer().addEventListener("mousedown", (e) => { press = [e.clientX, e.clientY, !!panelAt(e.target)]; }, true);
   map.getContainer().addEventListener("click", (e) => {
     if (!adding || e.button !== 0 || !(e.target === map.getContainer() || e.target.closest?.(".leaflet-pane")) || e.target.closest?.(".leaflet-popup, button, a")) return;
-    if (press && Math.hypot(e.clientX - press[0], e.clientY - press[1]) > CLICK_PX) return;
+    if (press && (press[2] || Math.hypot(e.clientX - press[0], e.clientY - press[1]) > CLICK_PX)) return; // a press on a panel only selects / moves it
+    if (panelAt(e.target) || drag) return;
     e.stopPropagation();
     place(map.mouseEventToLatLng(e));
   }, true);
-  map.on("mousemove", (e) => { if (adding) showGhost(e.latlng); });
+  // The ghost follows the mouse over empty ground; over a panel (or while one is dragged) it steps aside.
+  map.on("mousemove", (e) => {
+    if (!adding) return;
+    if (drag || panelAt(e.originalEvent?.target)) removeGhost();
+    else showGhost(e.latlng);
+  });
   map.getContainer().addEventListener("mouseleave", removeGhost);
   $("manualAdd").onclick = () => setAdding(!adding);
-  // While adding, the wheel turns the new panel (5° a notch, Shift: 1°) instead of zooming the map.
+  // While adding, the wheel turns the new panel (2.5° a notch, Shift: 1°) instead of zooming the map.
   map.getContainer().addEventListener("wheel", (e) => {
     if (!adding) return;
     e.preventDefault();
     e.stopPropagation();
-    const step = e.shiftKey ? 1 : 5;
+    const step = e.shiftKey ? 1 : 2.5;
     spin = (((spin + (e.deltaY < 0 ? step : -step)) % 360) + 360) % 360;
     if (hover) showGhost(hover);
   }, { capture: true, passive: false });

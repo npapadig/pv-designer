@@ -143,3 +143,12 @@ def test_manual_script_has_menu_wheel_and_body_move():
     assert "function body(" in (front / "plan.js").read_text(encoding="utf-8")
     assert "recordGroup" in (front / "shapes.js").read_text(encoding="utf-8")
 
+
+def test_adding_never_puts_a_panel_on_top_of_another_one():
+    """While adding, a press on a panel selects / moves it (it never adds); a panel is never put on another one;
+    the wheel turns the new panel 2.5 degrees a notch (Shift: 1)."""
+    from pathlib import Path
+    js = (Path(__file__).resolve().parent.parent / "frontend" / "manual.js").read_text(encoding="utf-8")
+    for part in ("function panelAt(", "function onTopOfPanel(", "if (onTopOfPanel(ring))", "press[2]", "e.shiftKey ? 1 : 2.5"):
+        assert part in js
+    assert "adding || e.button" not in js.split("function onDown(")[1].split("}")[0]  # dragging works while adding
