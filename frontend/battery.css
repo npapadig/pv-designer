@@ -48,3 +48,59 @@ body.existing-pv #sidebar {
 .bat-outage h4 { margin: 0 0 4px; font-size: 0.85rem; }
 .bat-outage .bat-cmp { padding: 4px 0; }
 .bat-outage .bat-cmp.worst span { font-weight: 700; color: var(--danger); }
+
+/* Own measurements (battery.js, «Με τα δικά σου μετρήματα»): the files, what was read, the verdict and the charts. */
+.bat-real { margin: 4px 0 14px; padding: 10px 12px 12px; border: 1px solid var(--line-strong); border-radius: 12px; background: var(--soft); }
+.bat-real > summary { cursor: pointer; font-weight: 700; font-size: 0.95rem; }
+.bat-tag { display: inline-block; margin-left: 6px; padding: 1px 7px; border-radius: 999px; background: var(--warn-soft); color: var(--accent-text); font-size: 0.68rem; font-weight: 650; vertical-align: 1px; }
+.bat-sub { margin: 16px 0 6px; font-size: 0.88rem; }
+.bat-drop { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 14px 10px; margin: 8px 0; border: 1.5px dashed var(--line-strong); border-radius: 10px; cursor: pointer; color: var(--muted); font-size: 0.82rem; text-align: center; }
+.bat-drop b { color: var(--accent-text); }
+.bat-drop:hover, .bat-drop.over { background: var(--field-hover); border-color: var(--accent-text); }
+.bat-files { display: grid; gap: 6px; }
+.bat-file { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; padding: 7px 9px; border: 1px solid var(--line); border-radius: 8px; background: var(--field); font-size: 0.82rem; }
+.bat-file > div { display: grid; gap: 2px; min-width: 0; }
+.bat-file b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bat-err { color: var(--danger); font-size: 0.8rem; }
+.bat-msg { margin: 4px 0 0; padding: 6px 8px; border-radius: 6px; background: var(--soft); color: var(--muted); font-size: 0.76rem; line-height: 1.35; }
+.bat-msg.warn { background: var(--warn-soft); color: var(--text); }
+.bat-banner { margin: 10px 0; padding: 8px 10px; border-radius: 8px; background: var(--warn-soft); font-size: 0.82rem; }
+.bat-more { margin: 8px 0; }
+#brPreview, #brResult { margin-top: 10px; }
+#brPreview .chart-box, #brResult .chart-box { height: 230px; position: relative; margin-top: 8px; }
+#brResult .chart-box.tall { height: 300px; }
+#btnBatReal { margin-top: 12px; }
+.bat-verdict { margin: 4px 0 8px; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--line-strong); }
+.bat-verdict b { font-size: 1.15rem; letter-spacing: -0.01em; }
+.bat-verdict p { margin: 4px 0 0; font-size: 0.82rem; color: var(--muted); }
+.bat-verdict.ok { border-color: var(--teal); background: rgba(45, 212, 191, 0.08); }
+.bat-verdict.ok b { color: var(--teal); }
+.bat-verdict.bad { border-color: var(--danger); background: var(--danger-soft); }
+.bat-verdict.bad b { color: var(--danger); }
+.bat-verdict.mid { background: var(--warn-soft); }
+.bat-row.bad b { color: var(--danger); }
+.bat-why { margin: 8px 0; padding-left: 18px; font-size: 0.8rem; color: var(--muted); }
+.bat-why li { margin: 3px 0; }
+.bat-cover { margin: 8px 0; }
+.bat-chips { display: grid; grid-template-columns: repeat(12, 1fr); gap: 3px; margin: 6px 0; }
+.bat-mchip { padding: 4px 0; border-radius: 4px; font-size: 0.62rem; text-align: center; border: 1px solid transparent; }
+.bat-mchip.real, .bat-legend i.real { background: rgba(22, 163, 74, 0.35); }
+.bat-mchip.part, .bat-legend i.part { background: rgba(245, 158, 11, 0.35); }
+.bat-mchip.est, .bat-legend i.est { background: transparent; border: 1px dashed var(--line-strong); color: var(--muted); }
+.bat-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; margin: 6px 0; color: var(--muted); font-size: 0.72rem; }
+.bat-legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: -4px; }
+.bat-legend i.direct, .bat-flow .direct { background: #16a34a; }
+.bat-legend i.export, .bat-flow .export { background: #f59e0b; }
+.bat-legend i.grid, .bat-flow .grid { background: #9ca3af; }
+.bat-flowlabel { margin: 8px 0 3px; color: var(--muted); font-size: 0.72rem; }
+.bat-flow { display: flex; gap: 2px; height: 24px; border-radius: 6px; overflow: hidden; }
+.bat-flow span { display: flex; align-items: center; justify-content: center; color: #fff; font-size: 0.7rem; font-weight: 650; min-width: 2px; }
+.bat-month { display: grid; grid-template-columns: 2.6em 1fr auto auto; align-items: center; gap: 8px; padding: 4px 0; border-bottom: 1px solid var(--line); font-size: 0.8rem; }
+.bat-month i { display: block; height: 8px; border-radius: 4px; background: var(--teal); min-width: 1px; }
+.bat-month b { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; font-weight: 600; }
+.bat-sweep { display: grid; grid-template-columns: 0.7fr 1.2fr 1.2fr 1fr; gap: 6px; padding: 5px 0; border-bottom: 1px solid var(--line); font-size: 0.78rem; font-variant-numeric: tabular-nums; }
+.bat-sweep span { text-align: right; }
+.bat-sweep span:first-child { text-align: left; }
+.bat-sweep.head { color: var(--muted); font-size: 0.68rem; font-weight: 650; border-bottom-color: var(--line-strong); }
+.bat-sweep.best { background: var(--warn-soft); font-weight: 700; }
+.bat-sweep .neg { color: var(--danger); }
