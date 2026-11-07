@@ -131,3 +131,15 @@ def test_manual_script_has_own_plane_handles_and_delete_ways():
     for part in ("applyPlane", "rebuildFaces", "startTurn", "openEditor", "onContext", "onMarqueeDown", "pv-del", "custom_from"):
         assert part in js
 
+
+def test_manual_script_has_menu_wheel_and_body_move():
+    """Right click menu, copy/paste, wheel while adding, selection frame (manual.js) and the plan + shapes body move."""
+    from pathlib import Path
+    front = Path(__file__).resolve().parent.parent / "frontend"
+    js = (front / "manual.js").read_text(encoding="utf-8")
+    for part in ("showMenu", "copySelected", "pasteAt", "selectLine", "boxSelect", "spin"):
+        assert part in js
+    assert 'id="manualBoxSel"' in (front / "index.html").read_text(encoding="utf-8")
+    assert "function body(" in (front / "plan.js").read_text(encoding="utf-8")
+    assert "recordGroup" in (front / "shapes.js").read_text(encoding="utf-8")
+

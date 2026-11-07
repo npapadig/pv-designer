@@ -98,6 +98,8 @@
   // includes the changes made by draw.js and faces.js. So a step is recorded there.
   const MAX_STEPS = 100;
   const undoList = [], redoList = [];
+  const undoMeta = [], redoMeta = []; // parallel to the lists: the picture's shift of a step that took it along
+  let pendingMeta = null;
   let last = "[]"; // the drawing after the last recorded step
   let holding = false; // while a shape is dragged: one step at the end
   let restoring = false;
@@ -115,17 +117,26 @@
     const now = snapshot();
     if (now === last) return; // e.g. a setting changed, not a shape
     undoList.push(last);
-    if (undoList.length > MAX_STEPS) undoList.shift();
+    undoMeta.push(pendingMeta);
+    pendingMeta = null;
+    if (undoList.length > MAX_STEPS) { undoList.shift(); undoMeta.shift(); }
     redoList.length = 0;
+    redoMeta.length = 0;
     last = now;
     showButtons();
+  }
+  // A move of shapes that took the floor plan and the panels along: its own undo step, remembering the shift.
+  function recordGroup(delta) {
+    pendingMeta = delta;
+    record();
+    pendingMeta = null;
   }
   const clearLayoutFirst = clearLayout;
   window.clearLayout = function () { clearLayoutFirst(); record(); };
 
   // A new or opened project starts with an empty history.
   function resetHistory() {
-    undoList.length = redoList.length = 0;
+    undoList.length = redoList.length = undoMeta.length = redoMeta.length = 0;
     last = snapshot();
     showButtons();
   }
@@ -173,14 +184,20 @@
     if (drawingNow || drag) return;
     if (!undoList.length) return toast("Δεν υπάρχει κάτι για αναίρεση.");
     redoList.push(last);
+    const meta = undoMeta.pop();
+    redoMeta.push(meta);
     restore(undoList.pop());
+    if (meta) window.plan?.shiftBy(-meta.dLat, -meta.dLng);
   }
 
   function redo() {
     if (drawingNow || drag) return;
     if (!redoList.length) return toast("Δεν υπάρχει κάτι για επανάληψη.");
     undoList.push(last);
+    const meta = redoMeta.pop();
+    undoMeta.push(meta);
     restore(redoList.pop());
+    if (meta) window.plan?.shiftBy(meta.dLat, meta.dLng);
   }
 
   // ---------- Moving with the mouse ----------
@@ -191,7 +208,7 @@
     if (layer !== selected || busy() || e.originalEvent.button !== 0) return;
     L.DomEvent.preventDefault(e.originalEvent); // no text selection while dragging
     map.dragging.disable(); // the map stays still, the shape moves
-    drag = { layer, start: e.latlng, pts: ring(layer).map((p) => L.latLng(p.lat, p.lng)), moved: false };
+    drag = { layer, start: e.latlng, pts: ring(layer).map((p) => L.latLng(p.lat, p.lng)), moved: false, body: window.plan?.body(layer) || null };
     map.on("mousemove", dragMove);
     L.DomEvent.on(document, "mouseup", dragEnd);
   }
@@ -203,11 +220,12 @@
       drag.moved = true;
       map.closePopup();
       holding = true; // one undo step for the whole move
-      clearLayout(); // the panels do not move with the shape
+      if (!drag.body) clearLayout(); // the panels do not move with a shape that is alone (a body takes them along)
       if (drag.layer.editing.enabled()) drag.layer.editing.disable(); // handles come back at the end
     }
     const dLat = e.latlng.lat - drag.start.lat, dLng = e.latlng.lng - drag.start.lng;
-    drag.layer.setLatLngs([drag.pts.map((p) => L.latLng(p.lat + dLat, p.lng + dLng))]);
+    if (drag.body) drag.body.move(dLat, dLng); // the picture, the other shapes and the panels on it go along
+    else drag.layer.setLatLngs([drag.pts.map((p) => L.latLng(p.lat + dLat, p.lng + dLng))]);
   }
 
   function dragEnd() {
@@ -223,6 +241,7 @@
     // A roof face keeps its label in the middle.
     const tip = d.layer.getTooltip();
     if (tip && tip.options.permanent && d.layer.isTooltipOpen()) { d.layer.closeTooltip(); d.layer.openTooltip(); }
+    if (d.body) { d.body.end(); recordGroup(d.body.delta); return; } // the panel layout moved along: it stays
     d.layer.fire("edit"); // draw.js: lengths again and the panel layout is out of date
   }
 
@@ -549,7 +568,7 @@
   showLists();
 
   window.shapes = {
-    select, deselect, copy, paste, remove, undo, redo, record, resetHistory, startTree, stopTree,
+    select, deselect, copy, paste, remove, undo, redo, record, recordGroup, resetHistory, startTree, stopTree,
     get selected() { return selected; },
   };
 })();

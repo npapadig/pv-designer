@@ -1,6 +1,8 @@
 // Editing panels by hand on top of the automatic layout: add, move, turn, delete them (and, in east-west, switch
 // them between the east and the west side). Every selected panel has its own round handle to turn it freely, and
-// a click on a panel opens a small box for its tilt and direction (see «Ανά πάνελ» below), and check which
+// a click on a panel opens a small box for its tilt and direction, the wheel turns the panel that is being added,
+// and a right click opens a menu (copy, cut, paste, delete, select a row ...); several panels are chosen with
+// Shift/Ctrl+click, with a frame (Ctrl+drag, or the «Επιλογή με πλαίσιο» switch) or from that menu, and check which
 // placement rules they break. The panels are the polygons of panelsLayer, so shading, production, electrical
 // and saving use the edited positions with no extra step. Everything works in lat/lng (metres around a local
 // origin), so it is the same on a rotated map. Rules are checked by the server (POST /api/layout/check,
@@ -26,7 +28,9 @@
   const selected = new Set();
   const undoStack = [];
   let seq = 0, checkTimer = null;
-  let adding = false, flip = false, ghost = null, hover = null, nudging = null;
+  let adding = false, flip = false, spin = 0, ghost = null, hover = null, nudging = null;
+  let boxSelect = false;                        // plain drag on empty ground draws the selection frame
+  let clip = null, lastLL = null, menu = null;  // copied panels, last mouse place on the map, the right click menu
   const handleLayer = L.layerGroup().addTo(map); // the round handles of the selected panels
   let handles = [];                             // { l, marker, line }
 
@@ -171,10 +175,11 @@
     $("manualEw").hidden = !ew;
     $("manualUndo").disabled = !undoStack.length;
     $("manualAdd").classList.toggle("active", adding);
+    $("manualBoxSel").classList.toggle("active", boxSelect);
     $("manualAdd").textContent = adding ? "✓ Τέλος προσθήκης" : "＋ Προσθήκη πάνελ";
     updateHandles();
     $("manualStatus").textContent = adding
-      ? "Κάνε κλικ στον χάρτη όπου θέλεις πάνελ· όσα θέλεις. R = γύρισέ το στο πλάι, Esc = τέλος."
+      ? "Κάνε κλικ στον χάρτη όπου θέλεις πάνελ· όσα θέλεις. Ο τροχός το γυρίζει (Shift = λεπτά), R = στο πλάι, Esc ή δεξί κλικ = τέλος."
       : ew
         ? `Πάνελ: ${layers().length} · ανατολή ${layers().filter((l) => !l.pvFaceIdx).length} · δύση ${layers().filter((l) => l.pvFaceIdx === 1).length} · επιλεγμένα: ${n}`
         : `Πάνελ: ${layers().length} · επιλεγμένα: ${n}`;
@@ -322,6 +327,12 @@
       base = { pts: rectOf(0, 0, along * Math.cos(rad(plane.tilt)), across, frame(plane.az)), plane, face: f0 ? 0 : null };
     }
     if (flip) base.pts = turned(base.pts, base.plane);
+    if (spin) { // the wheel turned it: a panel of its own direction
+      const e = extent(base.pts, frame(base.plane.az));
+      base.plane = { ...base.plane, az: (base.plane.az + spin + 360) % 360 };
+      base.pts = rectOf(0, 0, e.u1 - e.u0, e.v1 - e.v0, frame(base.plane.az));
+      base.custom = true;
+    }
     // East-west: the user may choose the side of the new panel instead of taking the neighbour's.
     const side = $("manualSide").value;
     if (isEwLayout() && side !== "auto") base.face = +side;
@@ -332,7 +343,7 @@
   function placement(latlng) {
     const p = proposal(latlng.lat, latlng.lng), o = [latlng.lat, latlng.lng], [kx, ky] = kOf(latlng.lat);
     let pts = p.pts;
-    if ($("manualSnap").checked) {
+    if ($("manualSnap").checked && !spin) { // a turned panel does not snap to the neighbours' edges
       const [sx, sy] = snapShift(pts, layers().map((l) => toXY(ringOf(l), o, kx, ky)), p.plane.az);
       pts = pts.map(([x, y]) => [x + sx, y + sy]);
     }
@@ -342,10 +353,15 @@
   const removeGhost = () => { hover = null; if (ghost) { ghost.remove(); ghost = null; } };
   function showGhost(latlng) {
     hover = latlng;
-    const { ring, face } = placement(latlng);
+    const { ring, face, plane } = placement(latlng);
     const fillColor = isEwLayout() && face === 1 ? PANEL_FILL_WEST : PANEL_FILL;
     if (!ghost) ghost = L.polygon(ring, { ...GHOST_STYLE, fillColor }).addTo(map);
     else { ghost.setLatLngs([ring]); ghost.setStyle({ fillColor }); }
+    if (plane) { // turned with the wheel: show the direction
+      const text = `${Math.round(plane.az)}°`;
+      if (ghost.getTooltip()) ghost.setTooltipContent(text);
+      else ghost.bindTooltip(text, { permanent: true, direction: "top", offset: [0, -4] });
+    } else if (ghost.getTooltip()) ghost.unbindTooltip();
   }
 
   function place(latlng) {
@@ -365,6 +381,7 @@
     if (v && !areas.getLayers().length) { toast("Σχεδίασε πρώτα μια περιοχή στον χάρτη.", 4000); return; }
     adding = v;
     flip = false;
+    spin = 0;
     document.body.classList.toggle("manual-adding", v);
     if (v && !on()) { $("manualOn").checked = true; $("manualOn").onchange(); }
     if (!v) removeGhost();
@@ -544,20 +561,113 @@
   }
   function closeEditor() { if (editorPopup) { map.closePopup(editorPopup); editorPopup = null; } }
 
-  // ---------- Right click on a panel deletes it; Ctrl + drag on empty ground selects the panels inside ----------
+  // ---------- Copy, cut, paste ----------
+  // The copy keeps the shape and own plane of every panel, relative to the middle of the group.
+  function copySelected() {
+    const list = [...selected];
+    if (!list.length) return false;
+    ensureFaces();
+    const rings = list.map(ringOf), o = centroidOf(rings.flat()), [kx, ky] = kOf(o[0]);
+    clip = list.map((l, i) => ({ pts: toXY(rings[i], o, kx, ky), plane: l.pvPlane ? { ...l.pvPlane } : null, face: l.pvFaceIdx ?? null, az: planeOf(l).az }));
+    toast("Τα επιλεγμένα πάνελ αντιγράφηκαν. Δεξί κλικ → «Επικόλληση εδώ», ή Ctrl+V.", 4000);
+    return true;
+  }
+  function cutSelected() { if (copySelected()) removeSelected(); }
+  function pasteAt(latlng) {
+    if (!clip) { toast("Δεν έχεις αντιγράψει πάνελ ακόμα. Δεξί κλικ σε ένα πάνελ → «Αντιγραφή».", 4000); return; }
+    if (!areas.getLayers().length) { toast("Σχεδίασε πρώτα μια περιοχή στον χάρτη.", 4000); return; }
+    ensureLayout();
+    ensureFaces();
+    const o = [latlng.lat, latlng.lng], [kx, ky] = kOf(latlng.lat);
+    let sx = 0, sy = 0;
+    if ($("manualSnap").checked && clip.length === 1 && !clip[0].plane) { // one panel: edge to edge with the neighbours
+      [sx, sy] = snapShift(clip[0].pts, layers().map((l) => toXY(ringOf(l), o, kx, ky)), clip[0].az);
+    }
+    const made = clip.map((c) => {
+      const layer = addPanel(fromXY(c.pts.map(([x, y]) => [x + sx, y + sy]), o, kx, ky));
+      if (c.face != null) layer.pvFaceIdx = c.face;
+      if (c.plane) layer.pvPlane = { ...c.plane };
+      return layer;
+    });
+    nudging = null;
+    push(() => made.forEach((l) => { panelsLayer.removeLayer(l); selected.delete(l); }));
+    select(made);
+    afterChange();
+  }
+
+  // The panels of the same row (same distance along the way the panel looks) or the same column.
+  function selectLine(l, kind) {
+    const ring = ringOf(l), o = centroidOf(ring), [kx, ky] = kOf(o[0]), f = frame(planeOf(l).az);
+    const e0 = extent(toXY(ring, o, kx, ky), f);
+    const tol = (kind === "row" ? e0.u1 - e0.u0 : e0.v1 - e0.v0) / 2;
+    select(layers().filter((x) => {
+      const [px, py] = toXY([centroidOf(ringOf(x))], o, kx, ky)[0];
+      return Math.abs(kind === "row" ? px * f.ux + py * f.uy : px * f.vx + py * f.vy) <= tol;
+    }));
+  }
+
+  // ---------- Right click: a small menu ----------
+  const closeMenu = () => { if (menu) { menu.remove(); menu = null; } };
+  function showMenu(e, items) {
+    closeMenu();
+    const box = document.createElement("div");
+    box.className = "pv-ctx";
+    L.DomEvent.disableClickPropagation(box); // a click on the menu must not reach the map (it would clear the selection)
+    L.DomEvent.disableScrollPropagation(box);
+    box.addEventListener("contextmenu", (ev) => ev.preventDefault());
+    items.forEach((it) => {
+      if (it === "-") { box.appendChild(document.createElement("hr")); return; }
+      const [label, fn, enabled = true] = it;
+      const b = document.createElement("button");
+      b.type = "button";
+      b.textContent = label;
+      b.disabled = !enabled;
+      b.onclick = () => { closeMenu(); fn(); };
+      box.appendChild(b);
+    });
+    map.getContainer().appendChild(box);
+    const r = map.getContainer().getBoundingClientRect();
+    box.style.left = `${Math.max(4, Math.min(e.clientX - r.left, r.width - box.offsetWidth - 6))}px`;
+    box.style.top = `${Math.max(4, Math.min(e.clientY - r.top, r.height - box.offsetHeight - 6))}px`;
+    menu = box;
+  }
   function onContext(e) {
-    if (!on() || adding) return;
-    const path = e.target.closest?.("path");
-    const hit = path && layers().find((l) => l.getElement?.() === path);
-    if (!hit) return;
+    if (!on()) return;
+    if (e.target.closest?.(".leaflet-marker-icon, .leaflet-popup, .pv-ctx")) return;
+    if (!(e.target === map.getContainer() || e.target.closest?.(".leaflet-pane"))) return;
     e.preventDefault();
     e.stopPropagation();
-    if (!selected.has(hit)) select([hit]);
-    removeSelected();
+    if (adding) { setAdding(false); return; } // a right click ends the adding
+    const path = e.target.closest?.("path");
+    const hit = path && layers().find((l) => l.getElement?.() === path);
+    const here = map.mouseEventToLatLng(e);
+    closeEditor();
+    if (hit) {
+      if (!selected.has(hit)) select([hit]);
+      showMenu(e, [
+        ["Αντιγραφή", copySelected], ["Αποκοπή", cutSelected], ["Επικόλληση εδώ", () => pasteAt(here), !!clip], "-",
+        ["Περιστροφή 90°", rotateSelected],
+        ...(isEwLayout() ? [["Αλλαγή πλευράς (Α↔Δ)", flipSelected]] : []),
+        ["Κλίση και κατεύθυνση…", () => openEditor(hit)], "-",
+        ["Επιλογή της σειράς", () => selectLine(hit, "row")], ["Επιλογή της στήλης", () => selectLine(hit, "col")],
+        ["Επιλογή όλων", () => select(layers())], "-",
+        ["Διαγραφή", removeSelected],
+      ]);
+    } else {
+      showMenu(e, [
+        ["Προσθήκη πάνελ εδώ", () => place(here)], ["Επικόλληση εδώ", () => pasteAt(here), !!clip], "-",
+        ["Επιλογή όλων", () => select(layers())], ["Καθαρισμός επιλογής", () => select([]), selected.size > 0],
+      ]);
+    }
   }
+  document.addEventListener("mousedown", (e) => { if (menu && !menu.contains(e.target)) closeMenu(); }, true);
+  map.on("movestart zoomstart click", closeMenu);
+  map.on("mousemove", (e) => { lastLL = e.latlng; });
+
+  // ---------- Selecting many: Ctrl + drag (or the switch) on empty ground draws a frame ----------
   let marquee = null;
   function onMarqueeDown(e) {
-    if (!on() || adding || e.button !== 0 || !(e.ctrlKey || e.metaKey) || e.target.closest?.(".leaflet-marker-icon, .leaflet-popup")) return;
+    if (!on() || adding || e.button !== 0 || !(e.ctrlKey || e.metaKey || boxSelect) || e.target.closest?.(".leaflet-marker-icon, .leaflet-popup, .pv-ctx")) return;
     const path = e.target.closest?.("path");
     if (path && layers().some((l) => l.getElement?.() === path)) return; // on a panel: Ctrl+click adds it to the selection
     e.stopPropagation();
@@ -690,7 +800,7 @@
   $("manualOn").onchange = () => {
     document.body.classList.toggle("manual-moving", on());
     if (on() && !adding && !layers().length) toast("Κάνε πρώτα τοποθέτηση πάνελ, ή πάτα «Προσθήκη πάνελ» για να βάλεις μόνος σου.", 4000);
-    if (!on()) { setAdding(false); closeEditor(); select([]); }
+    if (!on()) { setAdding(false); closeEditor(); closeMenu(); setBoxSelect(false); select([]); }
   };
   map.on("click", () => { if (on() && !drag && !adding) { closeEditor(); select([]); } });
   // Adding listens to the plain DOM click: a click on the drawn area or on a panel never reaches the map
@@ -706,6 +816,21 @@
   map.on("mousemove", (e) => { if (adding) showGhost(e.latlng); });
   map.getContainer().addEventListener("mouseleave", removeGhost);
   $("manualAdd").onclick = () => setAdding(!adding);
+  // While adding, the wheel turns the new panel (5° a notch, Shift: 1°) instead of zooming the map.
+  map.getContainer().addEventListener("wheel", (e) => {
+    if (!adding) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const step = e.shiftKey ? 1 : 5;
+    spin = (((spin + (e.deltaY < 0 ? step : -step)) % 360) + 360) % 360;
+    if (hover) showGhost(hover);
+  }, { capture: true, passive: false });
+  function setBoxSelect(v) {
+    boxSelect = v;
+    document.body.classList.toggle("manual-boxsel", v);
+    updateUi();
+  }
+  $("manualBoxSel").onclick = () => { if (!boxSelect && !on()) { $("manualOn").checked = true; $("manualOn").onchange(); } setBoxSelect(!boxSelect); };
   $("manualDel").onclick = removeSelected;
   $("manualRot").onclick = rotateSelected;
   $("manualFlip").onclick = flipSelected;
@@ -721,6 +846,10 @@
     const key = e.key.toLowerCase();
     if (e.ctrlKey || e.metaKey) {
       if (key === "z") { e.preventDefault(); undo(); }
+      else if (key === "a") { e.preventDefault(); select(layers()); }
+      else if (key === "c") { e.preventDefault(); copySelected(); }
+      else if (key === "x") { e.preventDefault(); cutSelected(); }
+      else if (key === "v") { e.preventDefault(); pasteAt(lastLL || map.getCenter()); }
       return;
     }
     const arrows = { arrowleft: [-1, 0], arrowright: [1, 0], arrowup: [0, 1], arrowdown: [0, -1] };
@@ -730,7 +859,7 @@
     else if (key === "r") {
       if (adding) { flip = !flip; if (hover) showGhost(hover); }
       else rotateSelected();
-    } else if (key === "escape") { closeEditor(); if (adding) setAdding(false); else select([]); }
+    } else if (key === "escape") { closeEditor(); closeMenu(); if (adding) setAdding(false); else select([]); }
   });
   panelsLayer.on("layeradd layerremove", () => requestAnimationFrame(updateUi)); // the count follows any layout, load or edit
   updateUi();

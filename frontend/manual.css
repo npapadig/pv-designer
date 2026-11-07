@@ -43,3 +43,16 @@
 .pv-panel-edit small { color: #64748b; }
 .pv-edit-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
 .pv-edit-btns button { margin: 0; height: 34px; padding: 0 8px; font-size: 0.82rem; }
+
+/* The right click menu and the selection frame switch. */
+.pv-ctx { position: absolute; z-index: 800; min-width: 190px; padding: 6px; border-radius: 14px; background: var(--glass-strong, #fff); color: var(--text, #111);
+  border: 1px solid var(--line-strong, #cbd5e1); box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35); backdrop-filter: blur(14px); }
+.pv-ctx button { display: block; width: 100%; height: 34px; margin: 0; padding: 0 12px; text-align: left; background: transparent; border: 0; border-radius: 9px;
+  color: inherit; font-size: 0.86rem; font-weight: 600; box-shadow: none; }
+.pv-ctx button:hover:not(:disabled) { background: var(--field-hover, rgba(255, 138, 61, 0.18)); }
+.pv-ctx button:disabled { opacity: 0.4; cursor: not-allowed; }
+.pv-ctx button:disabled::before { display: none; }
+.pv-ctx hr { border: 0; border-top: 1px solid var(--line, #e2e8f0); margin: 4px 2px; }
+.manual-btns button.active { box-shadow: 0 0 0 3px rgba(250, 204, 21, 0.55); }
+.manual-boxsel .leaflet-container, .manual-boxsel .leaflet-interactive { cursor: crosshair; }
+.pv-az-tip { font-weight: 700; }

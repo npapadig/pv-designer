@@ -3,6 +3,8 @@
 // grow or shrink it (the opposite corner stays), the round handle on top turns it (Shift = steps of 15°), and
 // «Ταίριαξε με τον χάρτη» lines it up with the satellite picture from two matching points (size, turn and place
 // at once). The wheel over the picture zooms the map as everywhere else; the drawing tools work on top of it.
+// The picture and what lies on it (areas, obstacles, panels) are ONE body: moving the picture moves them along,
+// and moving a shape that lies on the picture (shapes.js) moves the picture and the others along.
 // Uses app.js globals (map, $, toast, fmt). No library: an <img> in its own Leaflet pane.
 (() => {
   const EARTH = 40075016.686; // equator length in metres (Web Mercator)
@@ -252,6 +254,42 @@
     }
   }
 
+  // ---------- One body: the picture and what lies on it ----------
+  const midOf = (l) => {
+    const pts = [l.getLatLngs()].flat(Infinity);
+    return L.latLng(pts.reduce((a, q) => a + q.lat, 0) / pts.length, pts.reduce((a, q) => a + q.lng, 0) / pts.length);
+  };
+  // Is this place on the picture (a turned rectangle)?
+  function onPlan(ll) {
+    const z = map.getZoom(), c = map.latLngToLayerPoint(p.center), d = map.latLngToLayerPoint(ll).subtract(c);
+    const w = p.widthM / metresPerPixel(p.center.lat, z), h = (w * p.natH) / p.natW, r = (p.rot * Math.PI) / 180;
+    const x = d.x * Math.cos(r) + d.y * Math.sin(r), y = -d.x * Math.sin(r) + d.y * Math.cos(r);
+    return Math.abs(x) <= w / 2 && Math.abs(y) <= h / 2;
+  }
+  const cloneLL = (a) => (Array.isArray(a) ? a.map(cloneLL) : L.latLng(a.lat, a.lng));
+  const shiftLL = (a, dLat, dLng) => (Array.isArray(a) ? a.map((x) => shiftLL(x, dLat, dLng)) : L.latLng(a.lat + dLat, a.lng + dLng));
+  // The body of the picture: the shapes and panels whose middle is on it. first: a shape that is being dragged;
+  // when it is not on the picture there is no body (it moves alone). move(dLat, dLng) shifts all from where they were.
+  function body(first) {
+    if (!p.image || !p.natW || !p.center) return null;
+    const list = [areas, keepouts, panelsLayer, removedLayer].flatMap((g) => g.getLayers()).filter((l) => onPlan(midOf(l)));
+    if (first && !list.includes(first)) return null;
+    if (!first && !list.length) return null;
+    const orig = list.map((l) => cloneLL(l.getLatLngs())), c0 = p.center, lay = state.layout, center0 = lay && lay.center ? [...lay.center] : null;
+    const b = {
+      count: list.length, delta: { dLat: 0, dLng: 0 },
+      move(dLat, dLng) {
+        b.delta = { dLat, dLng };
+        p.center = L.latLng(c0.lat + dLat, c0.lng + dLng);
+        update();
+        list.forEach((l, i) => l.setLatLngs(shiftLL(orig[i], dLat, dLng)));
+        if (center0 && state.layout) state.layout.center = [center0[0] + dLat, center0[1] + dLng];
+      },
+      end() { if (typeof refreshShadows === "function") refreshShadows(); },
+    };
+    return b;
+  }
+
   // ---------- Moving with the mouse ----------
   let drag = null;
   img.addEventListener("pointerdown", (e) => {
@@ -260,17 +298,20 @@
     e.stopPropagation();
     img.setPointerCapture(e.pointerId);
     map.dragging.disable();
-    drag = { x: e.clientX, y: e.clientY, from: map.latLngToLayerPoint(p.center) };
+    drag = { x: e.clientX, y: e.clientY, from: map.latLngToLayerPoint(p.center), c0: p.center, body: body(null) };
     img.classList.add("dragging");
   });
   img.addEventListener("pointermove", (e) => {
     if (!drag) return;
-    p.center = map.layerPointToLatLng(drag.from.add([e.clientX - drag.x, e.clientY - drag.y]));
-    update();
+    const to = map.layerPointToLatLng(drag.from.add([e.clientX - drag.x, e.clientY - drag.y]));
+    if (drag.body) { drag.moved = true; drag.body.move(to.lat - drag.c0.lat, to.lng - drag.c0.lng); } // the shapes and panels go along
+    else { p.center = to; update(); }
   });
   const endDrag = () => {
     if (!drag) return;
+    const d = drag;
     drag = null;
+    if (d.body && d.moved) { d.body.end(); window.shapes?.recordGroup(d.body.delta); } // one undo step for the shapes
     map.dragging.enable();
     img.classList.remove("dragging");
   };
@@ -476,6 +517,8 @@
   $("planOpacity").addEventListener("input", () => { p.opacity = +$("planOpacity").value / 100; applyStyle(); });
   $("planLock").addEventListener("change", () => { p.locked = $("planLock").checked; applyStyle(); });
 
-  window.plan = { pickFile, start, clear, collect, load, askWhere, centerOn, active: () => !!p.image };
+  // Only the picture moves (undo of a shape move that took the picture along).
+  const shiftBy = (dLat, dLng) => { if (p.image && p.center) { p.center = L.latLng(p.center.lat + dLat, p.center.lng + dLng); update(); } };
+  window.plan = { pickFile, start, clear, collect, load, askWhere, centerOn, body, shiftBy, active: () => !!p.image };
   refresh();
 })();
