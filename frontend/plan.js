@@ -1,17 +1,19 @@
 // Floor plan on the map: an image the user places under the drawings, moves, rotates, sizes with two
 // points of known distance and makes see-through, then locks to draw the roof on top of it. Corner handles
-// grow or shrink it (the opposite corner stays), the round handle on top turns it (Shift = steps of 15°), the
-// wheel grows it (Shift+wheel turns it), and «Ταίριαξε με τον χάρτη» lines it up with the satellite picture from
-// two matching points (size, turn and place at once).
+// grow or shrink it (the opposite corner stays), the round handle on top turns it (Shift = steps of 15°), and
+// «Ταίριαξε με τον χάρτη» lines it up with the satellite picture from two matching points (size, turn and place
+// at once). The wheel over the picture zooms the map as everywhere else; the drawing tools work on top of it.
 // Uses app.js globals (map, $, toast, fmt). No library: an <img> in its own Leaflet pane.
 (() => {
   const EARTH = 40075016.686; // equator length in metres (Web Mercator)
-  const PANE_EDIT = "450", PANE_LOCKED = "350"; // above the drawings while editing, under them when locked
+  const PANE_Z = "350"; // over the map pictures (200), under the drawings (overlay pane 400): shapes can be drawn and picked on top of it
   const MAX_MB = 25;
 
   const p = { image: "", natW: 0, natH: 0, center: null, widthM: 20, rot: 0, opacity: 0.6, locked: false };
 
-  const pane = map.createPane("planPane");
+  // Inside the rotating pane, between the map pictures (200) and the drawings (400): beside it the picture would
+  // sit under the whole map, or over the drawings.
+  const pane = map.createPane("planPane", map.getPane("rotatePane") || undefined);
   const img = document.createElement("img");
   img.className = "plan-img leaflet-zoom-animated";
   img.alt = "Κάτοψη";
@@ -19,7 +21,6 @@
   img.hidden = true;
   pane.appendChild(img);
   L.DomEvent.disableClickPropagation(img);
-  L.DomEvent.disableScrollPropagation(img);
   // The frame with the handles follows the picture (same place and turn, its own size in pixels).
   const frame = document.createElement("div");
   frame.className = "plan-frame leaflet-zoom-animated";
@@ -48,7 +49,7 @@
 
   function applyStyle() {
     img.style.opacity = p.opacity;
-    pane.style.zIndex = p.locked ? PANE_LOCKED : PANE_EDIT;
+    pane.style.zIndex = PANE_Z;
     img.classList.toggle("locked", p.locked);
     ["btnPlanCenter", "btnPlanScale", "btnPlanFit", "planRot", "planRotNum", "planWidth", "btnPlanReplace"]
       .forEach((id) => { $(id).disabled = p.locked; });
@@ -320,14 +321,10 @@
   frame.addEventListener("pointerup", endGrab);
   frame.addEventListener("pointercancel", endGrab);
 
-  // The wheel over the picture grows it around the pointer; with Shift it turns it (a little at a time).
-  img.addEventListener("wheel", (e) => {
-    if (p.locked || scaling || fitting) return;
-    e.preventDefault();
-    const dir = e.deltaY < 0 ? 1 : -1;
-    if (e.shiftKey) setRot(p.rot + dir * 0.5);
-    else { scaleAbout(map.mouseEventToLayerPoint(e), Math.pow(1.03, dir)); syncControls(); update(); }
-  }, { passive: false });
+  // While a drawing, editing or deleting tool is active the picture lets every click through to the tool.
+  const through = (on) => map.getContainer().classList.toggle("plan-through", on);
+  map.on("draw:drawstart draw:editstart draw:deletestart", () => through(true));
+  map.on("draw:drawstop draw:editstop draw:deletestop", () => through(false));
 
   // ---------- Scale from two points of known distance ----------
   const marks = L.layerGroup().addTo(map);

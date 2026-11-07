@@ -170,6 +170,8 @@
 .home-sources-x { position: absolute; top: 12px; right: 12px; }
 .home-sources-card h3 { text-transform: none; letter-spacing: -0.01em; font-size: 1.1rem; }
 
+/* A drawing tool is active: the picture and its handles let the clicks through. */
+.plan-through .plan-img, .plan-through .plan-frame .ph { pointer-events: none; cursor: inherit; }
 /* The handles of the plan: a dashed frame with a square on every corner and a round one above (plan.js). */
 .plan-frame { position: absolute; left: 0; top: 0; box-sizing: border-box; pointer-events: none; border: 1.5px dashed rgba(255, 138, 61, 0.95); }
 .plan-frame[hidden] { display: none; }
