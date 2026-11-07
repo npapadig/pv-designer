@@ -424,12 +424,17 @@ const addPanel = (latlngs) => L.polygon(latlngs, PANEL_STYLE).addTo(panelsLayer)
 const PANEL_FILL_WEST = "#2447a0";
 function isEwLayout() {
   const f = state.layout?.faces;
-  return !!f && f.length === 2 && !window.faces?.active() && Math.abs(((f[1].azimuth_deg - f[0].azimuth_deg + 360) % 360) - 180) < 1;
+  return !!f && f.length >= 2 && !state.layout.synth_faces && !window.faces?.active() && Math.abs(((f[1].azimuth_deg - f[0].azimuth_deg + 360) % 360) - 180) < 1;
 }
 // Every panel layer remembers its face (index into state.layout.faces) in pvFaceIdx; manual.js keeps it up to date.
 function tagFaces() {
-  const pf = state.layout?.panel_face, all = panelsLayer.getLayers();
-  all.forEach((l, i) => { l.pvFaceIdx = pf && pf.length === all.length ? pf[i] : undefined; });
+  const lay = state.layout, pf = lay?.panel_face, all = panelsLayer.getLayers();
+  all.forEach((l, i) => {
+    l.pvFaceIdx = pf && pf.length === all.length ? pf[i] : undefined;
+    // faces from custom_from on are panels with an own tilt / direction (manual.js)
+    const f = l.pvFaceIdx != null && lay.custom_from != null && l.pvFaceIdx >= lay.custom_from ? lay.faces[l.pvFaceIdx] : null;
+    l.pvPlane = f ? { tilt: f.tilt_deg, az: f.azimuth_deg } : undefined;
+  });
 }
 // The positions dropped for shade: dashed outlines with the yearly loss; not panels, not saved.
 const removedLayer = new L.FeatureGroup().addTo(map);

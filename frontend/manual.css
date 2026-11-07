@@ -31,3 +31,15 @@
 .manual-ew label { margin: 0; font-size: 0.78rem; }
 .manual-ew button { margin: 0; white-space: normal; height: auto; padding: 8px; font-size: 0.8rem; }
 
+/* The round handle of a selected panel, the box of a click on a panel and the frame of Ctrl+drag. */
+.pv-rot { width: 20px; height: 20px; margin: -10px 0 0 -10px; border-radius: 50%; background: #ff8a3d; border: 2.5px solid #fff; box-shadow: 0 1px 5px rgba(0, 0, 0, 0.55); cursor: grab; box-sizing: border-box; }
+.pv-rot:active { cursor: grabbing; }
+.pv-marquee { position: absolute; z-index: 700; pointer-events: none; border: 1.5px dashed #facc15; background: rgba(250, 204, 21, 0.12); }
+.pv-edit-pop .leaflet-popup-content { margin: 12px 14px; min-width: 210px; }
+.pv-panel-edit { display: grid; gap: 8px; font-size: 0.85rem; }
+.pv-panel-edit b { font-size: 0.95rem; }
+.pv-panel-edit label { display: grid; gap: 3px; margin: 0; font-weight: 600; }
+.pv-panel-edit input { width: 100%; padding: 6px 8px; }
+.pv-panel-edit small { color: #64748b; }
+.pv-edit-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.pv-edit-btns button { margin: 0; height: 34px; padding: 0 8px; font-size: 0.82rem; }

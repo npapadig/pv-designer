@@ -1,5 +1,6 @@
 // Editing panels by hand on top of the automatic layout: add, move, turn, delete them (and, in east-west, switch
-// them between the east and the west side), and check which
+// them between the east and the west side). Every selected panel has its own round handle to turn it freely, and
+// a click on a panel opens a small box for its tilt and direction (see «Ανά πάνελ» below), and check which
 // placement rules they break. The panels are the polygons of panelsLayer, so shading, production, electrical
 // and saving use the edited positions with no extra step. Everything works in lat/lng (metres around a local
 // origin), so it is the same on a rotated map. Rules are checked by the server (POST /api/layout/check,
@@ -12,6 +13,8 @@
   const STEP_BIG_M = 0.25;
   const NUDGE_MERGE_MS = 1000; // arrow presses this close together are one step for the undo
   const MAX_ROWS = 30;     // rows of the list of broken rules
+  const MAX_HANDLES = 12;  // so many selected panels each show a handle; more would only clutter the map
+  const ROT_SNAP = 15;     // Shift while turning: steps of this many degrees
   const REASONS = {
     outside: "Εκτός περιγράμματος", edge: "Κοντά στο περίγραμμα", ridge: "Κοντά στη γραμμή διαχωρισμού πλευρών",
     obstacle: "Κοντά σε εμπόδιο", overlap: "Επικάλυψη με άλλο πάνελ", shade: "Υπερβολική σκίαση",
@@ -24,6 +27,8 @@
   const undoStack = [];
   let seq = 0, checkTimer = null;
   let adding = false, flip = false, ghost = null, hover = null, nudging = null;
+  const handleLayer = L.layerGroup().addTo(map); // the round handles of the selected panels
+  let handles = [];                             // { l, marker, line }
 
   // ---------- Geometry: metres around a local origin ----------
   const rad = (d) => (d * Math.PI) / 180;
@@ -55,6 +60,7 @@
     if (lay?.panel_face && lay.panel_face.length === all.length) all.forEach((l, i) => { if (l.pvFaceIdx === undefined) l.pvFaceIdx = lay.panel_face[i]; });
   }
   function planeOf(l) {
+    if (l.pvPlane) return l.pvPlane; // this panel has its own tilt / direction
     const lay = state.layout || {}, set = settings();
     const f = lay.faces && l.pvFaceIdx != null ? lay.faces[l.pvFaceIdx] : null;
     return { tilt: (f ? f.tilt_deg : lay.tilt_deg ?? set.tilt_deg) || 0, az: f ? f.azimuth_deg : lay.azimuth_deg ?? set.azimuth_deg };
@@ -65,6 +71,55 @@
   function turned(pts, plane) {
     const f = frame(plane.az), cos = Math.max(Math.cos(rad(plane.tilt)), 0.2), e = extent(pts, f);
     return rectOf((e.u0 + e.u1) / 2, (e.v0 + e.v1) / 2, (e.v1 - e.v0) * cos, (e.u1 - e.u0) / cos, f);
+  }
+
+  // ---------- Own tilt and direction of one panel ----------
+  // The panel gets its own plane: the footprint is turned to look the new way and, when the tilt changes, made as
+  // deep as a panel of that tilt is on the map (length × cos tilt). The centre stays.
+  function applyPlane(l, tilt, az) {
+    const ring = ringOf(l), o = centroidOf(ring), [kx, ky] = kOf(o[0]), old = planeOf(l);
+    const e = extent(toXY(ring, o, kx, ky), frame(old.az));
+    const cosOld = Math.max(Math.cos(rad(old.tilt)), 0.2), cosNew = Math.max(Math.cos(rad(tilt)), 0.2);
+    const along = (e.u1 - e.u0) / cosOld, across = e.v1 - e.v0;
+    az = ((az % 360) + 360) % 360;
+    l.setLatLngs([fromXY(rectOf(0, 0, along * cosNew, across, frame(az)), o, kx, ky)]);
+    l.pvPlane = { tilt, az };
+  }
+  const planeKey = (p) => `${Math.round(p.tilt)}|${Math.round(((p.az % 360) + 360) % 360) % 360}`;
+
+  // Panels with an own plane become faces of their own (one per tilt and direction) after the faces of the layout,
+  // so shading, production, the strings and the 3D view treat them like any other face. lay.custom_from is the first
+  // such face; lay.synth_faces says that the layout had no faces before (face 0 is then its single plane).
+  function rebuildFaces() {
+    const lay = state.layout, all = layers(), w = +$("panelPower").value || 0;
+    const customs = all.filter((l) => l.pvPlane);
+    if (!customs.length && lay.custom_from == null) return;
+    const first = lay.custom_from ?? (lay.faces ? lay.faces.length : 1);
+    let base = lay.faces ? lay.faces.slice(0, first) : null;
+    if (!base) {
+      const set = settings();
+      base = [{ tilt_deg: lay.tilt_deg ?? set.tilt_deg, azimuth_deg: lay.azimuth_deg ?? set.azimuth_deg, row_gap_m: lay.row_gap_m }];
+      lay.synth_faces = true;
+    }
+    if (!customs.length) { // the last own plane is gone: back to the faces the layout had
+      if (lay.synth_faces) { delete lay.faces; delete lay.panel_face; delete lay.synth_faces; } else lay.faces = base;
+      delete lay.custom_from;
+      return;
+    }
+    const keys = [], extra = [];
+    customs.forEach((l) => {
+      const k = planeKey(l.pvPlane);
+      if (!keys.includes(k)) {
+        keys.push(k);
+        extra.push({ tilt_deg: Math.round(l.pvPlane.tilt), azimuth_deg: Math.round(l.pvPlane.az) % 360, row_gap_m: base[0].row_gap_m });
+      }
+      l.pvFaceIdx = first + keys.indexOf(k);
+    });
+    all.forEach((l) => { if (!l.pvPlane) l.pvFaceIdx = l.pvFaceIdx != null && l.pvFaceIdx < first ? l.pvFaceIdx : 0; });
+    lay.faces = base.concat(extra);
+    lay.custom_from = first;
+    lay.panel_face = all.map((l) => l.pvFaceIdx);
+    lay.faces.forEach((f, i) => { f.count = lay.panel_face.filter((x) => x === i).length; f.kwp = Math.round(f.count * w) / 1000; });
   }
 
   // ---------- Snapping to the neighbours ----------
@@ -117,6 +172,7 @@
     $("manualUndo").disabled = !undoStack.length;
     $("manualAdd").classList.toggle("active", adding);
     $("manualAdd").textContent = adding ? "✓ Τέλος προσθήκης" : "＋ Προσθήκη πάνελ";
+    updateHandles();
     $("manualStatus").textContent = adding
       ? "Κάνε κλικ στον χάρτη όπου θέλεις πάνελ· όσα θέλεις. R = γύρισέ το στο πλάι, Esc = τέλος."
       : ew
@@ -141,6 +197,7 @@
     lay.count = all.length;
     lay.kwp = Math.round(all.length * w) / 1000;
     lay.module_area_m2 = Math.round(all.length * (+$("panelWidth").value || 0) * (+$("panelLength").value || 0) * 10) / 10;
+    rebuildFaces();
     if (lay.panel_face && lay.faces) {
       lay.panel_face = all.map((l) => l.pvFaceIdx ?? 0);
       lay.faces.forEach((f, i) => { f.count = lay.panel_face.filter((x) => x === i).length; f.kwp = Math.round(f.count * w) / 1000; });
@@ -230,8 +287,8 @@
     const d = drag;
     drag = null;
     if (!d) return;
-    if (!d.moved) { // a click: without Shift/Ctrl it selects just this panel
-      if (!d.additive) select([d.hit]);
+    if (!d.moved) { // a click: without Shift/Ctrl it selects just this panel and opens its box (tilt, direction, delete)
+      if (!d.additive) { select([d.hit]); openEditor(d.hit); }
       return;
     }
     nudging = null;
@@ -257,7 +314,7 @@
     let base;
     if (near) {
       const ring = ringOf(near), o = centroidOf(ring), [kx, ky] = kOf(o[0]);
-      base = { pts: toXY(ring, o, kx, ky), plane: planeOf(near), face: near.pvFaceIdx ?? null };
+      base = { pts: toXY(ring, o, kx, ky), plane: planeOf(near), face: near.pvFaceIdx ?? null, custom: !!near.pvPlane };
     } else {
       const s = settings(), lay = state.layout, f0 = lay?.faces?.[0];
       const plane = f0 ? { tilt: f0.tilt_deg, az: f0.azimuth_deg } : { tilt: s.tilt_deg, az: s.azimuth_deg };
@@ -279,7 +336,7 @@
       const [sx, sy] = snapShift(pts, layers().map((l) => toXY(ringOf(l), o, kx, ky)), p.plane.az);
       pts = pts.map(([x, y]) => [x + sx, y + sy]);
     }
-    return { ring: fromXY(pts, o, kx, ky), face: p.face };
+    return { ring: fromXY(pts, o, kx, ky), face: p.face, plane: p.custom ? p.plane : null };
   }
 
   const removeGhost = () => { hover = null; if (ghost) { ghost.remove(); ghost = null; } };
@@ -294,9 +351,10 @@
   function place(latlng) {
     ensureLayout();
     ensureFaces();
-    const { ring, face } = placement(latlng);
+    const { ring, face, plane } = placement(latlng);
     const layer = addPanel(ring);
     if (face != null) layer.pvFaceIdx = face;
+    if (plane) layer.pvPlane = { ...plane }; // next to a panel with its own tilt / direction: the same
     nudging = null;
     push(() => { panelsLayer.removeLayer(layer); selected.delete(layer); });
     select([layer]);
@@ -331,10 +389,13 @@
     if (!list.length) return;
     if (!isEwLayout()) { toast("Η αλλαγή πλευράς είναι για διάταξη ανατολή-δύση.", 4000); return; }
     ensureFaces();
-    const before = list.map((l) => l.pvFaceIdx ?? 0);
-    list.forEach((l) => { l.pvFaceIdx = 1 - (l.pvFaceIdx ?? 0); });
+    const before = list.map((l) => [l.pvFaceIdx ?? 0, l.pvPlane ? { ...l.pvPlane } : null, ringOf(l)]);
+    list.forEach((l) => {
+      if (l.pvPlane) applyPlane(l, l.pvPlane.tilt, l.pvPlane.az + 180); // an own plane: turned half way round
+      else l.pvFaceIdx = 1 - (l.pvFaceIdx ?? 0);
+    });
     nudging = null;
-    push(() => list.forEach((l, i) => { l.pvFaceIdx = before[i]; }));
+    push(() => list.forEach((l, i) => { l.pvFaceIdx = before[i][0]; l.pvPlane = before[i][1] || undefined; l.setLatLngs([before[i][2]]); }));
     afterChange();
   }
 
@@ -379,6 +440,161 @@
     const keep = nudging; // afterChange keeps the merge window open
     afterChange();
     nudging = keep;
+  }
+
+  // ---------- A round handle on every selected panel: turn it freely ----------
+  // The handle sits in front of the panel (the way it looks); dragging it points the panel at the pointer.
+  const mPerPx = (lat) => (40075016.686 * Math.cos(rad(lat))) / (256 * 2 ** map.getZoom());
+  function handleSpot(l) {
+    const ring = ringOf(l), c = centroidOf(ring), plane = planeOf(l), [kx, ky] = kOf(c[0]);
+    const e = extent(toXY(ring, c, kx, ky), frame(plane.az));
+    const half = (e.u1 - e.u0) / 2, dir = [Math.sin(rad(plane.az)), Math.cos(rad(plane.az))];
+    const at = (d) => [c[0] + (dir[1] * d) / ky, c[1] + (dir[0] * d) / kx];
+    return { from: at(half), to: at(half + Math.max(24 * mPerPx(c[0]), 0.4)) };
+  }
+  function layoutHandle(h) {
+    const s = handleSpot(h.l);
+    h.line.setLatLngs([s.from, s.to]);
+    h.marker.setLatLng(s.to);
+  }
+  function updateHandles() {
+    handleLayer.clearLayers();
+    handles = [];
+    if (!on() || adding || drag || !selected.size || selected.size > MAX_HANDLES || window.faces?.active()) return;
+    selected.forEach((l) => {
+      if (!panelsLayer.hasLayer(l)) return;
+      const line = L.polyline([[0, 0], [0, 0]], { color: "#ff8a3d", weight: 2, interactive: false }).addTo(handleLayer);
+      const marker = L.marker([0, 0], { icon: L.divIcon({ className: "pv-rot", iconSize: [20, 20] }), keyboard: false, title: "Γύρισέ το" }).addTo(handleLayer);
+      const h = { l, line, marker };
+      marker.on("mousedown", (ev) => startTurn(h, ev.originalEvent));
+      layoutHandle(h);
+      handles.push(h);
+    });
+  }
+  map.on("zoomend rotate", () => handles.forEach(layoutHandle));
+
+  let turn = null;
+  function startTurn(h, e) {
+    if (e.button !== 0) return;
+    e.preventDefault();
+    e.stopPropagation();
+    map.dragging.disable();
+    ensureFaces();
+    const ring = ringOf(h.l), plane = planeOf(h.l);
+    turn = { h, c: map.latLngToContainerPoint(centroidOf(ring)), before: ring, plane: { ...plane }, own: h.l.pvPlane ? { ...h.l.pvPlane } : null, moved: false };
+    h.marker.bindTooltip(`${Math.round(plane.az)}°`, { permanent: true, direction: "top", offset: [0, -12] }).openTooltip();
+    document.addEventListener("mousemove", onTurn);
+    document.addEventListener("mouseup", endTurn);
+  }
+  function onTurn(e) {
+    if (!turn) return;
+    const p = map.mouseEventToContainerPoint(e);
+    let az = (Math.atan2(p.x - turn.c.x, -(p.y - turn.c.y)) * 180) / Math.PI - (map.getBearing ? map.getBearing() : 0);
+    if (e.shiftKey) az = Math.round(az / ROT_SNAP) * ROT_SNAP;
+    az = ((az % 360) + 360) % 360;
+    turn.moved = true;
+    applyPlane(turn.h.l, turn.plane.tilt, az);
+    layoutHandle(turn.h);
+    turn.h.marker.setTooltipContent(`${Math.round(az)}°`);
+  }
+  function endTurn() {
+    document.removeEventListener("mousemove", onTurn);
+    document.removeEventListener("mouseup", endTurn);
+    map.dragging.enable();
+    const t = turn;
+    turn = null;
+    if (!t) return;
+    t.h.marker.unbindTooltip();
+    if (!t.moved) return;
+    nudging = null;
+    push(() => { t.h.l.pvPlane = t.own || undefined; t.h.l.setLatLngs([t.before]); });
+    afterChange();
+  }
+
+  // ---------- A click on a panel: its tilt and direction, or delete ----------
+  let editorPopup = null;
+  function openEditor(l) {
+    closeEditor();
+    if (window.faces?.active()) return; // on a roof with faces the tilt and direction belong to the face
+    const plane = planeOf(l), n = layers().indexOf(l) + 1;
+    const box = document.createElement("div");
+    box.className = "pv-panel-edit";
+    box.innerHTML = `<b>Πάνελ #${n}</b>
+      <label>Κλίση ως προς το έδαφος (°) <input class="pv-tilt" type="number" min="0" max="90" step="1" value="${Math.round(plane.tilt * 10) / 10}"></label>
+      <label>Κατεύθυνση (°) <input class="pv-az" type="number" min="0" max="360" step="1" value="${Math.round(plane.az * 10) / 10}"></label>
+      <small>Κατεύθυνση: 0 = Βορράς, 90 = Ανατολή, 180 = Νότος, 270 = Δύση.</small>
+      <div class="pv-edit-btns"><button type="button" class="pv-apply">Εφαρμογή</button><button type="button" class="pv-del secondary">Διαγραφή πάνελ</button></div>`;
+    const apply = () => {
+      const tilt = parseFloat(box.querySelector(".pv-tilt").value), az = parseFloat(box.querySelector(".pv-az").value);
+      if (!(tilt >= 0 && tilt <= 90) || !(az >= 0 && az <= 360)) { toast("Η κλίση είναι από 0 έως 90° και η κατεύθυνση από 0 έως 360°.", 5000); return; }
+      const list = selected.size ? [...selected] : [l];
+      ensureFaces();
+      const before = list.map((x) => [x, x.pvPlane ? { ...x.pvPlane } : null, ringOf(x)]);
+      list.forEach((x) => applyPlane(x, tilt, az));
+      nudging = null;
+      push(() => before.forEach(([x, pl, ring]) => { x.pvPlane = pl || undefined; x.setLatLngs([ring]); }));
+      closeEditor();
+      afterChange();
+    };
+    box.querySelector(".pv-apply").onclick = apply;
+    box.querySelector(".pv-del").onclick = () => { closeEditor(); if (!selected.has(l)) select([l]); removeSelected(); };
+    box.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); apply(); } if (e.key === "Escape") closeEditor(); });
+    editorPopup = L.popup({ closeButton: true, autoClose: true, closeOnClick: false, className: "pv-edit-pop", offset: [0, -4] })
+      .setLatLng(centroidOf(ringOf(l))).setContent(box).openOn(map);
+  }
+  function closeEditor() { if (editorPopup) { map.closePopup(editorPopup); editorPopup = null; } }
+
+  // ---------- Right click on a panel deletes it; Ctrl + drag on empty ground selects the panels inside ----------
+  function onContext(e) {
+    if (!on() || adding) return;
+    const path = e.target.closest?.("path");
+    const hit = path && layers().find((l) => l.getElement?.() === path);
+    if (!hit) return;
+    e.preventDefault();
+    e.stopPropagation();
+    if (!selected.has(hit)) select([hit]);
+    removeSelected();
+  }
+  let marquee = null;
+  function onMarqueeDown(e) {
+    if (!on() || adding || e.button !== 0 || !(e.ctrlKey || e.metaKey) || e.target.closest?.(".leaflet-marker-icon, .leaflet-popup")) return;
+    const path = e.target.closest?.("path");
+    if (path && layers().some((l) => l.getElement?.() === path)) return; // on a panel: Ctrl+click adds it to the selection
+    e.stopPropagation();
+    e.preventDefault();
+    map.dragging.disable();
+    const box = document.createElement("div");
+    box.className = "pv-marquee";
+    map.getContainer().appendChild(box);
+    const r = map.getContainer().getBoundingClientRect();
+    marquee = { box, x0: e.clientX - r.left, y0: e.clientY - r.top, add: e.shiftKey };
+    document.addEventListener("mousemove", onMarqueeMove);
+    document.addEventListener("mouseup", onMarqueeUp);
+  }
+  const marqueeRect = (e, m) => {
+    const r = map.getContainer().getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
+    return { x0: Math.min(m.x0, x), y0: Math.min(m.y0, y), x1: Math.max(m.x0, x), y1: Math.max(m.y0, y) };
+  };
+  function onMarqueeMove(e) {
+    if (!marquee) return;
+    const q = marqueeRect(e, marquee);
+    Object.assign(marquee.box.style, { left: `${q.x0}px`, top: `${q.y0}px`, width: `${q.x1 - q.x0}px`, height: `${q.y1 - q.y0}px` });
+  }
+  function onMarqueeUp(e) {
+    document.removeEventListener("mousemove", onMarqueeMove);
+    document.removeEventListener("mouseup", onMarqueeUp);
+    map.dragging.enable();
+    const m = marquee;
+    marquee = null;
+    if (!m) return;
+    const q = marqueeRect(e, m);
+    m.box.remove();
+    const inside = layers().filter((l) => {
+      const p = map.latLngToContainerPoint(centroidOf(ringOf(l)));
+      return p.x >= q.x0 && p.x <= q.x1 && p.y >= q.y0 && p.y <= q.y1;
+    });
+    select(inside, m.add);
+    if (inside.length) toast(`Επιλέχθηκαν ${inside.length} πάνελ. Πάτα Delete για διαγραφή.`, 4000);
   }
 
   // ---------- Checking the rules ----------
@@ -454,7 +670,7 @@
   window.manual = {
     // A new layout replaced the panels, or a project was loaded.
     reset() {
-      selected.clear(); undoStack.length = 0; drag = null; nudging = null;
+      closeEditor(); selected.clear(); undoStack.length = 0; drag = null; nudging = null;
       setAdding(false);
       $("manualList").innerHTML = "";
       updateUi();
@@ -469,12 +685,14 @@
 
   // ---------- Wiring ----------
   map.getContainer().addEventListener("mousedown", onDown, true);
+  map.getContainer().addEventListener("mousedown", onMarqueeDown, true);
+  map.getContainer().addEventListener("contextmenu", onContext, true);
   $("manualOn").onchange = () => {
     document.body.classList.toggle("manual-moving", on());
     if (on() && !adding && !layers().length) toast("Κάνε πρώτα τοποθέτηση πάνελ, ή πάτα «Προσθήκη πάνελ» για να βάλεις μόνος σου.", 4000);
-    if (!on()) { setAdding(false); select([]); }
+    if (!on()) { setAdding(false); closeEditor(); select([]); }
   };
-  map.on("click", () => { if (on() && !drag && !adding) select([]); });
+  map.on("click", () => { if (on() && !drag && !adding) { closeEditor(); select([]); } });
   // Adding listens to the plain DOM click: a click on the drawn area or on a panel never reaches the map
   // otherwise. A press that moved (the map was dragged) is not a click.
   let press = null;
@@ -512,7 +730,7 @@
     else if (key === "r") {
       if (adding) { flip = !flip; if (hover) showGhost(hover); }
       else rotateSelected();
-    } else if (key === "escape") { if (adding) setAdding(false); else select([]); }
+    } else if (key === "escape") { closeEditor(); if (adding) setAdding(false); else select([]); }
   });
   panelsLayer.on("layeradd layerremove", () => requestAnimationFrame(updateUi)); // the count follows any layout, load or edit
   updateUi();

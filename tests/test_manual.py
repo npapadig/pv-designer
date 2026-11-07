@@ -123,3 +123,11 @@ def test_separate_windows_are_served():
         r = client.get(f"/{page}")
         assert r.status_code == 200 and marker in r.text
 
+
+def test_manual_script_has_own_plane_handles_and_delete_ways():
+    """Per-panel tilt/direction (box + round handle) and the ways to delete panels are in manual.js."""
+    from pathlib import Path
+    js = (Path(__file__).resolve().parent.parent / "frontend" / "manual.js").read_text(encoding="utf-8")
+    for part in ("applyPlane", "rebuildFaces", "startTurn", "openEditor", "onContext", "onMarqueeDown", "pv-del", "custom_from"):
+        assert part in js
+
