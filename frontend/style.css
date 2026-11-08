@@ -255,6 +255,8 @@ details[open] { padding-bottom: 4px; }
 .stats div:first-child { border-left: 0; }
 .stats span { display: block; font-size: 1.45rem; font-weight: 750; letter-spacing: -0.03em; line-height: 1.25; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .stats small { display: block; color: var(--muted); font-size: 0.64rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; white-space: nowrap; }
+/* The production counts fewer panels than the layout (some are not in a string): the two labels say so. */
+.stats div.partial small { color: var(--accent-text); }
 .stats .hero span, #finPayback {
   background: var(--sun); -webkit-background-clip: text; background-clip: text; color: transparent;
 }

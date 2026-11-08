@@ -152,3 +152,14 @@ def test_adding_never_puts_a_panel_on_top_of_another_one():
     for part in ("function panelAt(", "function onTopOfPanel(", "if (onTopOfPanel(ring))", "press[2]", "e.shiftKey ? 1 : 2.5"):
         assert part in js
     assert "adding || e.button" not in js.split("function onDown(")[1].split("}")[0]  # dragging works while adding
+
+
+def test_dock_says_when_production_counts_fewer_panels_than_the_layout():
+    """The detailed production counts only panels in complete strings: the strip of numbers must say so."""
+    from pathlib import Path
+    front = Path(__file__).resolve().parent.parent / "frontend"
+    js = (front / "app.js").read_text(encoding="utf-8")
+    for part in ("function partialPower(", "function partialText(", "statKwpLbl", "statYieldLbl", "e.dc_kwp < l.kwp"):
+        assert part in js
+    html = (front / "index.html").read_text(encoding="utf-8")
+    assert 'id="statKwpLbl"' in html and 'id="statYieldLbl"' in html

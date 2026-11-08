@@ -635,7 +635,10 @@ async function runEnergy() {
   if (!state.shading) await runShading();
   if (window.elec?.detailed()) {
     state.energy = await elec.simulate();
-    return renderResults();
+    renderResults();
+    const conn = partialPower();
+    if (conn) toast(partialText(conn), 12000);
+    return;
   }
   const s = settings();
   const [lat, lon] = state.layout.center;
@@ -652,6 +655,16 @@ $("btnEnergy").onclick = () => withBusy($("btnEnergy"), runEnergy);
 // ---------- Results ----------
 const fmt = (n, d = 0) => (n == null ? "–" : Number(n).toLocaleString("el-GR", { maximumFractionDigits: d }));
 
+// The connected power (kWp) of the last production when it is less than the power of all the panels, else null.
+function partialPower() {
+  const l = state.layout, e = state.energy;
+  return e && l && e.dc_kwp && l.kwp && e.dc_kwp < l.kwp - 0.005 ? e.dc_kwp : null;
+}
+function partialText(conn) {
+  const l = state.layout, used = Math.round((l.count * conn) / l.kwp);
+  return `Η παραγωγή και τα kWh/kWp μετράνε μόνο τα ${used} συνδεδεμένα πάνελ (${fmt(conn, 2)} kWp) από τα ${l.count} (${fmt(l.kwp, 2)} kWp). Πάνελ που περισσεύουν: ${l.count - used}. Δεν χωράνε σε ολόκληρο string και δεν παράγουν στον υπολογισμό (δες το βήμα «Inverter»).`;
+}
+
 function renderResults() {
   if (window.existingPv?.active()) return; // an existing system has no drawing, shading or yearly chart here
   const l = state.layout, e = state.energy;
@@ -659,6 +672,13 @@ function renderResults() {
   $("statKwp").textContent = l ? fmt(l.kwp, 2) : "–";
   $("statKwh").textContent = e ? fmt(e.annual_kwh) : "–";
   $("statYield").textContent = e ? fmt(e.specific_yield) : "–";
+  // The detailed simulation counts only the panels that sit in a complete string. When some do not, the kWh and
+  // the kWh/kWp are for the connected power: the labels and a warning say so (the numbers themselves stay as they are).
+  const conn = partialPower();
+  $("statKwpLbl").textContent = conn ? `kWp (συνδ. ${fmt(conn, 2)})` : "kWp";
+  $("statYieldLbl").textContent = conn ? "kWh / συνδ. kWp" : "kWh / kWp";
+  $("statKwp").parentElement.classList.toggle("partial", !!conn);
+  $("statYield").parentElement.classList.toggle("partial", !!conn);
   $("statExtra").textContent = l
     ? `Επιφάνεια περιοχής ${fmt(l.area_m2, 1)} m², επιφάνεια πάνελ ${fmt(l.module_area_m2, 1)} m², κενό σειρών ${fmt(l.row_gap_m, 2)} m.` +
       (state.shading ? ` Απώλειες σκίασης ${fmt(state.shading.annual_loss_pct, 1)}%.` : "") +
@@ -666,8 +686,9 @@ function renderResults() {
       (e ? ` Ακτινοβολία στο επίπεδο πάνελ ${fmt(e.annual_irradiation)} kWh/m² ανά έτος. Πηγή: ${e.source.startsWith("PVGIS") ? "PVGIS (ΕΕ)" : "πρόχειρο μοντέλο χωρίς internet"}.` : "")
     : "";
   renderShadingInfo();
-  $("energyWarning").hidden = !(e && e.warning);
-  $("energyWarning").textContent = e && e.warning ? e.warning : "";
+  const warn = [e && e.warning, conn ? partialText(conn) : null].filter(Boolean).join(" ");
+  $("energyWarning").hidden = !warn;
+  $("energyWarning").textContent = warn;
 
   if (chart) { chart.destroy(); chart = null; }
   if (e) {
